@@ -1,5 +1,6 @@
 <script>
   import { api } from './api.js'
+  import { t } from './lang.svelte.js'
 
   let status = $state(null)
   let error = $state('')
@@ -92,20 +93,22 @@
 {/if}
 
 {#if !status}
-  <p class="text-sm text-muted">Henter…</p>
+  <p class="text-sm text-muted">{t('Loading…')}</p>
 {:else}
   <div class="space-y-4">
     <section class="card p-5">
       <div class="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 class="font-medium">Version</h2>
+        <h2 class="font-medium">{t('Version')}</h2>
         <span class="chip font-mono">{status.version}</span>
       </div>
 
       {#if update?.error}
-        <p class="mt-3 text-sm text-warn">Kunne ikke tjekke for opdateringer: {update.error}</p>
+        <p class="mt-3 text-sm text-warn">
+          {t('Could not check for updates: {error}', { error: update.error })}
+        </p>
       {:else if update?.updateAvailable}
         <p class="mt-3 text-sm">
-          <span class="font-medium text-good">{update.latest}</span> er udkommet.
+          {t('{version} has been released.', { version: update.latest })}
         </p>
         {#if update.notes}
           <pre class="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded-xl bg-raised p-3 text-xs text-muted">{update.notes}</pre>
@@ -113,17 +116,20 @@
 
         {#if update.canApply}
           <p class="mt-3 max-w-prose text-xs text-muted">
-            Mimir henter binæren, tjekker dens checksum, <em>starter den</em> og venter på at den
-            svarer på et helbredstjek — først derefter udskiftes noget. Kommer den nye version
-            alligevel ikke op bagefter, ruller en vagthund tilbage til {status.version}.
+            {@html t(
+              'Mimir downloads the binary, verifies its checksum, <em>starts it</em> and waits for it to answer a health check — only then is anything replaced. If the new version still fails to come up afterwards, a watchdog rolls back to {version}.',
+              { version: status.version },
+            )}
           </p>
           <button
             class="btn-primary mt-4"
             disabled={busy === 'update'}
             onclick={() =>
-              run('update', api.applyUpdate, (r) => `Opdateret til ${r.to}. ${r.note}`)}
+              run('update', api.applyUpdate, (r) => t('Updated to {to}. {note}', { to: r.to, note: r.note }))}
           >
-            {busy === 'update' ? 'Opdaterer…' : `Opdatér til ${update.latest}`}
+            {busy === 'update'
+              ? t('Updating…')
+              : t('Update to {version}', { version: update.latest })}
           </button>
         {:else}
           <p class="mt-3 max-w-prose rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-sm text-warn">
@@ -132,43 +138,51 @@
         {/if}
       {:else}
         <p class="mt-3 text-sm text-muted">
-          {update?.latest ? `Du kører den nyeste version (${update.latest}).` : 'Ingen nyere version fundet.'}
+          {update?.latest
+            ? t('You are running the newest version ({version}).', { version: update.latest })
+            : t('No newer version found.')}
         </p>
       {/if}
 
       <div class="mt-4 flex flex-wrap gap-2">
         <button class="btn-ghost text-xs" disabled={busy === 'check'} onclick={() => run('check', api.checkUpdate)}>
-          {busy === 'check' ? 'Tjekker…' : 'Tjek nu'}
+          {busy === 'check' ? t('Checking…') : t('Check now')}
         </button>
         {#if update?.backup}
           <button
             class="btn-ghost text-xs"
             disabled={busy === 'rollback'}
-            onclick={() => run('rollback', api.rollback, (r) => `Gendannede ${r.restored}. ${r.note}`)}
+            onclick={() =>
+              run('rollback', api.rollback, (r) =>
+                t('Restored {restored}. {note}', { restored: r.restored, note: r.note }),
+              )}
           >
-            Rul tilbage til {update.backup}
+            {t('Roll back to {version}', { version: update.backup })}
           </button>
         {/if}
       </div>
 
       {#if update?.appliedAt}
         <p class="mt-3 text-xs text-muted">
-          Sidst opdateret til {update.appliedTo} den {update.appliedAt.slice(0, 10)}.
+          {t('Last updated to {version} on {date}.', {
+            version: update.appliedTo,
+            date: update.appliedAt.slice(0, 10),
+          })}
         </p>
       {/if}
     </section>
 
     <section class="card p-5">
-      <h2 class="font-medium">Spildata</h2>
+      <h2 class="font-medium">{t('Game data')}</h2>
       <p class="mt-2 max-w-prose text-sm text-muted">
-        Henter fra de offentlige datamines, verificerer effekt-reglerne mod spillets egen
-        ordlyd og aktiverer resultatet. Tager omkring et halvt minut. Fejler noget, skiftes
-        der ikke — det nuværende snapshot bliver stående.
+        {t(
+          'Fetches from the public datamines, verifies the effect rules against the game’s own wording and activates the result. Takes about half a minute. If anything fails, nothing is swapped — the current snapshot stays.',
+        )}
       </p>
 
       <div class="mt-4 flex flex-wrap items-end gap-3">
         <div>
-          <label class="label" for="gv">Spilversion</label>
+          <label class="label" for="gv">{t('Game version')}</label>
           <input
             id="gv"
             class="field w-32"
@@ -182,7 +196,7 @@
           disabled={mine?.running || busy === 'mine' || !gameVersion.trim()}
           onclick={startMine}
         >
-          {mine?.running ? `Synkroniserer… ${mine.elapsed}s` : 'Synkronisér spildata'}
+          {mine?.running ? t('Syncing… {n}s', { n: mine.elapsed }) : t('Sync game data')}
         </button>
       </div>
 
@@ -207,14 +221,14 @@
 
     <section class="card p-5">
       <div class="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 class="font-medium">Beacon</h2>
-        <span class="chip">{beacon?.enabled ? 'til' : 'fra'}</span>
+        <h2 class="font-medium">{t('Beacon')}</h2>
+        <span class="chip">{beacon?.enabled ? t('on') : t('off')}</span>
       </div>
 
       <p class="mt-3 max-w-prose text-sm text-muted">
-        Én ping om dagen, så projektet kan se hvor mange installationer der findes og hvilken
-        version de kører. Den sender præcis dette og intet andet — ingen UID'er, ingen konti,
-        intet inventar:
+        {t(
+          'One ping a day, so the project can see how many installations exist and which version they run. It sends exactly this and nothing else — no UIDs, no accounts, no inventory:',
+        )}
       </p>
       <pre class="mt-3 overflow-auto rounded-xl bg-raised p-3 text-xs">{JSON.stringify(
           beacon?.payload ?? {},
@@ -222,7 +236,7 @@
           2,
         )}</pre>
       <div class="mt-4">
-        <label class="label" for="collector">Collector-adresse</label>
+        <label class="label" for="collector">{t('Collector address')}</label>
         <input
           id="collector"
           class="field font-mono text-xs"
@@ -230,13 +244,14 @@
           bind:value={collector}
         />
         <p class="mt-1.5 text-xs text-muted">
-          Der er ingen standardadresse med vilje. En beacon skal vide hvor den rapporterer
-          hen — ellers ender pingen enten ingen steder eller et sted den ikke hører til.
+          {t(
+            'There is deliberately no default address. A beacon has to know where it reports — otherwise the ping either goes nowhere or somewhere it does not belong.',
+          )}
         </p>
       </div>
 
       {#if !beacon?.chosen}
-        <p class="mt-3 text-sm">Den er slået fra, indtil du siger andet.</p>
+        <p class="mt-3 text-sm">{t('It is switched off until you say otherwise.')}</p>
       {/if}
 
       <div class="mt-4 flex flex-wrap gap-2">
@@ -245,17 +260,20 @@
           disabled={busy === 'beacon'}
           onclick={() => run('beacon', () => api.setBeacon(!beacon.enabled, collector))}
         >
-          {beacon?.enabled ? 'Slå fra' : 'Slå til'}
+          {beacon?.enabled ? t('Turn off') : t('Turn on')}
         </button>
       </div>
 
       {#if beacon?.lastError}
         <p class="mt-3 text-xs text-warn">
-          Sidste forsøg mislykkedes: {beacon.lastError}
+          {t('The last attempt failed: {error}', { error: beacon.lastError })}
         </p>
       {:else if beacon?.lastDay}
         <p class="mt-3 text-xs text-muted">
-          Sidst sendt {beacon.lastDay} som {beacon.lastVersion}.
+          {t('Last sent {day} as {version}.', {
+            day: beacon.lastDay,
+            version: beacon.lastVersion,
+          })}
         </p>
       {/if}
     </section>
@@ -263,25 +281,24 @@
     {#if receiver}
       <section class="card p-5">
         <div class="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 class="font-medium">Denne instans som collector</h2>
-          <span class="chip">{receiver.enabled ? 'til' : 'fra'}</span>
+          <h2 class="font-medium">{t('This instance as collector')}</h2>
+          <span class="chip">{receiver.enabled ? t('on') : t('off')}</span>
         </div>
 
         <p class="mt-3 max-w-prose text-sm text-muted">
-          Én instans kan tage imod de andres beacons. Slå det til her, og peg de øvrige
-          installationer på adressen nedenfor. Der gemmes kun det anonyme instans-id og
-          versionen — ingen IP, ingen brugeragent, ingen forespørgselsdata. Afsenderen lover
-          sin operatør at intet andet forlader maskinen, og det løfte skal også holde i denne
-          ende.
+          {t(
+            'One instance can receive the others’ beacons. Switch it on here, and point the other installations at the address below. Only the anonymous instance id and the version are stored — no IP, no user agent, no request data. The sender promises its operator that nothing else leaves the machine, and that promise has to hold at this end too.',
+          )}
         </p>
 
         <div class="mt-3">
-          <p class="label">Adresse til de andre instanser</p>
+          <p class="label">{t('Address for the other instances')}</p>
           <pre class="overflow-auto rounded-xl bg-raised p-3 text-xs">{receiver.endpoint}</pre>
           {#if !receiver.enabled}
             <p class="mt-1.5 text-xs text-muted">
-              Endepunktet svarer 404 indtil du slår det til — en instans der ikke er collector,
-              skal ikke reklamere for noget den alligevel afviser.
+              {t(
+                'The endpoint answers 404 until you switch it on — an instance that is not a collector should not advertise something it rejects anyway.',
+              )}
             </p>
           {/if}
         </div>
@@ -289,15 +306,15 @@
         {#if receiver.enabled}
           <dl class="mt-4 grid grid-cols-3 gap-2 text-center">
             <div class="rounded-xl bg-raised py-3">
-              <dt class="text-xs text-muted">installationer</dt>
+              <dt class="text-xs text-muted">{t('installations')}</dt>
               <dd class="text-lg font-medium">{receiver.total}</dd>
             </div>
             <div class="rounded-xl bg-raised py-3">
-              <dt class="text-xs text-muted">aktive 7 dage</dt>
+              <dt class="text-xs text-muted">{t('active 7 days')}</dt>
               <dd class="text-lg font-medium">{receiver.active7d}</dd>
             </div>
             <div class="rounded-xl bg-raised py-3">
-              <dt class="text-xs text-muted">aktive 30 dage</dt>
+              <dt class="text-xs text-muted">{t('active 30 days')}</dt>
               <dd class="text-lg font-medium">{receiver.active30d}</dd>
             </div>
           </dl>
@@ -319,7 +336,7 @@
           disabled={busy === 'receiver'}
           onclick={() => run('receiver', () => api.setReceiver(!receiver.enabled))}
         >
-          {receiver.enabled ? 'Slå collector fra' : 'Slå collector til'}
+          {receiver.enabled ? t('Turn collector off') : t('Turn collector on')}
         </button>
       </section>
     {/if}

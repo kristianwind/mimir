@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kristianwind/mimir/internal/i18n"
 	"github.com/kristianwind/mimir/internal/model"
 )
 
@@ -147,18 +148,45 @@ func TestAccountPlanSurvivesOneBrokenGoal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("one broken goal took the whole account plan down: %v", err)
 	}
-	var reported bool
-	for _, p := range plan.Plans {
-		for _, s := range p.Skipped {
-			if strings.Contains(s, "kunne ikke regnes ud") {
-				reported = true
-			}
-		}
-	}
-	if !reported {
+	if !skipMentions(plan, "could not be calculated") {
 		t.Error("the broken goal failed silently")
 	}
 	if len(plan.Ranked) == 0 {
 		t.Error("the working goal produced no actions")
 	}
+}
+
+// The prose the plan reports is translated, so a Danish request has to get the
+// Danish sentence — and an untranslated one would silently fall back to
+// English, which reads as working.
+func TestAccountPlanSpeaksTheRequestedLanguage(t *testing.T) {
+	reqs := twoGoals(t)
+	reqs[0].Goal.Spec.Steps = nil
+	for i := range reqs {
+		reqs[i].Lang = i18n.DA
+	}
+
+	plan, err := BuildAccountPlan(context.Background(), reqs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !skipMentions(plan, "kunne ikke regnes ud") {
+		t.Error("a Danish request got its skip reason in English")
+	}
+	for _, c := range plan.Caveats {
+		if strings.Contains(c, "Each goal is measured") {
+			t.Error("a Danish request got its caveats in English")
+		}
+	}
+}
+
+func skipMentions(plan AccountPlan, want string) bool {
+	for _, p := range plan.Plans {
+		for _, s := range p.Skipped {
+			if strings.Contains(s, want) {
+				return true
+			}
+		}
+	}
+	return false
 }

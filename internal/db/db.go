@@ -54,6 +54,7 @@ type addedColumn struct {
 
 var addedColumns = []addedColumn{
 	{"goals", "conditions", `ALTER TABLE goals ADD COLUMN conditions TEXT NOT NULL DEFAULT '{}'`},
+	{"users", "lang", `ALTER TABLE users ADD COLUMN lang TEXT NOT NULL DEFAULT 'da'`},
 }
 
 func addColumns(conn *sql.DB) error {
@@ -101,6 +102,7 @@ CREATE TABLE IF NOT EXISTS users (
 	role          TEXT NOT NULL DEFAULT 'user',
 	theme         TEXT NOT NULL DEFAULT 'anemo',
 	theme_mode    TEXT NOT NULL DEFAULT 'system',
+	lang          TEXT NOT NULL DEFAULT 'da',
 	disabled      INTEGER NOT NULL DEFAULT 0,
 	created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );

@@ -112,9 +112,9 @@ func waitHealthy(ctx context.Context, url string, timeout time.Duration) error {
 		}
 	}
 	if last == nil {
-		last = fmt.Errorf("ingen svar fra %s", url)
+		last = fmt.Errorf("no answer from %s", url)
 	}
-	return fmt.Errorf("kom ikke op inden for %s: %w", timeout, last)
+	return fmt.Errorf("did not come up within %s: %w", timeout, last)
 }
 
 // detach puts the watchdog in its own process group, so it survives the

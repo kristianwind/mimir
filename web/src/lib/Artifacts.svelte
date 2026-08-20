@@ -1,15 +1,16 @@
 <script>
   import { api } from './api.js'
+  import { t } from './lang.svelte.js'
 
   let { account } = $props()
 
   const SLOTS = ['flower', 'plume', 'sands', 'goblet', 'circlet']
   const SLOT_LABELS = {
-    flower: 'Blomst',
-    plume: 'Fjer',
-    sands: 'Sand',
-    goblet: 'Bæger',
-    circlet: 'Krone',
+    flower: 'Flower',
+    plume: 'Plume',
+    sands: 'Sands',
+    goblet: 'Goblet',
+    circlet: 'Circlet',
   }
 
   let artifacts = $state([])
@@ -49,25 +50,26 @@
 
 <div class="mb-4 flex flex-wrap items-center gap-2">
   <button type="button" class="chip {slot === '' ? 'border-accent text-ink' : ''}" onclick={() => (slot = '')}>
-    Alle ({artifacts.length})
+    {t('All ({n})', { n: artifacts.length })}
   </button>
   {#each SLOTS as s (s)}
     <button type="button" class="chip {slot === s ? 'border-accent text-ink' : ''}" onclick={() => (slot = s)}>
-      {SLOT_LABELS[s]}
+      {t(SLOT_LABELS[s])}
     </button>
   {/each}
 </div>
 
 {#if loading}
-  <p class="text-sm text-muted">Henter artifacts…</p>
+  <p class="text-sm text-muted">{t('Fetching artifacts…')}</p>
 {:else if error}
   <p class="rounded-xl border border-bad/40 bg-bad/10 px-4 py-3 text-sm text-bad">{error}</p>
 {:else if artifacts.length === 0}
   <div class="card p-8 text-center">
-    <p class="text-muted">Intet inventar endnu.</p>
+    <p class="text-muted">{t('No inventory yet.')}</p>
     <p class="mt-2 text-sm text-muted">
-      Enka giver kun de udstyrede stykker. Upload en .good-fil fra Inventory Kamera for hele
-      inventaret.
+      {t(
+        'Enka only gives the equipped pieces. Upload a .good file from Inventory Kamera for the whole inventory.',
+      )}
     </p>
   </div>
 {:else}
@@ -96,7 +98,9 @@
   </div>
   {#if shown.length > 120}
     <p class="mt-4 text-center text-xs text-muted">
-      Viser 120 af {shown.length}. Filtrering og sortering kommer med optimizer-visningen.
+      {t('Showing 120 of {n}. Filtering and sorting arrive with the optimizer view.', {
+        n: shown.length,
+      })}
     </p>
   {/if}
 {/if}

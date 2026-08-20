@@ -79,7 +79,7 @@ func (u *Updater) latest(ctx context.Context) (Release, error) {
 
 	resp, err := u.client().Do(req)
 	if err != nil {
-		return Release{}, fmt.Errorf("selfupdate: could not reach GitHub: %w", err)
+		return Release{}, errf(err, "selfupdate: could not reach GitHub: %s", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
@@ -88,13 +88,13 @@ func (u *Updater) latest(ctx context.Context) (Release, error) {
 		// credentials on purpose, so a private repository lands here with a
 		// perfectly published release — and saying "no releases yet" would
 		// be confidently wrong.
-		return Release{}, fmt.Errorf(
-			"selfupdate: fandt ingen udgivelser i %s. Enten er der ingen endnu, "+
-				"eller også er repoet privat — Mimir henter uden login, så et privat "+
-				"repos udgivelser er usynlige for den", u.Repo)
+		return Release{}, errf(nil,
+			"selfupdate: found no releases in %s. Either there are none yet, "+
+				"or the repository is private — Mimir fetches without credentials, so a "+
+				"private repository's releases are invisible to it", u.Repo)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return Release{}, fmt.Errorf("selfupdate: GitHub returned %s", strings.TrimSpace(resp.Status))
+		return Release{}, errf(nil, "selfupdate: GitHub returned %s", strings.TrimSpace(resp.Status))
 	}
 
 	var rel Release

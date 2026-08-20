@@ -107,12 +107,12 @@ func (s *Server) handleStartMine(w http.ResponseWriter, r *http.Request) {
 		Version string `json:"version"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "ugyldig forespørgsel", "")
+		writeError(w, r, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 	if body.Version == "" {
-		writeError(w, http.StatusBadRequest, "angiv en spilversion",
-			"Fx 7.0.0. Den mærker snapshottet, så du kan rulle tilbage til det.")
+		writeError(w, r, http.StatusBadRequest, "specify a game version",
+			"For example 7.0.0. It labels the snapshot so you can roll back to it.")
 		return
 	}
 
@@ -120,7 +120,7 @@ func (s *Server) handleStartMine(w http.ResponseWriter, r *http.Request) {
 	j.mu.Lock()
 	if j.running {
 		j.mu.Unlock()
-		writeError(w, http.StatusConflict, "der kører allerede en synkronisering", "")
+		writeError(w, r, http.StatusConflict, "a sync is already running", "")
 		return
 	}
 	j.running = true
@@ -175,20 +175,20 @@ func (s *Server) runMine(ctx context.Context, version string) {
 
 	if s.Config.SupplementsPath != "" {
 		if _, statErr := os.Stat(s.Config.SupplementsPath); statErr == nil {
-			j.logf("indlæser %s", s.Config.SupplementsPath)
+			j.logf("loading %s", s.Config.SupplementsPath)
 			if err := mine.MergeSupplements(snap, s.Config.SupplementsPath); err != nil {
 				finish(err)
 				return
 			}
 		} else {
 			j.warnings = append(j.warnings,
-				"fandt ikke "+s.Config.SupplementsPath+"; resinpriser og domæner mangler")
+				"did not find "+s.Config.SupplementsPath+"; resin costs and domains are missing")
 		}
 	}
 
 	if s.Config.EffectsPath != "" {
 		if _, statErr := os.Stat(s.Config.EffectsPath); statErr == nil {
-			j.logf("indlæser og verificerer %s", s.Config.EffectsPath)
+			j.logf("loading and verifying %s", s.Config.EffectsPath)
 			rules, err := effect.Load(s.Config.EffectsPath, snap)
 			if err != nil {
 				// A rule whose numbers do not match the game's own wording
@@ -220,7 +220,7 @@ func (s *Server) runMine(ctx context.Context, version string) {
 		return
 	}
 
-	j.logf("aktiverede %s — %d karakterer, %d våben, %d artifact-sæt",
+	j.logf("activated %s — %d characters, %d weapons, %d artifact sets",
 		snap.Version, len(snap.Characters), len(snap.Weapons), len(snap.ArtifactSets))
 	finish(nil)
 }

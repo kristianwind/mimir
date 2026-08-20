@@ -20,6 +20,7 @@ import (
 	"github.com/kristianwind/mimir/internal/config"
 	"github.com/kristianwind/mimir/internal/enka"
 	"github.com/kristianwind/mimir/internal/gamedata"
+	"github.com/kristianwind/mimir/internal/i18n"
 	"github.com/kristianwind/mimir/internal/selfupdate"
 )
 
@@ -79,7 +80,7 @@ func (s *Server) Router() http.Handler {
 			r.Use(s.Auth.Middleware)
 
 			r.Get("/me", s.handleMe)
-			r.Put("/me/theme", s.handleSetTheme)
+			r.Put("/me/prefs", s.handleSetPrefs)
 			r.Put("/me/password", s.handleChangeOwnPassword)
 
 			r.Route("/users", func(r chi.Router) {
@@ -175,7 +176,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(v); err != nil {
-		http.Error(w, `{"error":"kunne ikke sende svaret"}`, http.StatusInternalServerError)
+		http.Error(w, `{"error":"could not send the response"}`, http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -192,32 +193,39 @@ type apiError struct {
 	Hint string `json:"hint,omitempty"`
 }
 
-func writeError(w http.ResponseWriter, status int, msg, hint string) {
-	writeJSON(w, status, apiError{Error: msg, Hint: hint})
+// writeError sends an error in the language the request asked for.
+//
+// The request is a parameter rather than the language, so translation is not
+// something a call site has to remember: every error written through here is
+// localised, and the call sites keep their English source strings.
+func writeError(w http.ResponseWriter, r *http.Request, status int, msg, hint string) {
+	lang := i18n.FromRequest(r)
+	writeJSON(w, status, apiError{Error: i18n.T(lang, msg), Hint: i18n.T(lang, hint)})
 }
 
 // writeDomainError maps known domain errors onto status codes and hints.
-func writeDomainError(w http.ResponseWriter, err error) {
+func writeDomainError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, enka.ErrNoShowcase):
-		writeError(w, http.StatusUnprocessableEntity,
-			"Enka har ingen karakterer for det UID",
-			"Slå Vis karakterdetaljer til i spillet under Profil → Rediger profil, vent et par minutter, og prøv igen.")
+		writeError(w, r, http.StatusUnprocessableEntity,
+			"Enka has no characters for that UID",
+			"Switch on Show Character Details in the game under Profile → Edit Profile, wait a couple of minutes, and try again.")
 	case errors.Is(err, enka.ErrNotFound):
-		writeError(w, http.StatusNotFound, "UID findes ikke", "Tjek de ni cifre i spillets Paimon-menu.")
+		writeError(w, r, http.StatusNotFound, "that UID does not exist", "Check the nine digits in the game's Paimon menu.")
 	case errors.Is(err, enka.ErrRateLimited):
-		writeError(w, http.StatusTooManyRequests, "Enka har rate-limitet os", "Prøv igen om et par minutter.")
+		writeError(w, r, http.StatusTooManyRequests, "Enka has rate-limited us", "Try again in a couple of minutes.")
 	case errors.Is(err, gamedata.ErrNoSnapshot):
-		writeError(w, http.StatusServiceUnavailable,
-			"Spildataene er ikke indlæst endnu",
-			"Kør `mimir gamedata import <snapshot.json>`. Uden dem kan der ikke regnes på noget.")
+		writeError(w, r, http.StatusServiceUnavailable,
+			"the game data has not been loaded yet",
+			"Run a sync on the System page. Without it nothing can be calculated.")
 	case errors.Is(err, gamedata.ErrMissing):
 		// The underlying message names exactly what is missing — a character
 		// id, a stat table — which is the only useful thing to show here.
-		writeError(w, http.StatusServiceUnavailable,
-			"Spildataene er forældede",
-			"Der mangler noget i det aktive snapshot: "+err.Error()+". Importér en nyere version.")
+		writeError(w, r, http.StatusServiceUnavailable,
+			"the game data is out of date",
+			i18n.T(i18n.FromRequest(r),
+				"Something is missing from the active snapshot: %s. Sync a newer version.", err.Error()))
 	default:
-		writeError(w, http.StatusInternalServerError, err.Error(), "")
+		writeError(w, r, http.StatusInternalServerError, err.Error(), "")
 	}
 }

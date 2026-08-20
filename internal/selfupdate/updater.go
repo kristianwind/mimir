@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/kristianwind/mimir/internal/db"
+	"github.com/kristianwind/mimir/internal/i18n"
 )
 
 // Settings keys for the updater's bookkeeping.
@@ -141,6 +142,32 @@ type Status struct {
 	AppliedTo string `json:"appliedTo,omitempty"`
 	// Error carries a failed release check without failing the whole page.
 	Error string `json:"error,omitempty"`
+
+	// reasonFormat and reasonArgs keep Reason translatable. Reason itself is
+	// rendered in English — the source — because a Status is cached and
+	// shared between users who may not read the same language; Localise
+	// re-renders it per request instead.
+	reasonFormat string
+	reasonArgs   []any
+	// err keeps the original failure so Error can be re-rendered per request.
+	err error
+}
+
+// setReason records an explanation in a form that can still be translated.
+func (s *Status) setReason(format string, args ...any) {
+	s.reasonFormat, s.reasonArgs = format, args
+	s.Reason = i18n.T(i18n.EN, format, args...)
+}
+
+// Localise returns a copy of the status with Reason in the given language.
+func (s Status) Localise(lang i18n.Lang) Status {
+	if s.reasonFormat != "" {
+		s.Reason = i18n.T(lang, s.reasonFormat, s.reasonArgs...)
+	}
+	if s.err != nil {
+		s.Error = localise(s.err, lang)
+	}
+	return s
 }
 
 // Check returns the current update state.
@@ -155,6 +182,7 @@ func (u *Updater) Check(ctx context.Context, force bool) Status {
 
 	rel, err := u.release(ctx, force)
 	if err != nil {
+		st.err = err
 		st.Error = err.Error()
 		return st
 	}
@@ -172,18 +200,18 @@ func (u *Updater) Check(ctx context.Context, force bool) Status {
 
 	switch st.Mode {
 	case ModeContainer:
-		st.Reason = "Mimir kører i en container, og en container kan ikke udskifte sit eget image. " +
-			"Opdatér runen i Yggdrasil, så hentes det nye image og containeren genskabes."
+		st.setReason("Mimir runs in a container, and a container cannot replace its own image. " +
+			"Update the rune in Yggdrasil: that pulls the new image and recreates the container.")
 	case ModeDev:
-		st.Reason = "Denne binær er bygget lokalt (" + u.Version + "), ikke fra en release. " +
-			"En selvopdatering ville smide en build væk, du har lavet med vilje."
+		st.setReason("This binary was built locally (%s), not from a release. "+
+			"Updating would throw away a build somebody made on purpose.", u.Version)
 	default:
 		if _, ok := rel.Find(AssetName()); !ok {
-			st.Reason = "Udgivelsen har ingen binær til " + AssetName() + "."
+			st.setReason("The release has no binary for %s.", AssetName())
 			return st
 		}
 		if err := u.writable(); err != nil {
-			st.Reason = err.Error()
+			st.setReason("%s", err.Error())
 			return st
 		}
 		st.CanApply = true
@@ -214,12 +242,12 @@ func (u *Updater) release(ctx context.Context, force bool) (Release, error) {
 func (u *Updater) writable() error {
 	path, err := u.Executable()
 	if err != nil {
-		return fmt.Errorf("kunne ikke finde den kørende binær: %w", err)
+		return fmt.Errorf("could not locate the running binary: %w", err)
 	}
 	dir := filepath.Dir(path)
 	probe, err := os.CreateTemp(dir, ".mimir-write-probe-*")
 	if err != nil {
-		return fmt.Errorf("kan ikke skrive i %s, så binæren kan ikke udskiftes herfra", dir)
+		return fmt.Errorf("cannot write in %s, so the binary cannot be replaced from here", dir)
 	}
 	name := probe.Name()
 	probe.Close()
@@ -237,7 +265,7 @@ func (u *Updater) Apply(ctx context.Context) (string, error) {
 		return "", errors.New(st.Error)
 	}
 	if !st.UpdateAvailable {
-		return "", fmt.Errorf("selfupdate: %s er allerede den nyeste version", u.Version)
+		return "", fmt.Errorf("selfupdate: %s is already the newest version", u.Version)
 	}
 	if !st.CanApply {
 		return "", errors.New(st.Reason)
@@ -249,7 +277,7 @@ func (u *Updater) Apply(ctx context.Context) (string, error) {
 	}
 	asset, ok := rel.Find(AssetName())
 	if !ok {
-		return "", fmt.Errorf("selfupdate: udgivelsen har ingen %s", AssetName())
+		return "", fmt.Errorf("selfupdate: the release has no %s", AssetName())
 	}
 
 	dir := filepath.Join(u.DataDir, "updates")
@@ -280,7 +308,7 @@ func (u *Updater) Apply(ctx context.Context) (string, error) {
 	}
 	if err := preflight(ctx, candidate); err != nil {
 		_ = os.Remove(candidate)
-		return "", fmt.Errorf("selfupdate: den nye binær bestod ikke opstartstjekket, så intet blev udskiftet: %w", err)
+		return "", fmt.Errorf("selfupdate: the new binary failed its start-up check, so nothing was replaced: %w", err)
 	}
 
 	current, err := u.Executable()
@@ -289,7 +317,7 @@ func (u *Updater) Apply(ctx context.Context) (string, error) {
 	}
 	backup := filepath.Join(dir, "mimir-"+u.Version+".bak")
 	if err := copyFile(current, backup, 0o755); err != nil {
-		return "", fmt.Errorf("selfupdate: kunne ikke sikkerhedskopiere den nuværende binær: %w", err)
+		return "", fmt.Errorf("selfupdate: could not back up the current binary: %w", err)
 	}
 
 	// The watchdog is spawned from the backup — the binary already known to
@@ -302,7 +330,7 @@ func (u *Updater) Apply(ctx context.Context) (string, error) {
 	}
 
 	if err := replaceFile(candidate, current); err != nil {
-		return "", fmt.Errorf("selfupdate: kunne ikke udskifte binæren: %w", err)
+		return "", fmt.Errorf("selfupdate: could not replace the binary: %w", err)
 	}
 
 	_ = db.SetSetting(ctx, u.DB, keyBackupPath, backup)
@@ -318,10 +346,10 @@ func (u *Updater) Rollback(ctx context.Context) (string, error) {
 	backup := db.Setting(ctx, u.DB, keyBackupPath)
 	version := db.Setting(ctx, u.DB, keyBackupVersion)
 	if backup == "" {
-		return "", errors.New("selfupdate: der er ingen sikkerhedskopi at rulle tilbage til")
+		return "", errors.New("selfupdate: there is no backup to roll back to")
 	}
 	if _, err := os.Stat(backup); err != nil {
-		return "", fmt.Errorf("selfupdate: sikkerhedskopien %s findes ikke længere", backup)
+		return "", fmt.Errorf("selfupdate: the backup %s no longer exists", backup)
 	}
 	current, err := u.Executable()
 	if err != nil {
@@ -373,7 +401,7 @@ func (u *Updater) download(ctx context.Context, url, dest string) error {
 func (u *Updater) verify(ctx context.Context, rel Release, path, assetName string) error {
 	sums, ok := rel.Find(ChecksumsName)
 	if !ok {
-		return fmt.Errorf("selfupdate: udgivelsen har ingen %s, så hentningen kan ikke verificeres", ChecksumsName)
+		return fmt.Errorf("selfupdate: the release has no %s, so the download cannot be verified", ChecksumsName)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sums.URL, nil)
@@ -383,7 +411,7 @@ func (u *Updater) verify(ctx context.Context, rel Release, path, assetName strin
 	req.Header.Set("User-Agent", "mimir/"+u.Version)
 	resp, err := u.client().Do(req)
 	if err != nil {
-		return fmt.Errorf("selfupdate: kunne ikke hente %s: %w", ChecksumsName, err)
+		return fmt.Errorf("selfupdate: could not download %s: %w", ChecksumsName, err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
@@ -399,7 +427,7 @@ func (u *Updater) verify(ctx context.Context, rel Release, path, assetName strin
 		}
 	}
 	if want == "" {
-		return fmt.Errorf("selfupdate: %s nævner ikke %s", ChecksumsName, assetName)
+		return fmt.Errorf("selfupdate: %s does not mention %s", ChecksumsName, assetName)
 	}
 
 	got, err := hashFile(path)
@@ -442,7 +470,7 @@ func (u *Updater) preflight(ctx context.Context, candidate string) error {
 		fmt.Sprintf("MIMIR_ADDR=127.0.0.1:%d", port),
 	)
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("kunne ikke starte: %w", err)
+		return fmt.Errorf("could not start: %w", err)
 	}
 	defer func() {
 		if cmd.Process != nil {

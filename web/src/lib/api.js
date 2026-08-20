@@ -7,6 +7,9 @@
  * and the app should fall back to the login screen.
  */
 
+import { lang } from './lang.svelte.js'
+import { translate } from './i18n.js'
+
 export class ApiError extends Error {
   constructor(status, message, hint) {
     super(message)
@@ -16,7 +19,15 @@ export class ApiError extends Error {
 }
 
 async function request(method, path, body, opts = {}) {
-  const init = { method, headers: {}, credentials: 'same-origin' }
+  // The server writes its errors and the plan's prose in the language named
+  // here. Sending it on every request rather than reading the stored account
+  // preference server-side means the login and first-run screens — which have
+  // no session yet — are translated too.
+  const init = {
+    method,
+    headers: { 'Accept-Language': lang() },
+    credentials: 'same-origin',
+  }
   if (body !== undefined) {
     if (body instanceof Blob || typeof body === 'string') {
       init.body = body
@@ -40,7 +51,7 @@ async function request(method, path, body, opts = {}) {
     try {
       data = JSON.parse(text)
     } catch {
-      if (res.ok) throw new ApiError(res.status, 'uventet svar fra serveren')
+      if (res.ok) throw new ApiError(res.status, translate(lang(), 'unexpected response from the server'))
       throw new ApiError(res.status, text.slice(0, 200) || res.statusText)
     }
   }
@@ -57,7 +68,7 @@ export const api = {
   bootstrap: (username, password) => request('POST', '/auth/bootstrap', { username, password }),
   login: (username, password) => request('POST', '/auth/login', { username, password }),
   logout: () => request('POST', '/auth/logout'),
-  setTheme: (theme, themeMode) => request('PUT', '/me/theme', { theme, themeMode }),
+  setPrefs: (theme, themeMode, lang) => request('PUT', '/me/prefs', { theme, themeMode, lang }),
 
   gamedata: () => request('GET', '/gamedata'),
 

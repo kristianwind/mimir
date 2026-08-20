@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kristianwind/mimir/internal/auth"
+	"github.com/kristianwind/mimir/internal/i18n"
 )
 
 // handleSystemStatus reports the version, the update state and exactly what
@@ -18,7 +19,7 @@ import (
 func (s *Server) handleSystemStatus(w http.ResponseWriter, r *http.Request) {
 	out := map[string]any{"version": s.Version}
 	if s.Updater != nil {
-		out["update"] = s.Updater.Check(r.Context(), false)
+		out["update"] = s.Updater.Check(r.Context(), false).Localise(i18n.FromRequest(r))
 	}
 	if s.Beacon != nil {
 		out["beacon"] = s.Beacon.Status(r.Context())
@@ -30,20 +31,20 @@ func (s *Server) handleSystemStatus(w http.ResponseWriter, r *http.Request) {
 // "check now" button reflects a release published a minute ago.
 func (s *Server) handleCheckUpdate(w http.ResponseWriter, r *http.Request) {
 	if s.Updater == nil {
-		writeError(w, http.StatusServiceUnavailable, "opdateringer er ikke tilgængelige", "")
+		writeError(w, r, http.StatusServiceUnavailable, "updates are not available", "")
 		return
 	}
 	if !s.requireAdmin(w, r) {
 		return
 	}
-	writeJSON(w, http.StatusOK, s.Updater.Check(r.Context(), true))
+	writeJSON(w, http.StatusOK, s.Updater.Check(r.Context(), true).Localise(i18n.FromRequest(r)))
 }
 
 // handleApplyUpdate installs the latest release and asks the process to exit
 // so the supervisor starts the new binary.
 func (s *Server) handleApplyUpdate(w http.ResponseWriter, r *http.Request) {
 	if s.Updater == nil {
-		writeError(w, http.StatusServiceUnavailable, "opdateringer er ikke tilgængelige", "")
+		writeError(w, r, http.StatusServiceUnavailable, "updates are not available", "")
 		return
 	}
 	if !s.requireAdmin(w, r) {
@@ -59,7 +60,7 @@ func (s *Server) handleApplyUpdate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Nothing was replaced — Apply commits only after the candidate has
 		// run — so this is a plain failure, not a half-applied update.
-		writeError(w, http.StatusBadRequest, err.Error(), "")
+		writeError(w, r, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
@@ -85,7 +86,7 @@ func (s *Server) handleApplyUpdate(w http.ResponseWriter, r *http.Request) {
 // handleRollback restores the binary the last update replaced.
 func (s *Server) handleRollback(w http.ResponseWriter, r *http.Request) {
 	if s.Updater == nil {
-		writeError(w, http.StatusServiceUnavailable, "opdateringer er ikke tilgængelige", "")
+		writeError(w, r, http.StatusServiceUnavailable, "updates are not available", "")
 		return
 	}
 	if !s.requireAdmin(w, r) {
@@ -94,14 +95,14 @@ func (s *Server) handleRollback(w http.ResponseWriter, r *http.Request) {
 
 	restored, err := s.Updater.Rollback(r.Context())
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error(), "")
+		writeError(w, r, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 	s.audit(r, "system.rollback", restored, nil)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status":   "rolled back",
 		"restored": restored,
-		"note":     "Genstart Mimir for at køre den gendannede version.",
+		"note":     "Restart Mimir to run the restored version.",
 	})
 
 	if s.Shutdown != nil {
@@ -115,7 +116,7 @@ func (s *Server) handleRollback(w http.ResponseWriter, r *http.Request) {
 // handleSetBeacon records the operator's choice about the daily ping.
 func (s *Server) handleSetBeacon(w http.ResponseWriter, r *http.Request) {
 	if s.Beacon == nil {
-		writeError(w, http.StatusServiceUnavailable, "beacon er ikke tilgængelig", "")
+		writeError(w, r, http.StatusServiceUnavailable, "the beacon is not available", "")
 		return
 	}
 	if !s.requireAdmin(w, r) {
@@ -127,18 +128,18 @@ func (s *Server) handleSetBeacon(w http.ResponseWriter, r *http.Request) {
 		URL     *string `json:"url,omitempty"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2048)).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "ugyldig forespørgsel", "")
+		writeError(w, r, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 	if body.URL != nil {
 		if err := s.Beacon.SetURL(r.Context(), *body.URL); err != nil {
-			writeError(w, http.StatusBadRequest, err.Error(), "")
+			writeError(w, r, http.StatusBadRequest, err.Error(), "")
 			return
 		}
 	}
 	if err := s.Beacon.SetEnabled(r.Context(), body.Enabled); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error(),
-			"Sæt en collector-adresse, så kan beaconen slås til.")
+		writeError(w, r, http.StatusBadRequest, err.Error(),
+			"Set a collector address, and the beacon can be switched on.")
 		return
 	}
 
@@ -167,7 +168,7 @@ func boolWord(b bool) string {
 func (s *Server) requireAdmin(w http.ResponseWriter, r *http.Request) bool {
 	u, ok := auth.FromContext(r.Context())
 	if !ok || !u.IsAdmin() {
-		writeError(w, http.StatusForbidden, "kræver administratorrettigheder", "")
+		writeError(w, r, http.StatusForbidden, "requires administrator rights", "")
 		return false
 	}
 	return true

@@ -1,17 +1,25 @@
 <script>
   import { ELEMENTS } from './theme.js'
+  import { LANGUAGES, lang, setLang, t } from './lang.svelte.js'
 
-  let { theme, mode, setTheme } = $props()
+  let { theme, mode, setTheme, onlangchange } = $props()
 
+  // Labels are translated at use, not here: a $derived list would rebuild on
+  // every language change, and these are read once per render anyway.
   const MODES = [
-    { key: 'light', label: 'Lys', icon: '☀' },
-    { key: 'dark', label: 'Mørk', icon: '☾' },
+    { key: 'light', label: 'Light', icon: '☀' },
+    { key: 'dark', label: 'Dark', icon: '☾' },
     { key: 'system', label: 'System', icon: '◐' },
   ]
+
+  function pick(next) {
+    setLang(next)
+    onlangchange?.(next)
+  }
 </script>
 
 <div class="flex flex-wrap items-center gap-3">
-  <div class="flex items-center gap-1.5" role="radiogroup" aria-label="Elementtema">
+  <div class="flex items-center gap-1.5" role="radiogroup" aria-label={t('Element theme')}>
     {#each ELEMENTS as el (el.key)}
       <button
         type="button"
@@ -31,7 +39,7 @@
     {/each}
   </div>
 
-  <div class="flex overflow-hidden rounded-xl border border-line" role="radiogroup" aria-label="Lystilstand">
+  <div class="flex overflow-hidden rounded-xl border border-line" role="radiogroup" aria-label={t('Light mode')}>
     {#each MODES as m (m.key)}
       <button
         type="button"
@@ -40,10 +48,27 @@
         onclick={() => setTheme(theme, m.key)}
         class="px-2.5 py-1.5 text-xs transition
                {mode === m.key ? 'bg-accent text-accent-ink' : 'text-muted hover:bg-raised'}"
-        title={m.label}
+        title={t(m.label)}
       >
         <span aria-hidden="true">{m.icon}</span>
-        <span class="sr-only">{m.label}</span>
+        <span class="sr-only">{t(m.label)}</span>
+      </button>
+    {/each}
+  </div>
+
+  <div class="flex overflow-hidden rounded-xl border border-line" role="radiogroup" aria-label={t('Language')}>
+    {#each LANGUAGES as l (l.key)}
+      <button
+        type="button"
+        role="radio"
+        aria-checked={lang() === l.key}
+        onclick={() => pick(l.key)}
+        class="px-2.5 py-1.5 text-xs uppercase tracking-wide transition
+               {lang() === l.key ? 'bg-accent text-accent-ink' : 'text-muted hover:bg-raised'}"
+        title={l.label}
+      >
+        <span aria-hidden="true">{l.key}</span>
+        <span class="sr-only">{l.label}</span>
       </button>
     {/each}
   </div>

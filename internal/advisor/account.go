@@ -2,9 +2,9 @@ package advisor
 
 import (
 	"context"
-	"fmt"
 	"sort"
 
+	"github.com/kristianwind/mimir/internal/i18n"
 	"github.com/kristianwind/mimir/internal/model"
 )
 
@@ -95,6 +95,12 @@ type Conflict struct {
 // how a tool ends up recommending a loop the player can never finish.
 func BuildAccountPlan(ctx context.Context, reqs []Request) (AccountPlan, error) {
 	ordered := append([]Request(nil), reqs...)
+	// Every request in one call comes from the same user, so the language is
+	// theirs; the zero value is English, which is the source.
+	var lang i18n.Lang
+	if len(ordered) > 0 {
+		lang = ordered[0].Lang
+	}
 	sort.SliceStable(ordered, func(i, j int) bool {
 		return ordered[i].Goal.Priority > ordered[j].Goal.Priority
 	})
@@ -112,9 +118,9 @@ func BuildAccountPlan(ctx context.Context, reqs []Request) (AccountPlan, error) 
 
 	var out AccountPlan
 	out.Caveats = []string{
-		"Hvert mål måles mod det udstyr karakteren har nu — ikke mod det, et " +
-			"højere prioriteret mål lige har taget. Kør planen igen, når du " +
-			"har flyttet tingene i spillet.",
+		i18n.T(lang, "Each goal is measured against the gear the character has now — not against "+
+			"what a higher-priority goal just claimed. Run the plan again once you have "+
+			"moved things around in the game."),
 	}
 
 	for _, req := range ordered {
@@ -125,7 +131,7 @@ func BuildAccountPlan(ctx context.Context, reqs []Request) (AccountPlan, error) 
 			// it; the failure is reported against that goal alone.
 			out.Plans = append(out.Plans, Plan{
 				Goal:    req.Goal.CharacterKey,
-				Skipped: []string{fmt.Sprintf("kunne ikke regnes ud: %v", err)},
+				Skipped: []string{i18n.T(lang, "could not be calculated: %v", err)},
 			})
 			continue
 		}
@@ -141,12 +147,12 @@ func BuildAccountPlan(ctx context.Context, reqs []Request) (AccountPlan, error) 
 					Item:  contestedItem(*action),
 					Wants: req.Goal.CharacterKey,
 					Holds: holder,
-					Resolution: fmt.Sprintf("%s har prioritet %d, %s har %d",
+					Resolution: i18n.T(lang, "%s has priority %d, %s has %d",
 						holder, holderPriority, req.Goal.CharacterKey, req.Goal.Priority),
 				})
 				if holderPriority >= req.Goal.Priority {
-					action.BlockedBy = fmt.Sprintf(
-						"%s bruger det, og har mindst lige så høj prioritet", holder)
+					action.BlockedBy = i18n.T(lang,
+						"%s is using it, and has at least as high a priority", holder)
 				}
 			}
 		}

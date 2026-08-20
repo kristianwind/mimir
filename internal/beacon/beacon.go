@@ -99,8 +99,8 @@ func (b *Beacon) Enabled(ctx context.Context) bool {
 // where it reports either goes nowhere or goes somewhere it was not meant to.
 func (b *Beacon) SetEnabled(ctx context.Context, on bool) error {
 	if on && b.URL(ctx) == "" {
-		return errors.New("beacon: sæt en collector-adresse først — der er ingen standard, " +
-			"og en ping uden modtager ender enten ingen steder eller et forkert sted")
+		return errors.New("beacon: set a collector address first — there is no default, " +
+			"and a ping with no recipient ends up either nowhere or somewhere wrong")
 	}
 	v := "0"
 	if on {
@@ -143,7 +143,7 @@ func (b *Beacon) SetURL(ctx context.Context, raw string) error {
 	}
 	u, err := url.Parse(raw)
 	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
-		return fmt.Errorf("beacon: %q er ikke en http- eller https-adresse", raw)
+		return fmt.Errorf("beacon: %q is not an http or https address", raw)
 	}
 	return db.SetSetting(ctx, b.DB, keyURL, raw)
 }
@@ -245,7 +245,7 @@ func (b *Beacon) Send(ctx context.Context) error {
 
 	target := b.URL(ctx)
 	if target == "" {
-		return errors.New("beacon: ingen collector-adresse er sat")
+		return errors.New("beacon: no collector address is set")
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(body))
 	if err != nil {

@@ -145,9 +145,9 @@ func checkWritable(dir string) error {
 		return nil
 	}
 	return fmt.Errorf(
-		"config: datakataloget %s kan ikke skrives af uid %d (gid %d). "+
-			"Som regel er volumet ejet af root og imaget kører som en anden bruger: "+
-			"chown -R %d:%d %s på værten, eller kør containeren som root "+
-			"(user: \"0:0\" i runen). Underliggende fejl: %w",
+		"config: the data directory %s is not writable by uid %d (gid %d). "+
+			"Usually the volume is owned by root while the image runs as another user: "+
+			"chown -R %d:%d %s on the host, or run the container as root "+
+			"(user: \"0:0\" in the rune). Underlying error: %w",
 		dir, os.Getuid(), os.Getgid(), os.Getuid(), os.Getgid(), dir, err)
 }

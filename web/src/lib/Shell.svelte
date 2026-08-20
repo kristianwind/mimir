@@ -1,5 +1,6 @@
 <script>
   import { api } from './api.js'
+  import { t } from './lang.svelte.js'
   import ThemePicker from './ThemePicker.svelte'
   import Accounts from './Accounts.svelte'
   import Characters from './Characters.svelte'
@@ -9,17 +10,19 @@
   import System from './System.svelte'
   import Users from './Users.svelte'
 
-  let { user, theme, mode, setTheme, logout } = $props()
+  let { user, theme, mode, setTheme, logout, onlangchange } = $props()
   const me = $derived(user)
 
+  // Held in the source language and translated at render, so switching
+  // language re-labels the nav without rebuilding the list.
   const NAV = [
-    { key: 'plan', label: 'Plan', icon: '◎', hint: 'Hvad skal du bruge resin på?' },
-    { key: 'goals', label: 'Mål', icon: '⌖', hint: 'Hvem bygger du på, og hvordan spiller du dem?' },
-    { key: 'characters', label: 'Karakterer', icon: '☗', hint: 'Din roster' },
-    { key: 'artifacts', label: 'Artifacts', icon: '✦', hint: 'Hele inventaret' },
-    { key: 'accounts', label: 'Konti', icon: '⌂', hint: 'UID og import' },
-    { key: 'system', label: 'System', icon: '⚙', hint: 'Version, opdatering og beacon' },
-    { key: 'users', label: 'Brugere', icon: '☺', hint: 'Konti, roller og adgangskoder' },
+    { key: 'plan', label: 'Plan', icon: '◎', hint: 'What should you spend resin on?' },
+    { key: 'goals', label: 'Goals', icon: '⌖', hint: 'Who are you building, and how do you play them?' },
+    { key: 'characters', label: 'Characters', icon: '☗', hint: 'Your roster' },
+    { key: 'artifacts', label: 'Artifacts', icon: '✦', hint: 'The whole inventory' },
+    { key: 'accounts', label: 'Accounts', icon: '⌂', hint: 'UID and import' },
+    { key: 'system', label: 'System', icon: '⚙', hint: 'Version, updates and beacon' },
+    { key: 'users', label: 'Users', icon: '☺', hint: 'Accounts, roles and passwords' },
   ]
 
   let view = $state('plan')
@@ -56,7 +59,7 @@
                    : 'text-muted hover:bg-raised hover:text-ink'}"
         >
           <span class="w-4 text-center" aria-hidden="true">{item.icon}</span>
-          <span>{item.label}</span>
+          <span>{t(item.label)}</span>
         </button>
       {/each}
     </nav>
@@ -64,11 +67,11 @@
     <div class="mt-auto space-y-3 px-2 pt-6">
       {#if gamedata && !gamedata.synced}
         <p class="rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
-          Spildata mangler. Kør en sync, ellers kan der ikke regnes.
+          {t('Game data is missing. Run a sync, or nothing can be calculated.')}
         </p>
       {/if}
       <p class="text-xs text-muted">{user.username}</p>
-      <button class="btn-ghost w-full text-xs" onclick={logout}>Log ud</button>
+      <button class="btn-ghost w-full text-xs" onclick={logout}>{t('Log out')}</button>
     </div>
   </aside>
 
@@ -76,11 +79,11 @@
     <header class="mb-6 flex flex-wrap items-center justify-between gap-4">
       <div>
         <h1 class="text-xl font-semibold tracking-tight">
-          {NAV.find((n) => n.key === view)?.label}
+          {t(NAV.find((n) => n.key === view)?.label ?? '')}
         </h1>
-        <p class="text-sm text-muted">{NAV.find((n) => n.key === view)?.hint}</p>
+        <p class="text-sm text-muted">{t(NAV.find((n) => n.key === view)?.hint ?? '')}</p>
       </div>
-      <ThemePicker {theme} {mode} {setTheme} />
+      <ThemePicker {theme} {mode} {setTheme} {onlangchange} />
     </header>
 
     <nav class="mb-6 flex gap-1 overflow-x-auto md:hidden">
@@ -90,7 +93,7 @@
           onclick={() => (view = item.key)}
           class="chip whitespace-nowrap {view === item.key ? 'border-accent text-ink' : ''}"
         >
-          {item.label}
+          {t(item.label)}
         </button>
       {/each}
     </nav>
@@ -118,8 +121,8 @@
       <Accounts {accounts} onchange={refresh} />
     {:else if !selected}
       <div class="card p-8 text-center">
-        <p class="text-muted">Tilføj dit UID under Konti for at komme i gang.</p>
-        <button class="btn-primary mt-4" onclick={() => (view = 'accounts')}>Tilføj konto</button>
+        <p class="text-muted">{t('Add your UID under Accounts to get started.')}</p>
+        <button class="btn-primary mt-4" onclick={() => (view = 'accounts')}>{t('Add an account')}</button>
       </div>
     {:else if view === 'characters'}
       <Characters account={selected} />

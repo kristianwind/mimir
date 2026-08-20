@@ -1,8 +1,9 @@
 <script>
   import { api } from './api.js'
+  import { t } from './lang.svelte.js'
   import ThemePicker from './ThemePicker.svelte'
 
-  let { onauthenticated, theme, mode, setTheme } = $props()
+  let { onauthenticated, theme, mode, setTheme, onlangchange } = $props()
 
   let username = $state('')
   let password = $state('')
@@ -29,11 +30,11 @@
 
     if (first) {
       if (password !== confirm) {
-        error = 'De to adgangskoder er ikke ens.'
+        error = t('The two passwords do not match.')
         return
       }
       if (password.length < 12) {
-        error = 'Adgangskoden skal være mindst 12 tegn.'
+        error = t('The password must be at least 12 characters.')
         return
       }
     }
@@ -62,7 +63,7 @@
         🜁
       </div>
       <h1 class="text-2xl font-semibold tracking-tight">Mimir</h1>
-      <p class="mt-1 text-sm text-muted">Rådgiveren ved brønden</p>
+      <p class="mt-1 text-sm text-muted">{t('The adviser at the well')}</p>
     </div>
 
     {#if !checked}
@@ -73,16 +74,17 @@
       <form class="card space-y-4 p-6" onsubmit={submit}>
         {#if first}
           <div class="rounded-xl border border-accent/40 bg-accent/10 px-3 py-2.5">
-            <p class="text-sm font-medium">Opret den første administrator</p>
+            <p class="text-sm font-medium">{t('Create the first administrator')}</p>
             <p class="mt-1 text-xs text-muted">
-              Instansen er tom. Mimir har ingen standardbruger — den her form vises kun indtil
-              den første konto findes, og forsvinder derefter af sig selv.
+              {t(
+                'This instance is empty. Mimir has no default account — this form only appears until the first one exists, and disappears by itself afterwards.',
+              )}
             </p>
           </div>
         {/if}
 
         <div>
-          <label class="label" for="username">Brugernavn</label>
+          <label class="label" for="username">{t('Username')}</label>
           <input
             id="username"
             class="field"
@@ -93,7 +95,7 @@
         </div>
 
         <div>
-          <label class="label" for="password">Adgangskode</label>
+          <label class="label" for="password">{t('Password')}</label>
           <input
             id="password"
             class="field"
@@ -103,13 +105,13 @@
             required
           />
           {#if first}
-            <p class="mt-1.5 text-xs text-muted">Mindst 12 tegn.</p>
+            <p class="mt-1.5 text-xs text-muted">{t('At least 12 characters.')}</p>
           {/if}
         </div>
 
         {#if first}
           <div>
-            <label class="label" for="confirm">Gentag adgangskoden</label>
+            <label class="label" for="confirm">{t('Repeat the password')}</label>
             <input
               id="confirm"
               class="field"
@@ -130,17 +132,17 @@
         <button class="btn-primary w-full" disabled={busy}>
           {busy
             ? first
-              ? 'Opretter…'
-              : 'Logger ind…'
+              ? t('Creating…')
+              : t('Logging in…')
             : first
-              ? 'Opret og log ind'
-              : 'Log ind'}
+              ? t('Create and log in')
+              : t('Log in')}
         </button>
       </form>
     {/if}
 
     <div class="mt-6 flex justify-center">
-      <ThemePicker {theme} {mode} {setTheme} />
+      <ThemePicker {theme} {mode} {setTheme} {onlangchange} />
     </div>
   </div>
 </div>

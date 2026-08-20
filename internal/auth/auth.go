@@ -14,10 +14,13 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/kristianwind/mimir/internal/i18n"
 	"time"
 
 	"golang.org/x/crypto/argon2"
@@ -230,22 +233,34 @@ func (s *Store) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie(CookieName)
 		if err != nil {
-			unauthorized(w)
+			unauthorized(w, r)
 			return
 		}
 		u, err := s.Resolve(r.Context(), c.Value)
 		if err != nil {
-			unauthorized(w)
+			unauthorized(w, r)
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, u)))
 	})
 }
 
-func unauthorized(w http.ResponseWriter) {
+// unauthorized answers in JSON rather than plain text: the client parses every
+// error body, and a bare string here used to surface as a parse failure instead
+// of the real reason. It takes the request so the sentence can be translated
+// like every other error.
+func unauthorized(w http.ResponseWriter, r *http.Request) {
+	lang := i18n.FromRequest(r)
+	body, err := json.Marshal(map[string]string{
+		"error": i18n.T(lang, "your session has expired"),
+		"hint":  i18n.T(lang, "Log in again."),
+	})
+	if err != nil {
+		body = []byte(`{"error":"your session has expired"}`)
+	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusUnauthorized)
-	_, _ = w.Write([]byte(`{"error":"din session er udløbet","hint":"Log ind igen."}`))
+	_, _ = w.Write(body)
 }
 
 // FromContext returns the authenticated user, if any.

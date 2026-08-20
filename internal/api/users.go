@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kristianwind/mimir/internal/auth"
+	"github.com/kristianwind/mimir/internal/i18n"
 )
 
 // MinPasswordLength is the floor for a new password.
@@ -44,7 +45,7 @@ func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 		          AND se.expires_at > datetime('now'))
 		FROM users u ORDER BY u.created_at`)
 	if err != nil {
-		writeDomainError(w, err)
+		writeDomainError(w, r, err)
 		return
 	}
 	defer rows.Close()
@@ -54,7 +55,7 @@ func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 		var u userRecord
 		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Role, &u.Disabled,
 			&u.CreatedAt, &u.Accounts, &u.Sessions); err != nil {
-			writeDomainError(w, err)
+			writeDomainError(w, r, err)
 			return
 		}
 		out = append(out, u)
@@ -73,17 +74,17 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		Role     string `json:"role"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "ugyldig forespørgsel", "")
+		writeError(w, r, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 
 	body.Username = strings.TrimSpace(body.Username)
 	if body.Username == "" {
-		writeError(w, http.StatusBadRequest, "brugernavn mangler", "")
+		writeError(w, r, http.StatusBadRequest, "username is missing", "")
 		return
 	}
 	if err := checkPassword(body.Password); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error(), "")
+		writeError(w, r, http.StatusBadRequest, passwordError(r, err), "")
 		return
 	}
 	if body.Role != "admin" && body.Role != "user" {
@@ -92,7 +93,7 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 
 	hash, err := auth.HashPassword(body.Password)
 	if err != nil {
-		writeDomainError(w, err)
+		writeDomainError(w, r, err)
 		return
 	}
 	res, err := s.DB.ExecContext(r.Context(),
@@ -100,10 +101,10 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		body.Username, nullIfEmpty(body.Email), hash, body.Role)
 	if err != nil {
 		if isUniqueViolation(err) {
-			writeError(w, http.StatusConflict, "brugernavnet er taget", "")
+			writeError(w, r, http.StatusConflict, "that username is taken", "")
 			return
 		}
-		writeDomainError(w, err)
+		writeDomainError(w, r, err)
 		return
 	}
 	id, _ := res.LastInsertId()
@@ -120,7 +121,7 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "ugyldigt bruger-id", "")
+		writeError(w, r, http.StatusBadRequest, "invalid user id", "")
 		return
 	}
 
@@ -130,7 +131,7 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		Password *string `json:"password,omitempty"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "ugyldig forespørgsel", "")
+		writeError(w, r, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 
@@ -140,75 +141,75 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	if (body.Role != nil && *body.Role != "admin") || (body.Disabled != nil && *body.Disabled) {
 		ok, err := s.wouldKeepAnAdmin(r.Context(), id)
 		if err != nil {
-			writeDomainError(w, err)
+			writeDomainError(w, r, err)
 			return
 		}
 		if !ok {
-			writeError(w, http.StatusConflict,
-				"det ville efterlade instansen uden administratorer",
-				"Gør en anden til administrator først.")
+			writeError(w, r, http.StatusConflict,
+				"that would leave the instance with no administrators",
+				"Make somebody else an administrator first.")
 			return
 		}
 	}
 
 	tx, err := s.DB.BeginTx(r.Context(), nil)
 	if err != nil {
-		writeDomainError(w, err)
+		writeDomainError(w, r, err)
 		return
 	}
 	defer tx.Rollback()
 
 	if body.Role != nil {
 		if *body.Role != "admin" && *body.Role != "user" {
-			writeError(w, http.StatusBadRequest, "ukendt rolle", "")
+			writeError(w, r, http.StatusBadRequest, "unknown role", "")
 			return
 		}
 		if _, err := tx.ExecContext(r.Context(),
 			`UPDATE users SET role = ? WHERE id = ?`, *body.Role, id); err != nil {
-			writeDomainError(w, err)
+			writeDomainError(w, r, err)
 			return
 		}
 	}
 	if body.Disabled != nil {
 		if _, err := tx.ExecContext(r.Context(),
 			`UPDATE users SET disabled = ? WHERE id = ?`, *body.Disabled, id); err != nil {
-			writeDomainError(w, err)
+			writeDomainError(w, r, err)
 			return
 		}
 		if *body.Disabled {
 			// A disabled account whose session still works is not disabled.
 			if _, err := tx.ExecContext(r.Context(),
 				`DELETE FROM sessions WHERE user_id = ?`, id); err != nil {
-				writeDomainError(w, err)
+				writeDomainError(w, r, err)
 				return
 			}
 		}
 	}
 	if body.Password != nil {
 		if err := checkPassword(*body.Password); err != nil {
-			writeError(w, http.StatusBadRequest, err.Error(), "")
+			writeError(w, r, http.StatusBadRequest, passwordError(r, err), "")
 			return
 		}
 		hash, err := auth.HashPassword(*body.Password)
 		if err != nil {
-			writeDomainError(w, err)
+			writeDomainError(w, r, err)
 			return
 		}
 		if _, err := tx.ExecContext(r.Context(),
 			`UPDATE users SET password_hash = ? WHERE id = ?`, hash, id); err != nil {
-			writeDomainError(w, err)
+			writeDomainError(w, r, err)
 			return
 		}
 		// A reset password with the old sessions still live protects nobody.
 		if _, err := tx.ExecContext(r.Context(),
 			`DELETE FROM sessions WHERE user_id = ?`, id); err != nil {
-			writeDomainError(w, err)
+			writeDomainError(w, r, err)
 			return
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		writeDomainError(w, err)
+		writeDomainError(w, r, err)
 		return
 	}
 	s.audit(r, "user.update", strconv.FormatInt(id, 10), map[string]any{
@@ -223,26 +224,26 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "ugyldigt bruger-id", "")
+		writeError(w, r, http.StatusBadRequest, "invalid user id", "")
 		return
 	}
 
 	ok, err := s.wouldKeepAnAdmin(r.Context(), id)
 	if err != nil {
-		writeDomainError(w, err)
+		writeDomainError(w, r, err)
 		return
 	}
 	if !ok {
-		writeError(w, http.StatusConflict,
-			"det ville efterlade instansen uden administratorer",
-			"Gør en anden til administrator først.")
+		writeError(w, r, http.StatusConflict,
+			"that would leave the instance with no administrators",
+			"Make somebody else an administrator first.")
 		return
 	}
 
 	// Accounts, characters, artifacts and goals cascade. Say so before
 	// doing it rather than after.
 	if _, err := s.DB.ExecContext(r.Context(), `DELETE FROM users WHERE id = ?`, id); err != nil {
-		writeDomainError(w, err)
+		writeDomainError(w, r, err)
 		return
 	}
 	s.audit(r, "user.delete", strconv.FormatInt(id, 10), nil)
@@ -259,11 +260,11 @@ func (s *Server) handleChangeOwnPassword(w http.ResponseWriter, r *http.Request)
 		New     string `json:"new"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "ugyldig forespørgsel", "")
+		writeError(w, r, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 	if err := checkPassword(body.New); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error(), "")
+		writeError(w, r, http.StatusBadRequest, passwordError(r, err), "")
 		return
 	}
 
@@ -272,27 +273,27 @@ func (s *Server) handleChangeOwnPassword(w http.ResponseWriter, r *http.Request)
 	var hash string
 	if err := s.DB.QueryRowContext(r.Context(),
 		`SELECT password_hash FROM users WHERE id = ?`, me.ID).Scan(&hash); err != nil {
-		writeDomainError(w, err)
+		writeDomainError(w, r, err)
 		return
 	}
 	ok, err := auth.VerifyPassword(body.Current, hash)
 	if err != nil {
-		writeDomainError(w, err)
+		writeDomainError(w, r, err)
 		return
 	}
 	if !ok {
-		writeError(w, http.StatusForbidden, "den nuværende adgangskode er forkert", "")
+		writeError(w, r, http.StatusForbidden, "the current password is wrong", "")
 		return
 	}
 
 	newHash, err := auth.HashPassword(body.New)
 	if err != nil {
-		writeDomainError(w, err)
+		writeDomainError(w, r, err)
 		return
 	}
 	if _, err := s.DB.ExecContext(r.Context(),
 		`UPDATE users SET password_hash = ? WHERE id = ?`, newHash, me.ID); err != nil {
-		writeDomainError(w, err)
+		writeDomainError(w, r, err)
 		return
 	}
 
@@ -300,12 +301,12 @@ func (s *Server) handleChangeOwnPassword(w http.ResponseWriter, r *http.Request)
 	// password does not log you out of the page you are standing on.
 	if _, err := s.DB.ExecContext(r.Context(),
 		`DELETE FROM sessions WHERE user_id = ?`, me.ID); err != nil {
-		writeDomainError(w, err)
+		writeDomainError(w, r, err)
 		return
 	}
 	token, _, err := s.Auth.Login(r.Context(), me.Username, body.New, r.UserAgent())
 	if err != nil {
-		writeDomainError(w, err)
+		writeDomainError(w, r, err)
 		return
 	}
 	s.Auth.SetCookie(w, token)
@@ -327,10 +328,24 @@ func (s *Server) wouldKeepAnAdmin(ctx context.Context, excluding int64) (bool, e
 	return n > 0, nil
 }
 
+// errTooShort is a sentinel rather than a formatted message: the handler
+// renders it in the caller's language, and a message formatted here would
+// arrive at the translation table with the number already substituted and
+// match nothing.
+var errTooShort = errors.New("password too short")
+
+// passwordError renders a password rule failure in the caller's language.
+func passwordError(r *http.Request, err error) string {
+	if errors.Is(err, errTooShort) {
+		return i18n.T(i18n.FromRequest(r),
+			"the password must be at least %d characters", MinPasswordLength)
+	}
+	return err.Error()
+}
+
 func checkPassword(p string) error {
 	if len([]rune(p)) < MinPasswordLength {
-		return errors.New("adgangskoden skal være mindst " +
-			strconv.Itoa(MinPasswordLength) + " tegn")
+		return errTooShort
 	}
 	return nil
 }

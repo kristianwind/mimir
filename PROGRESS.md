@@ -111,6 +111,13 @@ herunder er det der gør den mere præcis, ikke det der får den til at virke.
 - [x] **Mål-editor** med rigtige talent-rækker og hit-tællere
 - [x] **Planvisning** med konflikter og forbehold
 - [x] **Bruger- og systemsider** — version, opdatering, beacon, roller
+- [x] **Sprogvælger** — engelsk og dansk, ved siden af temavælgeren og gemt
+      på kontoen. Engelsk er kildesproget i både frontend og backend, så en
+      manglende oversættelse falder tilbage til en læselig sætning i stedet
+      for til en nøgle. Serveren skriver sine fejl og planens prosa i det
+      sprog forespørgslen beder om, og to tests holder de to ordbøger
+      komplette — en manglende oversættelse fejler ikke ved kørsel, den
+      viser bare engelsk midt i en dansk side
 - [x] PWA-manifest
 
 ### Udrulning

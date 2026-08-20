@@ -51,6 +51,21 @@ jobs:
             echo "not gofmt'd:"; echo "$unformatted"; exit 1
           fi
 
+      # The frontend has its own tests, and the one that matters most here
+      # checks that every string in the UI has a Danish translation. A missing
+      # one does not fail at runtime — it renders English inside a Danish
+      # page — so nothing but this step would catch the drift.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: web tests
+        working-directory: web
+        run: |
+          npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+          npm test
+
   image:
     needs: test
     runs-on: ubuntu-latest

@@ -61,8 +61,8 @@ func EstimateDropModel(inventory []model.Artifact) (DropEstimate, error) {
 			RollsToMax:      9,
 		},
 		Caveats: []string{
-			"Målt på dit eget inventar, ikke på spillets drop-tabeller.",
-			"Inventaret er hvad du har valgt at beholde, så gode main stats er overrepræsenteret.",
+			"Measured on your own inventory, not on the game's drop tables.",
+			"The inventory is what you chose to keep, so good main stats are over-represented.",
 		},
 	}
 
@@ -94,7 +94,7 @@ func EstimateDropModel(inventory []model.Artifact) (DropEstimate, error) {
 		est.Model.FourSubstatChance = float64(withFour) / float64(unupgraded)
 	} else {
 		est.Caveats = append(est.Caveats,
-			fmt.Sprintf("Kun %d uopgraderede stykker: chancen for fire substats er ikke målt.", unupgraded))
+			fmt.Sprintf("Only %d unupgraded pieces: the chance of four substats is not measured.", unupgraded))
 	}
 
 	// Flower and plume have exactly one possible main stat, so a slot that

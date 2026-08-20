@@ -49,14 +49,14 @@ func (s *Server) handleBeaconPing(w http.ResponseWriter, r *http.Request) {
 
 	var p beacon.Payload
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2048)).Decode(&p); err != nil {
-		writeError(w, http.StatusBadRequest, "ugyldig forespørgsel", "")
+		writeError(w, r, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 	p.InstanceID = strings.TrimSpace(p.InstanceID)
 	p.Version = strings.TrimSpace(p.Version)
 
 	if !instanceIDPattern.MatchString(p.InstanceID) || len(p.Version) > maxVersionLen {
-		writeError(w, http.StatusBadRequest, "ugyldig payload", "")
+		writeError(w, r, http.StatusBadRequest, "malformed payload", "")
 		return
 	}
 
@@ -67,27 +67,27 @@ func (s *Server) handleBeaconPing(w http.ResponseWriter, r *http.Request) {
 		SET version = ?, last_seen = datetime('now'), ping_count = ping_count + 1
 		WHERE instance_id = ?`, p.Version, p.InstanceID)
 	if err != nil {
-		writeDomainError(w, err)
+		writeDomainError(w, r, err)
 		return
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
 		var total int
 		if err := s.DB.QueryRowContext(r.Context(),
 			`SELECT COUNT(*) FROM beacon_pings`).Scan(&total); err != nil {
-			writeDomainError(w, err)
+			writeDomainError(w, r, err)
 			return
 		}
 		if total >= maxInstances {
 			// Say so rather than pretending: a sender that is being dropped
 			// deserves to see it in its own error field.
-			writeError(w, http.StatusServiceUnavailable,
-				"collectoren har nået sin grænse for antal instanser", "")
+			writeError(w, r, http.StatusServiceUnavailable,
+				"the collector has reached its instance limit", "")
 			return
 		}
 		if _, err := s.DB.ExecContext(r.Context(),
 			`INSERT INTO beacon_pings (instance_id, version) VALUES (?, ?)`,
 			p.InstanceID, p.Version); err != nil {
-			writeDomainError(w, err)
+			writeDomainError(w, r, err)
 			return
 		}
 	}
@@ -155,7 +155,7 @@ func (s *Server) handleSetReceiver(w http.ResponseWriter, r *http.Request) {
 		Enabled bool `json:"enabled"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "ugyldig forespørgsel", "")
+		writeError(w, r, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 	v := "0"
@@ -163,7 +163,7 @@ func (s *Server) handleSetReceiver(w http.ResponseWriter, r *http.Request) {
 		v = "1"
 	}
 	if err := db.SetSetting(r.Context(), s.DB, keyReceiverEnabled, v); err != nil {
-		writeDomainError(w, err)
+		writeDomainError(w, r, err)
 		return
 	}
 	s.audit(r, "system.beacon_receiver", boolWord(body.Enabled), nil)

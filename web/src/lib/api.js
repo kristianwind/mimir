@@ -65,6 +65,12 @@ export const api = {
   checkUpdate: () => request('POST', '/system/update/check'),
   applyUpdate: () => request('POST', '/system/update'),
   rollback: () => request('POST', '/system/rollback'),
+  users: () => request('GET', '/users'),
+  createUser: (user) => request('POST', '/users', user),
+  updateUser: (id, patch) => request('PUT', `/users/${id}`, patch),
+  deleteUser: (id) => request('DELETE', `/users/${id}`),
+  changePassword: (current, next) => request('PUT', '/me/password', { current, new: next }),
+
   setBeacon: (enabled, url) => request('PUT', '/system/beacon', url === undefined ? { enabled } : { enabled, url }),
 
   accounts: () => request('GET', '/accounts'),

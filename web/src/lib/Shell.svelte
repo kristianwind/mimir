@@ -7,8 +7,10 @@
   import Plan from './Plan.svelte'
   import Goals from './Goals.svelte'
   import System from './System.svelte'
+  import Users from './Users.svelte'
 
   let { user, theme, mode, setTheme, logout } = $props()
+  const me = $derived(user)
 
   const NAV = [
     { key: 'plan', label: 'Plan', icon: '◎', hint: 'Hvad skal du bruge resin på?' },
@@ -17,6 +19,7 @@
     { key: 'artifacts', label: 'Artifacts', icon: '✦', hint: 'Hele inventaret' },
     { key: 'accounts', label: 'Konti', icon: '⌂', hint: 'UID og import' },
     { key: 'system', label: 'System', icon: '⚙', hint: 'Version, opdatering og beacon' },
+    { key: 'users', label: 'Brugere', icon: '☺', hint: 'Konti, roller og adgangskoder' },
   ]
 
   let view = $state('plan')
@@ -109,6 +112,8 @@
 
     {#if view === 'system'}
       <System />
+    {:else if view === 'users'}
+      <Users {me} />
     {:else if view === 'accounts'}
       <Accounts {accounts} onchange={refresh} />
     {:else if !selected}

@@ -84,6 +84,17 @@ herunder er det der gør den mere præcis, ikke det der får den til at virke.
 - [x] Verificeret mod spillets egne tal: Raidens HP, ATK, DEF, crit rate,
       crit damage, ER og Electro DMG matcher Enkas fightPropMap
 
+### Brugerstyring
+- [x] **Førstegangs-flow** — loginsiden opretter den første administrator når
+      instansen er tom, og vinduet lukker sig selv i samme øjeblik den
+      første konto findes. Vagten ligger i indsætningen, ikke omkring den
+- [x] **Roller** — administratorer kan opdatere Mimir, styre beaconen og
+      styre brugere; almindelige brugere kan kun deres egne konti
+- [x] **Den sidste administrator kan ikke fjernes** — hverken degraderes,
+      deaktiveres eller slettes. Tre veje til samme uoprettelige tilstand
+- [x] Deaktivering og nulstilling af adgangskode rydder sessioner; at skifte
+      sin egen kræver den nuværende
+
 ### Frontend
 - [x] Svelte 5 + Tailwind, 25 KB gzipped
 - [x] **Temavælger** — de syv elementer × lys/mørk/system, uden blink
@@ -91,6 +102,7 @@ herunder er det der gør den mere præcis, ikke det der får den til at virke.
 - [x] Karakter- og artifact-visning
 - [x] **Mål-editor** med rigtige talent-rækker og hit-tællere
 - [x] **Planvisning** med konflikter og forbehold
+- [x] **Bruger- og systemsider** — version, opdatering, beacon, roller
 - [x] PWA-manifest
 
 ### Udrulning

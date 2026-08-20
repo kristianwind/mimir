@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * The theme system.
+ *
+ * Two independent axes, both stored on <html>:
+ *   data-theme  one of the seven elements — chooses the accent family
+ *   data-mode   light | dark — chooses the neutral scale
+ *
+ * Colours are stored as bare "R G B" triplets rather than hex so Tailwind's
+ * <alpha-value> syntax works: bg-accent/10 composes without a second variable
+ * for every opacity we might want.
+ */
+
+@layer base {
+  /* ---- neutral and semantic scales ---------------------------------
+   *
+   * The semantic colours are defined per mode, not once globally. A yellow
+   * that reads as a warning on a near-black surface is illegible on white,
+   * and the warning banner is exactly the text a user must not miss.
+   */
+
+  [data-mode='dark'] {
+    --bg: 12 14 20;
+    --surface: 19 22 31;
+    --raised: 27 31 43;
+    --line: 44 50 66;
+    --ink: 236 239 246;
+    --muted: 148 158 178;
+
+    --good: 74 222 128;
+    --warn: 250 204 21;
+    --bad: 248 113 113;
+  }
+
+  [data-mode='light'] {
+    --bg: 247 248 251;
+    --surface: 255 255 255;
+    --raised: 241 243 248;
+    --line: 219 224 235;
+    --ink: 22 26 35;
+    --muted: 97 107 128;
+
+    --good: 21 128 61;
+    --warn: 146 88 6;
+    --bad: 185 28 28;
+  }
+
+  /* ---- element accents --------------------------------------------
+   *
+   * The seven in-game element colours. Each theme sets a base accent, a
+   * soft wash for surfaces and fills, and the ink colour that stays legible
+   * on top of the accent — which is why Geo and Dendro get dark ink while
+   * the rest get light.
+   */
+
+  [data-theme='pyro'] {
+    --accent: 239 121 56;
+    --accent-soft: 239 121 56;
+    --accent-ink: 24 12 6;
+  }
+  [data-theme='hydro'] {
+    --accent: 76 194 241;
+    --accent-soft: 76 194 241;
+    --accent-ink: 4 20 28;
+  }
+  [data-theme='anemo'] {
+    --accent: 116 194 168;
+    --accent-soft: 116 194 168;
+    --accent-ink: 6 24 19;
+  }
+  [data-theme='electro'] {
+    --accent: 176 143 197;
+    --accent-soft: 176 143 197;
+    --accent-ink: 20 10 26;
+  }
+  [data-theme='dendro'] {
+    --accent: 165 200 59;
+    --accent-soft: 165 200 59;
+    --accent-ink: 18 24 4;
+  }
+  [data-theme='cryo'] {
+    --accent: 159 214 227;
+    --accent-soft: 159 214 227;
+    --accent-ink: 6 22 28;
+  }
+  [data-theme='geo'] {
+    --accent: 250 183 46;
+    --accent-soft: 250 183 46;
+    --accent-ink: 26 16 2;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+  [data-mode='light'] {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-bg text-ink font-sans antialiased;
+    /* A wash of the active element behind everything, so switching themes
+     * reads as a change of atmosphere rather than a recoloured button. */
+    background-image:
+      radial-gradient(60rem 40rem at 15% -10%, rgb(var(--accent) / 0.13), transparent 60%),
+      radial-gradient(50rem 30rem at 95% 0%, rgb(var(--accent) / 0.08), transparent 55%);
+    background-attachment: fixed;
+    min-height: 100dvh;
+  }
+
+  /* Respect the OS setting until the user picks a side themselves. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-surface/80 backdrop-blur-sm;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2
+           text-sm font-medium transition
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+           focus-visible:outline-accent disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent text-accent-ink hover:brightness-110 active:brightness-95;
+  }
+
+  .btn-ghost {
+    @apply btn border border-line text-ink hover:bg-raised;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-line bg-raised px-3 py-2 text-sm
+           placeholder:text-muted
+           focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line
+           bg-raised px-2.5 py-1 text-xs text-muted;
+  }
+}

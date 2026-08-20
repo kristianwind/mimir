@@ -1,0 +1,16 @@
+# web/dist is deliberately NOT ignored. It is embedded at compile time, and
+# index.html references content-hashed asset filenames — committing one
+# without the other gives a clean checkout that builds and then serves a
+# blank page. Commit the whole build output, or none of it.
+/web/node_modules/
+
+# Runtime state
+/data/
+*.db
+*.db-wal
+*.db-shm
+secret.key
+
+# Binaries
+/mimir
+/dist/

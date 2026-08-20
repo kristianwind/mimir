@@ -1,0 +1,91 @@
+gameskill:
+  id: mimir
+  name: "Mimir"
+  category: "Apps"
+  description: "Genshin Impact build advisor: Enka/GOOD/HoYoLAB import, artifact optimizer and a resin plan ranked by damage per resin"
+  author: "kristianwind"
+  version: 1
+  icon: "app"
+
+  docker:
+    image: "ghcr.io/kristianwind/mimir:latest"
+    data_path: /data
+    keep_entrypoint: true
+
+  install:
+    image: "ghcr.io/kristianwind/mimir:latest"
+    script: |
+      mkdir -p /data
+      echo "Mimir data directory ready"
+      echo
+      echo "Next, from a shell in this container:"
+      echo "  mimir-mine -version <game version> -supplements /etc/mimir/supplements.json -o /data/snapshot.json"
+      echo "  mimir gamedata import /data/snapshot.json"
+      echo "  mimir useradd -u <name>"
+
+  startup:
+    command: "serve"
+    done_regex: 'msg=listening'
+
+  ports:
+    - { name: web, default: 8080, protocol: tcp }
+
+  variables:
+    - key: MIMIR_BASE_URL
+      name: "Public URL"
+      type: string
+      default: "http://localhost:8080"
+      hint: "The origin the PWA and push notifications are served from"
+
+    - key: MIMIR_USER_AGENT
+      name: "Enka User-Agent"
+      type: string
+      default: "mimir/0.1 (+https://github.com/kristianwind/mimir)"
+      hint: "Enka.Network asks integrators for a contactable agent string rather than a generic one"
+
+    - key: MIMIR_SECURE_COOKIES
+      name: "Secure session cookies"
+      type: bool
+      default: true
+      hint: "Leave on unless you are serving over plain http on a LAN"
+
+    - key: MIMIR_ALLOW_REGISTRATION
+      name: "Allow self-registration"
+      type: bool
+      default: false
+      hint: "Off by default: this is a personal instance, not a public service"
+
+    # The AI layer is optional and additive. It explains the engine's numbers
+    # and answers questions against the guide corpus; it never computes a
+    # number itself, so leaving these blank costs no functionality beyond the
+    # explanations.
+    - key: MIMIR_LLM_BASE_URL
+      name: "LLM endpoint (OpenAI-compatible)"
+      type: string
+      default: ""
+      hint: "e.g. http://100.124.14.128:1234/v1 for LM Studio. Blank disables the AI layer."
+
+    - key: MIMIR_LLM_MODEL
+      name: "LLM model"
+      type: string
+      default: ""
+
+    - key: MIMIR_LLM_API_KEY
+      name: "LLM API key"
+      type: string
+      default: ""
+      secret: true
+
+    # The beacon is off until it is switched on in Mimir's own System page,
+    # and there is deliberately no default collector — a beacon that does not
+    # know where it reports either goes nowhere or somewhere it does not
+    # belong. Nothing here turns it on; the setting lives with the operator.
+
+    - key: MIMIR_REPO
+      name: "Release repository"
+      type: string
+      default: "kristianwind/mimir"
+      hint: "Where Mimir checks for new versions. It reports what it finds; updating the container is this panel's job, not Mimir's."
+
+  backup:
+    include: ["."]

@@ -1,0 +1,30 @@
+{
+  "_README": [
+    "Tables Mimir cannot mine, kept here so every value has a stated origin.",
+    "",
+    "resinCosts: read off the domain and boss entry screens in game. They are",
+    "  stable but not in ExcelBinOutput (enterCostItems is empty in the",
+    "  datamine), so they are seeded here and are yours to verify. A wrong",
+    "  value here skews the whole per-resin ranking, so it is worth a glance.",
+    "",
+    "reactionCoefficients: deliberately absent. They live in the ability",
+    "  configs under BinOutput rather than in a table, and Mimir refuses to",
+    "  guess a damage multiplier. Transformative reaction damage stays",
+    "  unavailable, with an error saying so, until they are mined properly.",
+    "",
+    "dropModel: deliberately absent. Mimir estimates it from your own",
+    "  inventory instead - see `mimir dropmodel`. That estimate is measured",
+    "  rather than assumed, and it is labelled with the bias it carries.",
+    "",
+    "Verified against version 7.0 on 2026-08-20."
+  ],
+
+  "resinCosts": {
+    "artifact_domain": 20,
+    "talent_domain": 20,
+    "weapon_domain": 20,
+    "ley_line": 20,
+    "world_boss": 40,
+    "weekly_boss": 30
+  }
+}

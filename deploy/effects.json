@@ -1,0 +1,444 @@
+{
+  "_README": [
+    "Bonusser der ikke er stat-blokke: konverteringer og betingede effekter.",
+    "",
+    "These cannot be mined - they live in ability configs under BinOutput,",
+    "not in a table. So every rule cites the in-game wording it came from,",
+    "and the loader checks that the numbers it claims actually appear in",
+    "that wording. A rule that says 25% against text that says 20% will not",
+    "load. That check is the reason this file is allowed to exist as",
+    "hand-written data at all.",
+    "",
+    "Anything depending on how you play - stacks, uptime, whether a buff is",
+    "up - reads a condition you declare on the goal. Mimir asks rather than",
+    "assumes: whether your Marechaussee sits at three stacks is a fact about",
+    "your rotation, not about the set."
+  ],
+
+  "rules": [
+    {
+      "key": "EmblemOfSeveredFate",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "burst_dmg_",
+          "phase": "post",
+          "from": "enerRech_",
+          "rate": 0.25,
+          "max": 0.75,
+          "note": "Burst-skade ud af din samlede Energy Recharge, med et hårdt loft."
+        }
+      ]
+    },
+
+    {
+      "key": "RaidenShogun",
+      "kind": "character",
+      "trigger": "passive2",
+      "minAscension": 4,
+      "effects": [
+        {
+          "grants": "electro_dmg_",
+          "phase": "post",
+          "from": "enerRech_",
+          "rate": 0.4,
+          "offset": 1.0,
+          "min": 0,
+          "note": "0,4 % Electro DMG for hver 1 % Energy Recharge over 100 %."
+        }
+      ]
+    },
+
+    {
+      "key": "NoblesseOblige",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "rate": 0.2,
+          "stacksFrom": "NoblesseOblige.active",
+          "maxStacks": 1,
+          "note": "Hele holdets ATK efter et burst. Sæt 1, hvis den er oppe i din rotation."
+        }
+      ]
+    },
+
+    {
+      "key": "CrimsonWitchOfFlames",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "cites": ["2pc"],
+      "effects": [
+        {
+          "grants": "react_vaporize_",
+          "phase": "post",
+          "rate": 0.15,
+          "note": "Bonus til Vaporize og Melt."
+        },
+        {
+          "grants": "react_melt_",
+          "phase": "post",
+          "rate": 0.15
+        },
+        {
+          "grants": "react_overloaded_",
+          "phase": "post",
+          "rate": 0.4
+        },
+        {
+          "grants": "react_burning_",
+          "phase": "post",
+          "rate": 0.4
+        },
+        {
+          "grants": "react_burgeon_",
+          "phase": "post",
+          "rate": 0.4
+        },
+        {
+          "grants": "pyro_dmg_",
+          "phase": "pre",
+          "rate": 0.5,
+          "times": 0.15,
+          "stacksFrom": "CrimsonWitchOfFlames.stacks",
+          "maxStacks": 3,
+          "note": "Hver brug af elemental skill lægger 50 % af to-sæt-bonussens 15 % oveni, op til tre stacks."
+        }
+      ]
+    },
+
+    {
+      "key": "MarechausseeHunter",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "critRate_",
+          "phase": "pre",
+          "rate": 0.12,
+          "stacksFrom": "MarechausseeHunter.stacks",
+          "maxStacks": 3,
+          "note": "Crit rate pr. ændring i HP, op til tre stacks."
+        }
+      ]
+    },
+
+    {
+      "key": "BlizzardStrayer",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "critRate_",
+          "phase": "pre",
+          "rate": 0.2,
+          "stacksFrom": "BlizzardStrayer.cryoAffected",
+          "maxStacks": 1,
+          "note": "Modstanderen er ramt af Cryo."
+        },
+        {
+          "grants": "critRate_",
+          "phase": "pre",
+          "rate": 0.2,
+          "stacksFrom": "BlizzardStrayer.frozen",
+          "maxStacks": 1,
+          "note": "Modstanderen er frosset — oveni de 20% for Cryo-ramt."
+        }
+      ]
+    },
+
+    {
+      "key": "ViridescentVenerer",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "target_res_pyro",
+          "phase": "pre",
+          "rate": 0.4,
+          "stacksFrom": "ViridescentVenerer.swirledPyro",
+          "maxStacks": 1,
+          "note": "Modstanderen har fået swirlet Pyro."
+        },
+        {
+          "grants": "target_res_hydro",
+          "phase": "pre",
+          "rate": 0.4,
+          "stacksFrom": "ViridescentVenerer.swirledHydro",
+          "maxStacks": 1,
+          "note": "Modstanderen har fået swirlet Hydro."
+        },
+        {
+          "grants": "target_res_electro",
+          "phase": "pre",
+          "rate": 0.4,
+          "stacksFrom": "ViridescentVenerer.swirledElectro",
+          "maxStacks": 1,
+          "note": "Modstanderen har fået swirlet Electro."
+        },
+        {
+          "grants": "target_res_cryo",
+          "phase": "pre",
+          "rate": 0.4,
+          "stacksFrom": "ViridescentVenerer.swirledCryo",
+          "maxStacks": 1,
+          "note": "Modstanderen har fået swirlet Cryo."
+        }
+      ]
+    },
+
+    {
+      "key": "RaidenShogun",
+      "kind": "character",
+      "trigger": "c2",
+      "effects": [
+        {
+          "grants": "target_defIgnore_",
+          "phase": "pre",
+          "rate": 0.6,
+          "note": "Kun under Musou Isshin — men hele hendes burst-rotation er der."
+        }
+      ]
+    },
+
+    {
+      "key": "Diluc",
+      "kind": "character",
+      "trigger": "c1",
+      "effects": [
+        {
+          "grants": "dmg_",
+          "phase": "pre",
+          "rate": 0.15,
+          "stacksFrom": "Diluc.c1AboveHalfHp",
+          "maxStacks": 1,
+          "note": "Modstanderen er over 50 % HP."
+        }
+      ]
+    },
+
+    {
+      "key": "Diluc",
+      "kind": "character",
+      "trigger": "c2",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "rate": 0.1,
+          "stacksFrom": "Diluc.c2Stacks",
+          "maxStacks": 3,
+          "note": "Én stack hver gang Diluc tager skade, op til tre."
+        }
+      ]
+    },
+
+    {
+      "key": "Xingqiu",
+      "kind": "character",
+      "trigger": "c4",
+      "effects": [
+        {
+          "grants": "skill_dmg_",
+          "phase": "pre",
+          "rate": 0.5,
+          "stacksFrom": "Xingqiu.burstUp",
+          "maxStacks": 1,
+          "note": "Mens Raincutter kører — altså hele hans normale rotation."
+        }
+      ]
+    },
+
+    {
+      "key": "Diona",
+      "kind": "character",
+      "trigger": "c2",
+      "effects": [
+        {
+          "grants": "skill_dmg_",
+          "phase": "pre",
+          "rate": 0.15,
+          "note": "Icy Paws' skade, ubetinget."
+        }
+      ]
+    },
+
+    {
+      "key": "Noelle",
+      "kind": "character",
+      "trigger": "c2",
+      "effects": [
+        {
+          "grants": "charged_dmg_",
+          "phase": "pre",
+          "rate": 0.15,
+          "note": "Charged attack-skade, ubetinget."
+        }
+      ]
+    },
+
+    {
+      "key": "Noelle",
+      "kind": "character",
+      "trigger": "c6",
+      "effects": [
+        {
+          "grants": "atk",
+          "phase": "post",
+          "from": "def",
+          "rate": 0.5,
+          "stacksFrom": "Noelle.sweepingTime",
+          "maxStacks": 1,
+          "note": "Under Sweeping Time konverteres halvdelen af hendes DEF til ATK."
+        }
+      ]
+    },
+
+    {
+      "key": "PrototypeArchaic",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "atk",
+          "phase": "post",
+          "byRefinement": [2.4, 3.0, 3.6, 4.2, 4.8],
+          "stacksFrom": "PrototypeArchaic.procs",
+          "maxStacks": 10,
+          "instance": {
+            "label": "Prototype Archaic (Crush)",
+            "scaling": "atk",
+            "element": "physical"
+          },
+          "note": "Antal proc pr. rotation. 50 % chance, højst én pr. 15 sekunder — tæl dem i din egen rotation."
+        }
+      ]
+    },
+
+    {
+      "key": "Noelle",
+      "kind": "character",
+      "trigger": "c4",
+      "effects": [
+        {
+          "grants": "atk",
+          "phase": "post",
+          "rate": 4.0,
+          "stacksFrom": "Noelle.c4Explosions",
+          "maxStacks": 5,
+          "instance": {
+            "label": "Breastplate-eksplosion (C4)",
+            "scaling": "atk",
+            "element": "geo"
+          },
+          "note": "Antal gange skjoldet udløber eller brydes i rotationen."
+        }
+      ]
+    },
+
+    {
+      "key": "Xiangling",
+      "kind": "character",
+      "trigger": "c2",
+      "effects": [
+        {
+          "grants": "atk",
+          "phase": "post",
+          "rate": 0.75,
+          "stacksFrom": "Xiangling.implodes",
+          "maxStacks": 10,
+          "instance": {
+            "label": "Implode (C2)",
+            "scaling": "atk",
+            "element": "pyro"
+          },
+          "note": "Antal gange du afslutter en normal-angrebskombo i rotationen."
+        }
+      ]
+    },
+
+    {
+      "key": "TheCatch",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "burst_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.16, 0.20, 0.24, 0.28, 0.32],
+          "note": "Burst-skade, skalerer med refinement."
+        },
+        {
+          "grants": "burst_critRate_",
+          "phase": "pre",
+          "byRefinement": [0.06, 0.075, 0.09, 0.105, 0.12],
+          "note": "Crit rate — kun på burst, ikke på resten af rotationen."
+        }
+      ]
+    },
+
+    {
+      "key": "DragonsBane",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "dmg_",
+          "phase": "pre",
+          "byRefinement": [0.2, 0.24, 0.28, 0.32, 0.36],
+          "stacksFrom": "DragonsBane.affected",
+          "maxStacks": 1,
+          "note": "Modstanderen er ramt af Hydro eller Pyro."
+        }
+      ]
+    },
+
+    {
+      "key": "CoolSteel",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "stacksFrom": "CoolSteel.affected",
+          "maxStacks": 1,
+          "note": "Modstanderen er ramt af Hydro eller Cryo."
+        }
+      ]
+    },
+
+    {
+      "key": "ShimenawasReminiscence",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "normal_dmg_",
+          "phase": "pre",
+          "rate": 0.5,
+          "stacksFrom": "ShimenawasReminiscence.active",
+          "maxStacks": 1
+        },
+        {
+          "grants": "charged_dmg_",
+          "phase": "pre",
+          "rate": 0.5,
+          "stacksFrom": "ShimenawasReminiscence.active",
+          "maxStacks": 1
+        },
+        {
+          "grants": "plunging_dmg_",
+          "phase": "pre",
+          "rate": 0.5,
+          "stacksFrom": "ShimenawasReminiscence.active",
+          "maxStacks": 1
+        }
+      ]
+    }
+  ]
+}

@@ -15,6 +15,19 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+# Two pushes in quick succession race for the same :latest tag, and whichever
+# build finishes last wins — which can leave :latest on the *older* commit.
+# Superseding a branch build is safe: its only output is a tag that is about
+# to be overwritten anyway.
+#
+# A tag build is not cancelled. Its output is a release, and a half-published
+# one — binaries uploaded, checksums.txt missing — is worse than a duplicate:
+# the updater refuses a release without checksums, so the release would exist
+# and be uninstallable.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
 env:
   REGISTRY: ghcr.io
 

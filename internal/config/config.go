@@ -34,6 +34,11 @@ type Config struct {
 	AllowRegistration bool
 	// Repo is the GitHub repository releases are checked against.
 	Repo string
+	// SupplementsPath and EffectsPath are the two hand-maintained data files
+	// the miner needs. They ship inside the image, so the defaults point
+	// there; a local checkout overrides them.
+	SupplementsPath string
+	EffectsPath     string
 	// LLMBaseURL points at an OpenAI-compatible endpoint (LM Studio, Ollama,
 	// vLLM). Empty disables the AI layer entirely; the rest of Mimir works
 	// unchanged, because no number depends on the model.
@@ -52,6 +57,8 @@ func Load() (*Config, error) {
 		Secure:            envBool("MIMIR_SECURE_COOKIES", false),
 		AllowRegistration: envBool("MIMIR_ALLOW_REGISTRATION", false),
 		Repo:              env("MIMIR_REPO", "kristianwind/mimir"),
+		SupplementsPath:   env("MIMIR_SUPPLEMENTS", "/etc/mimir/supplements.json"),
+		EffectsPath:       env("MIMIR_EFFECTS", "/etc/mimir/effects.json"),
 		LLMBaseURL:        env("MIMIR_LLM_BASE_URL", ""),
 		LLMModel:          env("MIMIR_LLM_MODEL", ""),
 		LLMAPIKey:         env("MIMIR_LLM_API_KEY", ""),

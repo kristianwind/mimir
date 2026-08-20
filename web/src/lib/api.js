@@ -71,6 +71,9 @@ export const api = {
   deleteUser: (id) => request('DELETE', `/users/${id}`),
   changePassword: (current, next) => request('PUT', '/me/password', { current, new: next }),
 
+  mineStatus: () => request('GET', '/system/gamedata/mine'),
+  startMine: (version) => request('POST', '/system/gamedata/mine', { version }),
+
   receiver: () => request('GET', '/system/beacon/receiver'),
   setReceiver: (enabled) => request('PUT', '/system/beacon/receiver', { enabled }),
 

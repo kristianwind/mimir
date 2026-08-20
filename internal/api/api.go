@@ -42,6 +42,8 @@ type Server struct {
 	// Updater checks for releases and, where the deployment allows, installs
 	// one.
 	Updater *selfupdate.Updater
+	// Mine is the game data sync job. One at a time.
+	Mine *MineJob
 	// Shutdown asks the process to exit so a supervisor restarts it. The
 	// updater needs it: replacing the binary does nothing until the old
 	// process leaves.
@@ -50,6 +52,9 @@ type Server struct {
 
 // Router builds the HTTP handler.
 func (s *Server) Router() http.Handler {
+	if s.Mine == nil {
+		s.Mine = &MineJob{}
+	}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -92,6 +97,8 @@ func (s *Server) Router() http.Handler {
 				r.Post("/update", s.handleApplyUpdate)
 				r.Post("/rollback", s.handleRollback)
 				r.Put("/beacon", s.handleSetBeacon)
+				r.Get("/gamedata/mine", s.handleMineStatus)
+				r.Post("/gamedata/mine", s.handleStartMine)
 				r.Get("/beacon/receiver", s.handleReceiverStats)
 				r.Put("/beacon/receiver", s.handleSetReceiver)
 			})

@@ -199,3 +199,38 @@ func TestEnablingTheReceiverOpensTheEndpoint(t *testing.T) {
 		t.Errorf("open receiver gave %d", w.Code)
 	}
 }
+
+func TestOnlyOneMineAtATime(t *testing.T) {
+	s, do := newServer(t)
+
+	// Two concurrent mines would fight over the same cache directory and
+	// produce a snapshot neither of them can vouch for. The job is marked
+	// running directly rather than by starting a real one, so the test
+	// exercises the lock without reaching the network.
+	s.Mine = &MineJob{running: true}
+
+	w := do("chef", "POST", "/api/system/gamedata/mine", `{"version":"7.0.0"}`)
+	if w.Code != http.StatusConflict {
+		t.Errorf("a start while one is running gave %d, want 409: %s", w.Code, w.Body)
+	}
+}
+
+func TestMineNeedsAVersion(t *testing.T) {
+	_, do := newServer(t)
+	w := do("chef", "POST", "/api/system/gamedata/mine", `{}`)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("a mine with no version gave %d, want 400", w.Code)
+	}
+}
+
+func TestOnlyAdminsMine(t *testing.T) {
+	_, do := newServer(t)
+	for _, c := range []struct{ method, body string }{
+		{"GET", ""}, {"POST", `{"version":"7.0.0"}`},
+	} {
+		w := do("menig", c.method, "/api/system/gamedata/mine", c.body)
+		if w.Code != http.StatusForbidden {
+			t.Errorf("%s as a plain user gave %d, want 403", c.method, w.Code)
+		}
+	}
+}

@@ -7,6 +7,9 @@
   let message = $state('')
 
   let receiver = $state(null)
+  let mine = $state(null)
+  let gameVersion = $state('')
+  let poll = null
 
   async function load() {
     error = ''
@@ -18,6 +21,39 @@
     // Only administrators can see the collector, so a failure here is a
     // permission answer rather than a fault.
     receiver = await api.receiver().catch(() => null)
+    mine = await api.mineStatus().catch(() => null)
+    watchMine()
+  }
+
+  // Poll only while something is happening. A timer that keeps firing after
+  // the job finished is a background request every second for as long as the
+  // tab stays open.
+  function watchMine() {
+    clearInterval(poll)
+    if (!mine?.running) return
+    poll = setInterval(async () => {
+      mine = await api.mineStatus().catch(() => mine)
+      if (!mine?.running) {
+        clearInterval(poll)
+        status = await api.system().catch(() => status)
+      }
+    }, 1500)
+  }
+
+  $effect(() => () => clearInterval(poll))
+
+  async function startMine() {
+    error = ''
+    message = ''
+    busy = 'mine'
+    try {
+      mine = await api.startMine(gameVersion.trim())
+      watchMine()
+    } catch (err) {
+      error = err.hint ? `${err.message} — ${err.hint}` : err.message
+    } finally {
+      busy = ''
+    }
   }
 
   load()
@@ -119,6 +155,53 @@
         <p class="mt-3 text-xs text-muted">
           Sidst opdateret til {update.appliedTo} den {update.appliedAt.slice(0, 10)}.
         </p>
+      {/if}
+    </section>
+
+    <section class="card p-5">
+      <h2 class="font-medium">Spildata</h2>
+      <p class="mt-2 max-w-prose text-sm text-muted">
+        Henter fra de offentlige datamines, verificerer effekt-reglerne mod spillets egen
+        ordlyd og aktiverer resultatet. Tager omkring et halvt minut. Fejler noget, skiftes
+        der ikke — det nuværende snapshot bliver stående.
+      </p>
+
+      <div class="mt-4 flex flex-wrap items-end gap-3">
+        <div>
+          <label class="label" for="gv">Spilversion</label>
+          <input
+            id="gv"
+            class="field w-32"
+            placeholder="7.0.0"
+            bind:value={gameVersion}
+            disabled={mine?.running}
+          />
+        </div>
+        <button
+          class="btn-primary"
+          disabled={mine?.running || busy === 'mine' || !gameVersion.trim()}
+          onclick={startMine}
+        >
+          {mine?.running ? `Synkroniserer… ${mine.elapsed}s` : 'Synkronisér spildata'}
+        </button>
+      </div>
+
+      {#if mine?.lines?.length}
+        <pre class="mt-3 max-h-44 overflow-auto whitespace-pre-wrap rounded-xl bg-raised p-3 text-xs">{mine.lines.join(
+            '\n',
+          )}</pre>
+      {/if}
+      {#if mine?.error}
+        <p class="mt-3 rounded-xl border border-bad/40 bg-bad/10 px-3 py-2 text-xs text-bad">
+          {mine.error}
+        </p>
+      {/if}
+      {#if mine?.warnings?.length}
+        <ul class="mt-2 space-y-1 text-xs text-warn">
+          {#each mine.warnings as line}
+            <li>· {line}</li>
+          {/each}
+        </ul>
       {/if}
     </section>
 

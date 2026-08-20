@@ -84,6 +84,14 @@ herunder er det der gør den mere præcis, ikke det der får den til at virke.
 - [x] Verificeret mod spillets egne tal: Raidens HP, ATK, DEF, crit rate,
       crit damage, ER og Electro DMG matcher Enkas fightPropMap
 
+### Ingenting kræver længere en shell
+- [x] **Spildata fra System-siden** — henter, verificerer effekt-reglerne og
+      aktiverer resultatet, som et baggrundsjob med fremdrift. Én ad gangen:
+      to samtidige ville slås om den samme cache
+- [x] Sammen med førstegangs-flowet betyder det at en frisk installation kan
+      sættes op udelukkende i browseren. `docker exec` var det sidste der
+      krævede SSH til værten
+
 ### Brugerstyring
 - [x] **Førstegangs-flow** — loginsiden opretter den første administrator når
       instansen er tom, og vinduet lukker sig selv i samme øjeblik den

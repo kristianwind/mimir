@@ -29,11 +29,16 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}"
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/mimir-mine ./cmd/mimir-mine
 
 FROM alpine:3.21
-RUN apk add --no-cache ca-certificates tzdata && adduser -D -u 1000 mimir
+RUN apk add --no-cache ca-certificates tzdata
 COPY --from=build /out/mimir /usr/local/bin/mimir
 COPY --from=build /out/mimir-mine /usr/local/bin/mimir-mine
 COPY deploy/supplements.json /etc/mimir/supplements.json
-USER mimir
+
+# No USER, on purpose. Yggdrasil always sets the container's user to the
+# account that owns the mounted data directory, so a USER baked in here is
+# overridden anyway — and baking in uid 1000 only guarantees it is the wrong
+# one. The image writes nothing outside /data and looks up no user, so it runs
+# as whatever uid it is given.
 WORKDIR /data
 ENV MIMIR_DATA_DIR=/data \
     MIMIR_ADDR=:8080 \
@@ -41,5 +46,14 @@ ENV MIMIR_DATA_DIR=/data \
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
   CMD wget -qO- http://127.0.0.1:8080/api/healthz || exit 1
-ENTRYPOINT ["mimir"]
-CMD ["serve"]
+# No ENTRYPOINT: the command is fully specified by CMD instead.
+#
+# An entrypoint of ["mimir"] means anything a host passes as the container's
+# command arrives as *arguments to mimir*. Yggdrasil builds its command as
+# ["/bin/sh","-c",<startup.command>] whether or not keep_entrypoint is set, so
+# the container ran `mimir /bin/sh -c serve`, printed its usage and exited —
+# and the restart policy turned that into a boot loop.
+#
+# With the whole command in CMD, the image does the right thing under a
+# cleared entrypoint, under a kept one, and under a plain `docker run`.
+CMD ["mimir", "serve"]

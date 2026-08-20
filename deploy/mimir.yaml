@@ -4,13 +4,22 @@ gameskill:
   category: "Apps"
   description: "Genshin Impact build advisor: Enka/GOOD/HoYoLAB import, artifact optimizer and a resin plan ranked by damage per resin"
   author: "kristianwind"
-  version: 1
+  version: 2
   icon: "app"
 
   docker:
     image: "ghcr.io/kristianwind/mimir:latest"
     data_path: /data
-    keep_entrypoint: true
+    # keep_entrypoint is deliberately off. With it on, startup.command is
+    # passed as the container's Cmd — and since the image's ENTRYPOINT is
+    # "mimir", the process was invoked as `mimir /bin/sh -c serve`, printed
+    # its usage and exited. Yggdrasil also skips mounting a minimal
+    # /etc/passwd when it is on, which leaves the panel's own uid unresolvable
+    # inside the image.
+    #
+    # No `user:` either: the panel runs the container as the account that owns
+    # the data directory, and the image makes no assumptions about which uid
+    # that is.
 
   install:
     image: "ghcr.io/kristianwind/mimir:latest"
@@ -24,7 +33,9 @@ gameskill:
       echo "  mimir useradd -u <name>"
 
   startup:
-    command: "serve"
+    # Raw argv rather than a shell string: no /bin/sh, no quoting, no
+    # interaction with the image's entrypoint.
+    exec: ["mimir", "serve"]
     done_regex: 'msg=listening'
 
   ports:

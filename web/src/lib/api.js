@@ -53,6 +53,8 @@ async function request(method, path, body, opts = {}) {
 
 export const api = {
   me: () => request('GET', '/me'),
+  bootstrapStatus: () => request('GET', '/auth/bootstrap'),
+  bootstrap: (username, password) => request('POST', '/auth/bootstrap', { username, password }),
   login: (username, password) => request('POST', '/auth/login', { username, password }),
   logout: () => request('POST', '/auth/logout'),
   setTheme: (theme, themeMode) => request('PUT', '/me/theme', { theme, themeMode }),

@@ -56,6 +56,11 @@ func (s *Server) Router() http.Handler {
 	r.Use(middleware.Recoverer)
 
 	r.Route("/api", func(r chi.Router) {
+		// Unauthenticated by necessity: nobody can log in before the first
+		// account exists. Both close themselves the moment it does.
+		r.Get("/auth/bootstrap", s.handleBootstrapStatus)
+		r.Post("/auth/bootstrap", s.handleBootstrap)
+
 		r.Post("/auth/login", s.handleLogin)
 		r.Post("/auth/logout", s.handleLogout)
 		r.Get("/healthz", s.handleHealth)
@@ -65,6 +70,14 @@ func (s *Server) Router() http.Handler {
 
 			r.Get("/me", s.handleMe)
 			r.Put("/me/theme", s.handleSetTheme)
+			r.Put("/me/password", s.handleChangeOwnPassword)
+
+			r.Route("/users", func(r chi.Router) {
+				r.Get("/", s.handleListUsers)
+				r.Post("/", s.handleCreateUser)
+				r.Put("/{userID}", s.handleUpdateUser)
+				r.Delete("/{userID}", s.handleDeleteUser)
+			})
 
 			r.Get("/gamedata", s.handleGameDataStatus)
 

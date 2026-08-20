@@ -4,7 +4,7 @@ gameskill:
   category: "Apps"
   description: "Genshin Impact build advisor: Enka/GOOD/HoYoLAB import, artifact optimizer and a resin plan ranked by damage per resin"
   author: "kristianwind"
-  version: 2
+  version: 3
   icon: "app"
 
   docker:
@@ -28,7 +28,10 @@ gameskill:
       echo "Mimir data directory ready"
       echo
       echo "Next, from a shell in this container:"
-      echo "  mimir-mine -version <game version> -supplements /etc/mimir/supplements.json -o /data/snapshot.json"
+      echo "  mimir-mine -version <game version> \\"
+      echo "    -supplements /etc/mimir/supplements.json \\"
+      echo "    -effects /etc/mimir/effects.json \\"
+      echo "    -o /data/snapshot.json"
       echo "  mimir gamedata import /data/snapshot.json"
       echo "  mimir useradd -u <name>"
 

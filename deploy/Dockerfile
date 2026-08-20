@@ -32,7 +32,13 @@ FROM alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata
 COPY --from=build /out/mimir /usr/local/bin/mimir
 COPY --from=build /out/mimir-mine /usr/local/bin/mimir-mine
+# Both hand-maintained data files travel with the image, because a container
+# has no repository to read them from. Without effects.json every conditional
+# bonus is missing — Raiden reads 43,872 damage per rotation instead of
+# 74,678 — and nothing announces it, because a missing effect looks exactly
+# like an effect that does nothing.
 COPY deploy/supplements.json /etc/mimir/supplements.json
+COPY deploy/effects.json /etc/mimir/effects.json
 
 # No USER, on purpose. Yggdrasil always sets the container's user to the
 # account that owns the mounted data directory, so a USER baked in here is

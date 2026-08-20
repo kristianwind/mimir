@@ -83,7 +83,15 @@ func (u *Updater) latest(ctx context.Context) (Release, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
-		return Release{}, fmt.Errorf("selfupdate: %s has no published releases yet", u.Repo)
+		// GitHub answers 404 both for a repository with no releases and for
+		// one an anonymous request cannot see. The updater carries no
+		// credentials on purpose, so a private repository lands here with a
+		// perfectly published release — and saying "no releases yet" would
+		// be confidently wrong.
+		return Release{}, fmt.Errorf(
+			"selfupdate: fandt ingen udgivelser i %s. Enten er der ingen endnu, "+
+				"eller også er repoet privat — Mimir henter uden login, så et privat "+
+				"repos udgivelser er usynlige for den", u.Repo)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return Release{}, fmt.Errorf("selfupdate: GitHub returned %s", strings.TrimSpace(resp.Status))

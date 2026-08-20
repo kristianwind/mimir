@@ -417,3 +417,23 @@ func TestWatchdogStandsDownWhenTheUpdateIsFine(t *testing.T) {
 		t.Errorf("target holds %q; a healthy update was undone", data)
 	}
 }
+
+func TestCheckDoesNotClaimThereAreNoReleasesWhenItCannotSee(t *testing.T) {
+	// A private repository answers 404 to the updater's anonymous request
+	// even when a release is published. Reporting that as "no releases yet"
+	// sends the operator looking for a release they already made.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	u := newUpdater(t, "v0.9.0", srv)
+	st := u.Check(context.Background(), true)
+
+	if st.Error == "" {
+		t.Fatal("a 404 was reported as success")
+	}
+	if !strings.Contains(st.Error, "privat") {
+		t.Errorf("the error should allow for a private repository, got %q", st.Error)
+	}
+}

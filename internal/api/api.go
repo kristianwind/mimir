@@ -65,6 +65,11 @@ func (s *Server) Router() http.Handler {
 		r.Post("/auth/logout", s.handleLogout)
 		r.Get("/healthz", s.handleHealth)
 
+		// The collector endpoint. Public because the instances reporting to
+		// it have no credentials — and 404 when this instance is not a
+		// collector, so it is not advertised where it would only refuse.
+		r.Post("/beacon", s.handleBeaconPing)
+
 		r.Group(func(r chi.Router) {
 			r.Use(s.Auth.Middleware)
 
@@ -87,6 +92,8 @@ func (s *Server) Router() http.Handler {
 				r.Post("/update", s.handleApplyUpdate)
 				r.Post("/rollback", s.handleRollback)
 				r.Put("/beacon", s.handleSetBeacon)
+				r.Get("/beacon/receiver", s.handleReceiverStats)
+				r.Put("/beacon/receiver", s.handleSetReceiver)
 			})
 
 			r.Route("/accounts", func(r chi.Router) {

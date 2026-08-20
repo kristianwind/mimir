@@ -178,3 +178,8 @@ karakteren har nu, ikke mod det et højere mål lige har taget.
 - [x] **Ingen standard-collector** — at låne Yggdrasils adresse gjorde
       Mimirs første testping til en spøgelses-installation i Yggdrasils
       tælling. Beaconen kræver nu en adresse, og en mislykket ping vises
+- [x] **Collector-siden** — samme binær kan tage imod. Slået fra som
+      standard, og endepunktet svarer 404 når den er det. Gemmer kun
+      instans-id og version, med en test der fejler hvis tabellen får en
+      kolonne mere. Loftet på antal instanser afviser kun *nye* id'er, så
+      en kendt installation aldrig holder op med at blive talt

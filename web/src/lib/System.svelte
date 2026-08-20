@@ -6,6 +6,8 @@
   let busy = $state('')
   let message = $state('')
 
+  let receiver = $state(null)
+
   async function load() {
     error = ''
     try {
@@ -13,6 +15,9 @@
     } catch (err) {
       error = err.message
     }
+    // Only administrators can see the collector, so a failure here is a
+    // permission answer rather than a fault.
+    receiver = await api.receiver().catch(() => null)
   }
 
   load()
@@ -171,5 +176,69 @@
         </p>
       {/if}
     </section>
+
+    {#if receiver}
+      <section class="card p-5">
+        <div class="flex flex-wrap items-baseline justify-between gap-3">
+          <h2 class="font-medium">Denne instans som collector</h2>
+          <span class="chip">{receiver.enabled ? 'til' : 'fra'}</span>
+        </div>
+
+        <p class="mt-3 max-w-prose text-sm text-muted">
+          Én instans kan tage imod de andres beacons. Slå det til her, og peg de øvrige
+          installationer på adressen nedenfor. Der gemmes kun det anonyme instans-id og
+          versionen — ingen IP, ingen brugeragent, ingen forespørgselsdata. Afsenderen lover
+          sin operatør at intet andet forlader maskinen, og det løfte skal også holde i denne
+          ende.
+        </p>
+
+        <div class="mt-3">
+          <p class="label">Adresse til de andre instanser</p>
+          <pre class="overflow-auto rounded-xl bg-raised p-3 text-xs">{receiver.endpoint}</pre>
+          {#if !receiver.enabled}
+            <p class="mt-1.5 text-xs text-muted">
+              Endepunktet svarer 404 indtil du slår det til — en instans der ikke er collector,
+              skal ikke reklamere for noget den alligevel afviser.
+            </p>
+          {/if}
+        </div>
+
+        {#if receiver.enabled}
+          <dl class="mt-4 grid grid-cols-3 gap-2 text-center">
+            <div class="rounded-xl bg-raised py-3">
+              <dt class="text-xs text-muted">installationer</dt>
+              <dd class="text-lg font-medium">{receiver.total}</dd>
+            </div>
+            <div class="rounded-xl bg-raised py-3">
+              <dt class="text-xs text-muted">aktive 7 dage</dt>
+              <dd class="text-lg font-medium">{receiver.active7d}</dd>
+            </div>
+            <div class="rounded-xl bg-raised py-3">
+              <dt class="text-xs text-muted">aktive 30 dage</dt>
+              <dd class="text-lg font-medium">{receiver.active30d}</dd>
+            </div>
+          </dl>
+
+          {#if receiver.versions?.length}
+            <div class="mt-3 space-y-1">
+              {#each receiver.versions as v (v.version)}
+                <div class="flex items-center justify-between rounded-lg bg-raised px-3 py-1.5 text-xs">
+                  <span class="font-mono">{v.version}</span>
+                  <span class="text-muted">{v.count}</span>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        {/if}
+
+        <button
+          class={receiver.enabled ? 'btn-ghost mt-4' : 'btn-primary mt-4'}
+          disabled={busy === 'receiver'}
+          onclick={() => run('receiver', () => api.setReceiver(!receiver.enabled))}
+        >
+          {receiver.enabled ? 'Slå collector fra' : 'Slå collector til'}
+        </button>
+      </section>
+    {/if}
   </div>
 {/if}

@@ -329,6 +329,22 @@ CREATE TABLE IF NOT EXISTS settings (
 	updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- ---------------------------------------------------------------- beacon
+
+-- Received beacons, when this instance is the collector. Stores only the
+-- anonymous instance id and the version — deliberately no IP address, no
+-- user agent, no request metadata. The sending side promises its operator
+-- that nothing else leaves their machine; recording more here would make
+-- that promise false from the other end.
+CREATE TABLE IF NOT EXISTS beacon_pings (
+	instance_id TEXT PRIMARY KEY,
+	version     TEXT NOT NULL DEFAULT '',
+	first_seen  TEXT NOT NULL DEFAULT (datetime('now')),
+	last_seen   TEXT NOT NULL DEFAULT (datetime('now')),
+	ping_count  INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS idx_beacon_seen ON beacon_pings(last_seen DESC);
+
 -- ---------------------------------------------------------------- audit
 
 CREATE TABLE IF NOT EXISTS audit_log (

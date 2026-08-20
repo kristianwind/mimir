@@ -71,6 +71,9 @@ export const api = {
   deleteUser: (id) => request('DELETE', `/users/${id}`),
   changePassword: (current, next) => request('PUT', '/me/password', { current, new: next }),
 
+  receiver: () => request('GET', '/system/beacon/receiver'),
+  setReceiver: (enabled) => request('PUT', '/system/beacon/receiver', { enabled }),
+
   setBeacon: (enabled, url) => request('PUT', '/system/beacon', url === undefined ? { enabled } : { enabled, url }),
 
   accounts: () => request('GET', '/accounts'),

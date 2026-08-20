@@ -58,7 +58,10 @@ func Load() (*Config, error) {
 	}
 
 	if err := os.MkdirAll(c.DataDir, 0o750); err != nil {
-		return nil, fmt.Errorf("config: create data dir: %w", err)
+		return nil, fmt.Errorf("config: create data dir %s: %w", c.DataDir, err)
+	}
+	if err := checkWritable(c.DataDir); err != nil {
+		return nil, err
 	}
 
 	key, err := loadOrCreateSecret(filepath.Join(c.DataDir, "secret.key"))
@@ -116,4 +119,28 @@ func envBool(key string, def bool) bool {
 		return def
 	}
 	return b
+}
+
+// checkWritable fails early and says exactly what is wrong.
+//
+// Without it, an unwritable data directory surfaces as whichever file the
+// server happens to write first — "write secret key: permission denied" — and
+// under a container restart policy that becomes an unexplained boot loop. The
+// most common cause is a volume owned by root mounted into an image that runs
+// as somebody else, so the message names the uid rather than leaving the
+// operator to work it out from a stack of identical log lines.
+func checkWritable(dir string) error {
+	probe, err := os.CreateTemp(dir, ".mimir-write-probe-*")
+	if err == nil {
+		name := probe.Name()
+		probe.Close()
+		_ = os.Remove(name)
+		return nil
+	}
+	return fmt.Errorf(
+		"config: datakataloget %s kan ikke skrives af uid %d (gid %d). "+
+			"Som regel er volumet ejet af root og imaget kører som en anden bruger: "+
+			"chown -R %d:%d %s på værten, eller kør containeren som root "+
+			"(user: \"0:0\" i runen). Underliggende fejl: %w",
+		dir, os.Getuid(), os.Getgid(), os.Getuid(), os.Getgid(), dir, err)
 }

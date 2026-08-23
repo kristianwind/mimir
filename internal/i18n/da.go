@@ -211,11 +211,11 @@ var da = map[string]string{
 	"Who is worth investing in next, and who is being carried by gear they should not have? Only judge what is listed here.": "Hvem er værd at investere i som den næste, og hvem bliver båret af udstyr, de ikke burde have? Døm kun på det, der står her.",
 	"Every character on the account":                             "Alle karakterer på kontoen",
 	"%s: level %d, C%d, talents %d/%d/%d, %d artifacts equipped": "%s: niveau %d, C%d, talenter %d/%d/%d, %d artifacts udstyret",
-	", holding %s R%d":                   ", har %s R%d",
-	", no weapon":                        ", intet våben",
-	", has a goal":                       ", har et mål",
-	", no goal set up":                   ", intet mål sat op",
-	"What Mimir can and cannot say here": "Hvad Mimir kan og ikke kan sige her",
+	", holding %s R%d":                                           ", har %s R%d",
+	", no weapon":                                                ", intet våben",
+	", has a goal":                                               ", har et mål",
+	", no goal set up":                                           ", intet mål sat op",
+	"What Mimir can and cannot say here":                         "Hvad Mimir kan og ikke kan sige her",
 	"Nothing on this page has been through the damage engine: a character with no goal has no rotation, and without a rotation there is no number. Say what is worth setting up as a goal rather than claiming a gain.": "Intet på den her side har været igennem beregningskernen: en karakter uden mål har ingen rotation, og uden en rotation er der ingen tal. Sig hvad der er værd at sætte op som mål frem for at påstå en gevinst.",
 
 	// The inventory

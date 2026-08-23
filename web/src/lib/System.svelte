@@ -9,6 +9,8 @@
 
   let receiver = $state(null)
   let mine = $state(null)
+  let ai = $state(null)
+  let probe = $state(null)
   let gameVersion = $state('')
   let poll = null
 
@@ -21,6 +23,7 @@
     }
     // Only administrators can see the collector, so a failure here is a
     // permission answer rather than a fault.
+    ai = await api.kvasirStatus().catch(() => null)
     receiver = await api.receiver().catch(() => null)
     mine = await api.mineStatus().catch(() => null)
     watchMine()
@@ -42,6 +45,21 @@
   }
 
   $effect(() => () => clearInterval(poll))
+
+  // The endpoint is probed rather than trusted: a configured URL a container
+  // cannot reach is the usual failure, and it should be visible here rather
+  // than as an opinion that never arrives.
+  async function checkAI() {
+    busy = 'ai'
+    probe = null
+    try {
+      probe = await api.kvasirCheck()
+    } catch (err) {
+      probe = { ok: false, error: err.hint ? `${err.message} — ${err.hint}` : err.message }
+    } finally {
+      busy = ''
+    }
+  }
 
   async function startMine() {
     error = ''
@@ -216,6 +234,42 @@
             <li>· {line}</li>
           {/each}
         </ul>
+      {/if}
+    </section>
+
+    <section class="card p-5">
+      <div class="flex flex-wrap items-baseline justify-between gap-3">
+        <h2 class="font-medium">{t('Kvasir')}</h2>
+        <span class="chip">{ai?.enabled ? t('on') : t('off')}</span>
+      </div>
+
+      <p class="mt-3 max-w-prose text-sm text-muted">
+        {t(
+          'The AI layer explains what the engine calculated and answers questions about it. It never calculates: every figure it writes is checked back against the numbers it was given, and one that is not there is removed before you see it.',
+        )}
+      </p>
+
+      {#if ai?.enabled}
+        <p class="mt-3 text-sm">{t('Model: {name}', { name: ai.model || t('whatever the endpoint serves') })}</p>
+        <button class="btn-ghost mt-4" disabled={busy === 'ai'} onclick={checkAI}>
+          {busy === 'ai' ? t('Checking…') : t('Check the endpoint')}
+        </button>
+        {#if probe}
+          <p class="mt-3 text-sm {probe.ok ? 'text-good' : 'text-bad'}">
+            {probe.ok
+              ? t('{endpoint} answered, and serves {n} models.', {
+                  endpoint: probe.endpoint,
+                  n: probe.models?.length ?? 0,
+                })
+              : probe.error}
+          </p>
+        {/if}
+      {:else}
+        <p class="mt-3 max-w-prose text-sm text-muted">
+          {t(
+            'Set MIMIR_LLM_BASE_URL to an OpenAI-compatible endpoint — LM Studio, Ollama, vLLM — and restart. Leave it blank and every other part of Mimir works exactly as it does now.',
+          )}
+        </p>
       {/if}
     </section>
 

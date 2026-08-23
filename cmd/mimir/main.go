@@ -21,6 +21,8 @@ import (
 	"github.com/kristianwind/mimir/internal/db"
 	"github.com/kristianwind/mimir/internal/enka"
 	"github.com/kristianwind/mimir/internal/gamedata"
+	"github.com/kristianwind/mimir/internal/kvasir"
+	"github.com/kristianwind/mimir/internal/llm"
 	"github.com/kristianwind/mimir/internal/selfupdate"
 )
 
@@ -131,6 +133,16 @@ func serve(args []string) error {
 		Beacon:   beacon.New(conn, version, log),
 		Updater: selfupdate.New(conn, version, cfg.Repo, cfg.DataDir,
 			healthURL(cfg.Addr), log),
+		// The AI layer. With no endpoint configured this is an advisor with a
+		// nil client, which reports itself unavailable and is never asked
+		// anything — the rest of Mimir does not know the difference, because
+		// no number in it comes from a model.
+		Kvasir: &kvasir.Advisor{
+			Client: llm.New(cfg.LLMBaseURL, cfg.LLMModel, cfg.LLMAPIKey, cfg.LLMTimeout),
+		},
+	}
+	if srv.Kvasir.Available() {
+		log.Info("the AI layer is on", "endpoint", cfg.LLMBaseURL, "model", cfg.LLMModel)
 	}
 
 	httpSrv := &http.Server{

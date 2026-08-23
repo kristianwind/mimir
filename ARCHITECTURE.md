@@ -33,6 +33,8 @@ mimir/
 │   ├── hoyolab/            Battle Chronicle client (resin, notes)
 │   ├── db/                 schema, migrations, artifact matching
 │   ├── auth/               argon2id, sessions, middleware
+│   ├── kvasir/             the AI layer: fact sheets, and the number check
+│   ├── llm/                OpenAI-compatible client, ~300 lines, no SDK
 │   ├── api/                HTTP routing and response shaping
 │   └── config/             environment configuration
 ├── web/                    Svelte 5 frontend
@@ -76,6 +78,8 @@ unfalsifiable.
 
 Consequence: the AI layer is entirely optional. With `MIMIR_LLM_BASE_URL`
 unset, everything works except the explanations.
+
+See [Kvasir](#kvasir) for how that rule is enforced rather than promised.
 
 ## Data flow
 
@@ -284,6 +288,69 @@ That is the honest limit of what a process can promise about its own
 replacement: the swap is committed only after the candidate has been observed
 serving, and if it fails afterwards, something that definitely works is
 already waiting.
+
+## Kvasir
+
+The AI layer is named after the wisest of the gods' creations, because the
+division of labour is the same as in the myth: Mimir's head at the well knows
+the numbers, and Kvasir is who you ask what they mean.
+
+It appears on every page — the plan, a goal, a build, the roster, the
+inventory — and answers one question: how do you get better. There is also a
+conversation for the question after that.
+
+The design problem is not making a model produce advice. It is making advice a
+player can trust next to figures that were calculated. So rule 3 is enforced at
+two points rather than asked for in a prompt.
+
+**The model is handed a fact sheet, not a database.** Every surface has one
+function that runs the engine and writes down what came back — the ranked
+actions, the resolved stats with the game text each effect was checked
+against, the measured drop model, what the engine refused to price. That
+document is the model's entire knowledge of the account. There is no tool that
+computes, no inventory table to reason over, no path from a prompt to a
+number.
+
+**Every number in the answer is checked back against that fact sheet.** This is
+the same rule that makes the hand-written effect library safe — a claim only
+loads if its numbers are in the text it cites — pointed at a sentence instead
+of a set bonus. The check reads both a Danish decimal comma and an English
+decimal point, allows a figure to be rounded but not to gain precision it never
+had, and exempts integers up to ten, because counting is not calculating.
+
+What happens on a violation differs by shape, and deliberately:
+
+- **In an opinion**, the offending bullet is deleted, and the deletion is
+  reported to the reader with the figure named. A bullet is a self-contained
+  claim; cutting one leaves the rest true. First the model is told exactly
+  which figures were not sourced and asked once more — most of the time that
+  is enough. If nothing survives twice, nothing is shown.
+- **In a conversation**, the answer stands and the figures are flagged as
+  untrustworthy. A sentence cut out of a paragraph leaves an argument missing
+  its middle, so naming the problem beats silently editing it.
+
+The conversation is the one place the model chooses what to look at. It gets a
+menu of eight engine calls — the plan, a build, a talent table, the roster, the
+goals, the inventory, the drop model — every one of them read-only, and each
+returning the same kind of fact sheet the opinion cards are built from.
+Whatever comes back is added to the set of numbers the answer may contain. So
+the model can pick which calculation to run and still cannot produce a figure
+without running one. Kvasir advises; equipping a piece or changing a goal stays
+with the player.
+
+**An answer is kept next to the fact sheet that produced it**, keyed on a hash
+of that sheet. That is a cache — an account that has not changed is not
+re-asked, which matters when the endpoint is a local model on the household's
+own machine — but the reason it is stored rather than memoised is the evidence.
+Every page offers "what was Kvasir told?", and an opinion whose input has been
+thrown away cannot be checked. Change a goal or equip a piece and the hash
+moves, so a stale opinion can never sit next to numbers it was not talking
+about. It is the same instinct as seeding the farm simulator: "why did this
+change?" deserves an answer.
+
+The endpoint is any OpenAI-compatible one — LM Studio, Ollama, vLLM, or a
+hosted API — so the operator decides where a household's game account is
+allowed to go. Unset, and none of this exists: no card, no page, no request.
 
 ## The beacon
 

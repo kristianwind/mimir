@@ -318,6 +318,32 @@ CREATE TABLE IF NOT EXISTS guide_chunks (
 );
 CREATE INDEX IF NOT EXISTS idx_chunks_guide ON guide_chunks(guide_id);
 
+-- ---------------------------------------------------------------- kvasir
+
+-- What the AI layer said, and the fact sheet it was given.
+--
+-- Keyed on a hash of the facts rather than on time: an account that has not
+-- changed gets the answer it already got, in the language it was asked in.
+-- That is a cache, but the reason it is a table and not a map is the brief
+-- column — an opinion whose evidence has been thrown away cannot be checked
+-- afterwards, and every other number in Mimir can be traced to where it came
+-- from. Change a goal or equip a piece and the hash moves, so a stale opinion
+-- can never be shown next to numbers it was not talking about.
+CREATE TABLE IF NOT EXISTS kvasir_opinions (
+	id         INTEGER PRIMARY KEY AUTOINCREMENT,
+	account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+	surface    TEXT NOT NULL,
+	subject    TEXT NOT NULL DEFAULT '',
+	lang       TEXT NOT NULL DEFAULT 'en',
+	facts_hash TEXT NOT NULL,
+	model      TEXT NOT NULL DEFAULT '',
+	body       TEXT NOT NULL,
+	brief      TEXT NOT NULL DEFAULT '',
+	created_at TEXT NOT NULL DEFAULT (datetime('now')),
+	UNIQUE(account_id, surface, subject, lang, facts_hash)
+);
+CREATE INDEX IF NOT EXISTS idx_kvasir_account ON kvasir_opinions(account_id, surface);
+
 -- ---------------------------------------------------------------- settings
 
 -- Instance-wide settings: the beacon's opt-out and anonymous id, the

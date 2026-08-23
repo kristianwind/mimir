@@ -1,12 +1,18 @@
 <script>
   import { api } from './api.js'
   import { t } from './lang.svelte.js'
+  import Kvasir from './Kvasir.svelte'
 
   let { account } = $props()
 
   let characters = $state([])
   let error = $state('')
   let loading = $state(true)
+
+  // One build at a time, and only when asked. The roster card above is worth
+  // fetching on sight; twenty build opinions nobody asked for is a local
+  // model chewing through an afternoon.
+  let asking = $state(null)
 
   $effect(() => {
     const id = account.id
@@ -28,6 +34,8 @@
     <p class="text-muted">{t('No characters yet. Fetch from Enka or upload a .good file.')}</p>
   </div>
 {:else}
+  <Kvasir {account} surface="roster" />
+
   <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
     {#each characters as character (character.id)}
       <article class="card p-4">
@@ -50,6 +58,19 @@
             <dd class="text-sm font-medium">{character.talentBurst}</dd>
           </div>
         </dl>
+
+        <button
+          type="button"
+          class="btn-ghost mt-3 w-full text-xs"
+          onclick={() => (asking = asking === character.key ? null : character.key)}
+        >
+          {asking === character.key ? t('Hide Kvasir') : t('What does Kvasir think of this build?')}
+        </button>
+        {#if asking === character.key}
+          <div class="mt-3">
+            <Kvasir {account} surface="character" subject={character.key} compact />
+          </div>
+        {/if}
       </article>
     {/each}
   </div>

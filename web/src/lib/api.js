@@ -72,6 +72,14 @@ export const api = {
 
   gamedata: () => request('GET', '/gamedata'),
 
+  // Kvasir, the AI layer. Optional: the status endpoint answers
+  // {enabled:false} when no model is configured, and the UI leaves the whole
+  // feature out rather than showing cards that can only apologise.
+  kvasirStatus: () => request('GET', '/kvasir'),
+  kvasirCheck: () => request('POST', '/system/kvasir/check'),
+  kvasirOpinion: (id, body) => request('POST', `/accounts/${id}/kvasir/opinion`, body),
+  kvasirChat: (id, body) => request('POST', `/accounts/${id}/kvasir/chat`, body),
+
   system: () => request('GET', '/system'),
   checkUpdate: () => request('POST', '/system/update/check'),
   applyUpdate: () => request('POST', '/system/update'),

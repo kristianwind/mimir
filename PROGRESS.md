@@ -92,6 +92,44 @@ herunder er det der gør den mere præcis, ikke det der får den til at virke.
       sættes op udelukkende i browseren. `docker exec` var det sidste der
       krævede SSH til værten
 
+### AI-laget: Kvasir
+- [x] **Kvasir på hver side** — planen, målene, et enkelt mål, en enkelt
+      build, rosteren og inventaret. Ét spørgsmål: hvordan bliver du bedre.
+      Plus en samtale til spørgsmålet efter det
+- [x] **Faktaark frem for database** — hver side har én funktion, der kører
+      beregningskernen og skriver resultatet ned. Det ark er alt, modellen
+      ved om kontoen. Der er ingen vej fra en prompt til et tal
+- [x] **Talkontrollen** — hvert tal i svaret tjekkes mod arket. Samme regel
+      som effekt-laget: en påstand loader kun, hvis tallene står i det, den
+      citerer. Læser både dansk decimalkomma og engelsk punktum, tillader
+      afrunding men ikke opfundet præcision, og fritager heltal til ti,
+      fordi det at tælle ikke er at regne
+- [x] **Et punkt med et ukildet tal slettes** — men først får modellen at
+      vide præcis hvilke tal, der ikke kunne kildes, og ét forsøg mere. Og
+      det, der blev slettet, står på siden. Et stille redigeret svar er ikke
+      et svar, læseren kan veje. Overlever intet to gange i træk, vises
+      ingenting
+- [x] **I samtalen markeres tallet i stedet** — en sætning klippet ud af et
+      afsnit efterlader et argument uden midte, så svaret står, og tallene
+      får en advarsel med sig
+- [x] **Otte læse-kald mod beregningskernen** — planen, en build, en
+      talenttabel, rosteren, målene, inventaret, drop-modellen. Modellen
+      vælger hvad den kigger på, og svaret siger hvad den slog op. Den kan
+      vælge hvilken beregning der køres, og stadig ikke producere et tal
+      uden at køre en
+- [x] **"Hvad fik Kvasir at vide?"** — hele faktaarket, ordret, på hver side.
+      Svaret gemmes sammen med det ark, det kom af, nøglet på arkets hash:
+      en uændret konto bliver ikke spurgt igen, og et gammelt svar kan ikke
+      stå ved siden af tal, det ikke handlede om
+- [x] **Faktaarket skrives på læserens sprog** — bevismateriale, man ikke kan
+      læse, er ikke bevismateriale. To ordbogstests holder begge sprog
+      komplette, som resten af produktet
+- [x] **Valgfrit hele vejen ned** — uden `MIMIR_LLM_BASE_URL` findes laget
+      ikke: intet kort, ingen side, ingen forespørgsel. Endepunktet er et
+      hvilket som helst OpenAI-kompatibelt, så operatøren bestemmer, hvor
+      husstandens spilkonto må havne. Og System-siden prober endepunktet
+      frem for at tro på det
+
 ### Brugerstyring
 - [x] **Førstegangs-flow** — loginsiden opretter den første administrator når
       instansen er tom, og vinduet lukker sig selv i samme øjeblik den
@@ -104,7 +142,7 @@ herunder er det der gør den mere præcis, ikke det der får den til at virke.
       sin egen kræver den nuværende
 
 ### Frontend
-- [x] Svelte 5 + Tailwind, 25 KB gzipped
+- [x] Svelte 5 + Tailwind, 42 KB gzipped (37 KB uden Kvasir)
 - [x] **Temavælger** — de syv elementer × lys/mørk/system, uden blink
 - [x] Login, konti, UID-input, Enka-hentning, .good-upload
 - [x] Karakter- og artifact-visning
@@ -118,6 +156,8 @@ herunder er det der gør den mere præcis, ikke det der får den til at virke.
       sprog forespørgslen beder om, og to tests holder de to ordbøger
       komplette — en manglende oversættelse fejler ikke ved kørsel, den
       viser bare engelsk midt i en dansk side
+- [x] **Kvasir-kort** på plan, mål, karakterer og artifacts, og en
+      Kvasir-side til samtalen. Alt sammen usynligt, når laget er slået fra
 - [x] PWA-manifest
 
 ### Udrulning
@@ -163,10 +203,11 @@ Resin-budget over 14 dage med domænerotation og ugentlige bosser. Push via
 PWA + ntfy. Ugentlig rapport. Banner-bevidsthed. HoYoLAB-klienten og
 `resin_snapshots` er der; planlæggeren mangler.
 
-### 7. AI-laget
-Værktøjskald mod beregningskernen, RAG over karakterguides i `guides`-
-tabellen, naturligt sprog ind ("byg mit bedste Hyperbloom-hold").
-Sprogmodellen regner aldrig selv.
+### 7. RAG over karakterguides
+`guides`-tabellen og dens chunk-tabel står tomme: der er ingen indlæsning
+endnu, så Kvasir svarer udelukkende ud fra beregningskernens egne tal. Det
+er den ærlige rækkefølge — et guide-korpus er en kilde mere at citere, ikke
+en forudsætning for at have en mening om egne tal.
 
 ### 8. Træningsmodulet
 Quiz på reaktionsformler, rotationstiming, ER-krav.

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Config is the runtime configuration. Every field has an environment
@@ -45,6 +46,11 @@ type Config struct {
 	LLMBaseURL string
 	LLMModel   string
 	LLMAPIKey  string
+	// LLMTimeout bounds one call to the endpoint. The default sits inside
+	// the server's own write timeout on purpose: an answer that arrives
+	// after the browser's connection has been closed costs the same tokens
+	// as one that arrives in time, and tells nobody anything.
+	LLMTimeout time.Duration
 }
 
 // Load reads configuration from the environment, applying defaults.
@@ -62,6 +68,7 @@ func Load() (*Config, error) {
 		LLMBaseURL:        env("MIMIR_LLM_BASE_URL", ""),
 		LLMModel:          env("MIMIR_LLM_MODEL", ""),
 		LLMAPIKey:         env("MIMIR_LLM_API_KEY", ""),
+		LLMTimeout:        time.Duration(envInt("MIMIR_LLM_TIMEOUT", 90)) * time.Second,
 	}
 
 	if err := os.MkdirAll(c.DataDir, 0o750); err != nil {
@@ -114,6 +121,14 @@ func env(key, def string) string {
 		return v
 	}
 	return def
+}
+
+func envInt(key string, def int) int {
+	v, err := strconv.Atoi(os.Getenv(key))
+	if err != nil || v <= 0 {
+		return def
+	}
+	return v
 }
 
 func envBool(key string, def bool) bool {

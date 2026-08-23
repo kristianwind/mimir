@@ -21,6 +21,7 @@ import (
 	"github.com/kristianwind/mimir/internal/enka"
 	"github.com/kristianwind/mimir/internal/gamedata"
 	"github.com/kristianwind/mimir/internal/i18n"
+	"github.com/kristianwind/mimir/internal/kvasir"
 	"github.com/kristianwind/mimir/internal/selfupdate"
 )
 
@@ -45,6 +46,10 @@ type Server struct {
 	Updater *selfupdate.Updater
 	// Mine is the game data sync job. One at a time.
 	Mine *MineJob
+	// Kvasir is the AI layer. Nil, or configured with no endpoint, and every
+	// other part of Mimir behaves exactly as it does now — no number in the
+	// product comes from a model.
+	Kvasir *kvasir.Advisor
 	// Shutdown asks the process to exit so a supervisor restarts it. The
 	// updater needs it: replacing the binary does nothing until the old
 	// process leaves.
@@ -91,6 +96,7 @@ func (s *Server) Router() http.Handler {
 			})
 
 			r.Get("/gamedata", s.handleGameDataStatus)
+			r.Get("/kvasir", s.handleKvasirStatus)
 
 			r.Route("/system", func(r chi.Router) {
 				r.Get("/", s.handleSystemStatus)
@@ -100,6 +106,7 @@ func (s *Server) Router() http.Handler {
 				r.Put("/beacon", s.handleSetBeacon)
 				r.Get("/gamedata/mine", s.handleMineStatus)
 				r.Post("/gamedata/mine", s.handleStartMine)
+				r.Post("/kvasir/check", s.handleKvasirCheck)
 				r.Get("/beacon/receiver", s.handleReceiverStats)
 				r.Put("/beacon/receiver", s.handleSetReceiver)
 			})
@@ -127,6 +134,13 @@ func (s *Server) Router() http.Handler {
 					r.Get("/dropmodel", s.handleDropModel)
 					r.Get("/plan", s.handleAccountPlan)
 					r.Get("/plan/{characterKey}", s.handlePlanForGoal)
+
+					// The AI layer. Every other route above answers with a
+					// number the engine produced; these two answer with
+					// sentences about those numbers, and never with a
+					// number of their own.
+					r.Post("/kvasir/opinion", s.handleKvasirOpinion)
+					r.Post("/kvasir/chat", s.handleKvasirChat)
 				})
 			})
 		})

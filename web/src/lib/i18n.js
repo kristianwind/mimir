@@ -245,6 +245,55 @@ const da = {
 
   // ── Loading ─────────────────────────────────────────────────────────────
   'Loading…': 'Henter…',
+
+  // ── Kvasir, the AI layer ───────────────────────────────────────────────
+  //
+  // The name itself is here rather than exempted: it is a proper noun and the
+  // same word in both languages, and an entry that says so is easier to trust
+  // than a rule in a test that says some strings do not need translating.
+  Kvasir: 'Kvasir',
+  'Kvasir’s opinion': 'Kvasirs mening',
+  'Ask how to get better': 'Spørg hvordan du bliver bedre',
+  'Kvasir is reading the numbers…': 'Kvasir læser tallene…',
+  'unchanged since last time': 'uændret siden sidst',
+  'Ask again': 'Spørg igen',
+  'What was Kvasir told?': 'Hvad fik Kvasir at vide?',
+  'Hide the facts': 'Skjul fakta',
+  'What Kvasir would need to know': 'Hvad Kvasir mangler at vide',
+  '{n} things Kvasir said were removed: they contained figures that are nowhere in the calculation.':
+    '{n} ting Kvasir sagde blev fjernet: de indeholdt tal, der ikke står nogen steder i beregningen.',
+  'This is everything Kvasir was given. It is the engine’s own output, and every figure in the answer had to appear in it.':
+    'Det her er alt, Kvasir fik. Det er beregningskernens eget output, og hvert tal i svaret skulle stå i det.',
+  'Answered by {model}': 'Svaret af {model}',
+  'Hide Kvasir': 'Skjul Kvasir',
+  'What does Kvasir think of this build?': 'Hvad mener Kvasir om den her build?',
+
+  // ── Kvasir: the conversation ───────────────────────────────────────────
+  'Kvasir is not switched on.': 'Kvasir er ikke slået til.',
+  'Point MIMIR_LLM_BASE_URL at an OpenAI-compatible endpoint — LM Studio, Ollama, vLLM — and Kvasir appears on every page. Nothing else in Mimir depends on it: no number here comes from a language model.':
+    'Peg MIMIR_LLM_BASE_URL på et OpenAI-kompatibelt endepunkt — LM Studio, Ollama, vLLM — så dukker Kvasir op på hver side. Intet andet i Mimir afhænger af den: ingen tal her kommer fra en sprogmodel.',
+  'Kvasir reads what the engine calculated for this account and answers questions about it. It looks things up rather than remembering them, and every figure it uses has to come from a calculation — so it will tell you when it cannot answer.':
+    'Kvasir læser, hvad beregningskernen har regnet ud for kontoen, og svarer på spørgsmål om det. Den slår op frem for at huske, og hvert tal den bruger skal komme fra en beregning — så den siger til, når den ikke kan svare.',
+  'What should I spend tomorrow’s resin on?': 'Hvad skal jeg bruge morgendagens resin på?',
+  'Which of my characters is furthest from their potential?':
+    'Hvem af mine karakterer er længst fra sit potentiale?',
+  'What am I farming that is not worth the resin?': 'Hvad farmer jeg, som ikke er resinet værd?',
+  You: 'Dig',
+  'Looked up: {tools}': 'Slog op: {tools}',
+  'Do not trust these figures — no calculation produced them: {numbers}':
+    'Stol ikke på de her tal — ingen beregning har produceret dem: {numbers}',
+  'Ask about your account…': 'Spørg om din konto…',
+  Ask: 'Spørg',
+
+  // ── Kvasir on the System page ──────────────────────────────────────────
+  'The AI layer explains what the engine calculated and answers questions about it. It never calculates: every figure it writes is checked back against the numbers it was given, and one that is not there is removed before you see it.':
+    'AI-laget forklarer, hvad beregningskernen har regnet ud, og svarer på spørgsmål om det. Den regner aldrig selv: hvert tal den skriver bliver tjekket mod de tal, den fik, og et der ikke står der bliver fjernet, før du ser det.',
+  'Model: {name}': 'Model: {name}',
+  'whatever the endpoint serves': 'hvad endepunktet nu serverer',
+  'Check the endpoint': 'Tjek endepunktet',
+  '{endpoint} answered, and serves {n} models.': '{endpoint} svarede og serverer {n} modeller.',
+  'Set MIMIR_LLM_BASE_URL to an OpenAI-compatible endpoint — LM Studio, Ollama, vLLM — and restart. Leave it blank and every other part of Mimir works exactly as it does now.':
+    'Sæt MIMIR_LLM_BASE_URL til et OpenAI-kompatibelt endepunkt — LM Studio, Ollama, vLLM — og genstart. Lad den stå tom, og alt andet i Mimir virker præcis som nu.',
 }
 
 export const dictionaries = { da, en: {} }

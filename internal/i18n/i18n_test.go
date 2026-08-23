@@ -72,6 +72,19 @@ func TestSourcesAreNotEmpty(t *testing.T) {
 var allowedIdentical = map[string]bool{
 	"elemental skill": true,
 	"elemental burst": true,
+	// Same in both languages: resin is resin, a rotation is a rotation, and
+	// the game gives an account's two ranks these names in every locale it
+	// ships. Translating them would be inventing Danish the player has never
+	// seen in the game.
+	"%s resin":                           true,
+	"Rotation: %s":                       true,
+	"Adventure rank %d, world level %d.": true,
+	// Kvasir's fact sheet describes an artifact as the rest of the product
+	// does: "main stat" and "crit value" are what every Genshin tool prints
+	// and what the Danish table already writes untranslated elsewhere. The
+	// lines around them are item data, so nothing else in them moves.
+	"%s %s +%d, main stat %s%s":                true,
+	"%s %s +%d, main stat %s, crit value %s%s": true,
 }
 
 func TestFallsBackToTheSource(t *testing.T) {

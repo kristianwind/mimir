@@ -1,6 +1,7 @@
 <script>
   import { api } from './api.js'
   import { t } from './lang.svelte.js'
+  import Kvasir from './Kvasir.svelte'
 
   let { account } = $props()
 
@@ -47,6 +48,10 @@
     return `${sub.key.replace(/_$/, '')} +${value}`
   }
 </script>
+
+{#if artifacts.length}
+  <Kvasir {account} surface="artifacts" />
+{/if}
 
 <div class="mb-4 flex flex-wrap items-center gap-2">
   <button type="button" class="chip {slot === '' ? 'border-accent text-ink' : ''}" onclick={() => (slot = '')}>

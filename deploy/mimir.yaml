@@ -4,7 +4,7 @@ gameskill:
   category: "Apps"
   description: "Genshin Impact build advisor: Enka/GOOD/HoYoLAB import, artifact optimizer and a resin plan ranked by damage per resin"
   author: "kristianwind"
-  version: 4
+  version: 5
   icon: "app"
 
   docker:
@@ -67,26 +67,34 @@ gameskill:
       default: false
       hint: "Off by default: this is a personal instance, not a public service"
 
-    # The AI layer is optional and additive. It explains the engine's numbers
-    # and answers questions against the guide corpus; it never computes a
-    # number itself, so leaving these blank costs no functionality beyond the
-    # explanations.
+    # Kvasir, the AI layer. Optional and additive: it explains what the engine
+    # calculated and answers questions about it, and every figure it writes is
+    # checked back against the numbers it was given. It never computes one, so
+    # leaving these blank removes the advice and nothing else — no card, no
+    # page, no request.
     - key: MIMIR_LLM_BASE_URL
       name: "LLM endpoint (OpenAI-compatible)"
       type: string
       default: ""
-      hint: "e.g. http://100.124.14.128:1234/v1 for LM Studio. Blank disables the AI layer."
+      hint: "e.g. http://100.124.14.128:1234/v1 for LM Studio. Blank switches Kvasir off. Note that a container cannot reach the host's 127.0.0.1 — use the machine's LAN or tailscale address."
 
     - key: MIMIR_LLM_MODEL
       name: "LLM model"
       type: string
       default: ""
+      hint: "Blank serves whatever the endpoint defaults to"
 
     - key: MIMIR_LLM_API_KEY
       name: "LLM API key"
       type: string
       default: ""
       secret: true
+
+    - key: MIMIR_LLM_TIMEOUT
+      name: "LLM timeout (seconds)"
+      type: string
+      default: "90"
+      hint: "How long one call to the model may take. Kept under the server's own two-minute write timeout, so a slow answer times out with a message rather than arriving after the browser gave up."
 
     # The beacon is off until it is switched on in Mimir's own System page,
     # and there is deliberately no default collector — a beacon that does not

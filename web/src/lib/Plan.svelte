@@ -1,6 +1,7 @@
 <script>
   import { api } from './api.js'
   import { t } from './lang.svelte.js'
+  import Kvasir from './Kvasir.svelte'
 
   let { account, ongotogoals } = $props()
 
@@ -63,6 +64,8 @@
     {#if error.hint}<p class="mt-2 text-sm text-muted">{error.hint}</p>{/if}
   </div>
 {:else if plan}
+  <Kvasir {account} surface="plan" />
+
   {#if goals.length > 1}
     <div class="mb-5 flex flex-wrap gap-2">
       <button type="button" class="chip {filter === '' ? 'border-accent text-ink' : ''}" onclick={() => (filter = '')}>

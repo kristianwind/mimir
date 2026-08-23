@@ -1,6 +1,7 @@
 <script>
   import { api } from './api.js'
   import { t } from './lang.svelte.js'
+  import Kvasir from './Kvasir.svelte'
 
   let { account } = $props()
 
@@ -151,6 +152,12 @@
       )}
     </p>
 
+    <!-- Only for a goal that already exists: there is nothing to have an
+         opinion about until the rotation has been saved once. -->
+    {#if goals.some((g) => g.characterKey === editing)}
+      <Kvasir {account} surface="goal" subject={editing} compact />
+    {/if}
+
     {#if !talents}
       <p class="text-sm text-muted">{t('Fetching talent table…')}</p>
     {:else}
@@ -254,6 +261,9 @@
   </div>
 {:else}
   <div class="space-y-6">
+    {#if goals.length}
+      <Kvasir {account} surface="goals" />
+    {/if}
     {#if goals.length}
       <div class="space-y-3">
         {#each goals as goal (goal.characterKey)}

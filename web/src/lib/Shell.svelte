@@ -7,6 +7,8 @@
   import Artifacts from './Artifacts.svelte'
   import Plan from './Plan.svelte'
   import Goals from './Goals.svelte'
+  import KvasirChat from './KvasirChat.svelte'
+  import { kvasirStatus } from './Kvasir.svelte'
   import System from './System.svelte'
   import Users from './Users.svelte'
 
@@ -15,8 +17,9 @@
 
   // Held in the source language and translated at render, so switching
   // language re-labels the nav without rebuilding the list.
-  const NAV = [
+  const PAGES = [
     { key: 'plan', label: 'Plan', icon: '◎', hint: 'What should you spend resin on?' },
+    { key: 'kvasir', label: 'Kvasir', icon: '🜛', hint: 'Ask how to get better', ai: true },
     { key: 'goals', label: 'Goals', icon: '⌖', hint: 'Who are you building, and how do you play them?' },
     { key: 'characters', label: 'Characters', icon: '☗', hint: 'Your roster' },
     { key: 'artifacts', label: 'Artifacts', icon: '✦', hint: 'The whole inventory' },
@@ -24,6 +27,13 @@
     { key: 'system', label: 'System', icon: '⚙', hint: 'Version, updates and beacon' },
     { key: 'users', label: 'Users', icon: '☺', hint: 'Accounts, roles and passwords' },
   ]
+
+  // The AI layer is optional, so its page only exists when a model does.
+  // Everything else on this list works whether or not one is configured.
+  let ai = $state(false)
+  kvasirStatus().then((s) => (ai = !!s?.enabled))
+
+  const NAV = $derived(PAGES.filter((item) => !item.ai || ai))
 
   let view = $state('plan')
   let accounts = $state([])
@@ -130,6 +140,8 @@
       <Artifacts account={selected} />
     {:else if view === 'goals'}
       <Goals account={selected} />
+    {:else if view === 'kvasir'}
+      <KvasirChat account={selected} />
     {:else}
       <Plan account={selected} ongotogoals={() => (view = 'goals')} />
     {/if}

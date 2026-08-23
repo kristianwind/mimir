@@ -49,6 +49,42 @@ genshin-db. Den oplagte vej — TextMap — virker ikke: hashene i det aktuelle
 mirror resolver nul ud af 165 karakternavne. [docs/GAMEDATA.md](docs/GAMEDATA.md)
 forklarer hvorfor, og hvad der gøres i stedet.
 
+## Kvasirs mening
+
+Planen er rangeret, men den er tavs. Den siger at Emblem er +34,53 % og at
+det koster Xiangling hendes sæt; den siger ikke om du skal gøre det, hvad der
+egentlig holder kontoen tilbage, eller hvad du har glemt at fortælle Mimir.
+
+Det gør Kvasir. Han sidder på hver side — planen, målene, karaktererne,
+artifacts — og svarer på ét spørgsmål: hvordan bliver du bedre. Og der er en
+samtale til spørgsmålet efter det.
+
+Det svære er ikke at få en model til at skrive råd. Det er at gøre rådet
+værd at stole på, når det står ved siden af tal, der er regnet ud. Så reglen
+— **sprogmodellen regner aldrig selv** — er ikke en bøn i en prompt. Den er
+håndhævet to steder:
+
+1. **Kvasir får et faktaark, ikke en database.** Hver side har én funktion der
+   kører beregningskernen og skriver ned hvad der kom tilbage. Det ark er alt,
+   hvad modellen ved om kontoen. Der er ingen vej fra en prompt til et tal.
+2. **Hvert tal i svaret tjekkes mod arket.** Præcis som en effekt-regel kun
+   loader, hvis dens tal står i den spiltekst den citerer. Et punkt med et tal,
+   ingen har regnet ud, bliver slettet før du ser det — og du får at vide, at
+   det blev slettet, og hvilket tal der var tale om.
+
+Hver side har et *Hvad fik Kvasir at vide?* — hele faktaarket, ordret. Et svar
+hvis grundlag er smidt væk, kan ikke efterprøves.
+
+Samtalen er det ene sted, modellen selv vælger hvad den kigger på: den kan
+kalde beregningskernen — planen, en build, en talenttabel, inventaret — og
+svaret siger hvad den slog op. Alle otte kald er læse-kald. Kvasir rådgiver;
+at udstyre et stykke eller ændre et mål er dit.
+
+Alt det her er valgfrit. `MIMIR_LLM_BASE_URL` peger på et OpenAI-kompatibelt
+endepunkt — LM Studio, Ollama, vLLM eller en hostet API — så du bestemmer,
+hvor husstandens spilkonto må havne. Står den tom, findes laget ikke: intet
+kort, ingen side, ingen forespørgsel, og alt andet virker som før.
+
 ## Kom i gang
 
 ```bash
@@ -91,7 +127,8 @@ Se [ARCHITECTURE.md](ARCHITECTURE.md). De tre regler der styrer alt andet:
    version er en datasynkronisering, ikke en kodeændring.
 2. **Sprogmodellen regner aldrig selv.** Den kalder beregningskernen som
    værktøj og forklarer resultatet. Ellers hallucinerer den multipliers, og så
-   er hele produktets troværdighed væk.
+   er hele produktets troværdighed væk. Reglen er håndhævet, ikke lovet: hvert
+   tal Kvasir skriver tjekkes mod det faktaark, beregningskernen gav ham.
 3. **Et tal Mimir ikke kan kilde, findes ikke.** Manglende reaktions-
    koefficienter giver en fejl der siger hvad der mangler, ikke et
    sandsynligt gæt. Farming uden en målt drop-rate rangeres i stykker frem

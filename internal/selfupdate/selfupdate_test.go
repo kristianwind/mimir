@@ -163,6 +163,15 @@ func TestCheckRefusesWhenTheBinaryIsNotWritable(t *testing.T) {
 	srv := fakeRelease(t, "v1.0.0", []byte("binary"), true)
 	u := newUpdater(t, "v0.9.0", srv)
 
+	// Root ignores the mode bits, and the updater's probe is a real write
+	// rather than a permission calculation — so as root the binary genuinely
+	// can be replaced and there is nothing here to refuse. Both CI runners
+	// execute as uid 0, where this test was failing on every commit and
+	// saying nothing about the code.
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: a read-only directory does not stop uid 0")
+	}
+
 	dir := t.TempDir()
 	exe := filepath.Join(dir, "mimir")
 	os.WriteFile(exe, []byte("old"), 0o755)

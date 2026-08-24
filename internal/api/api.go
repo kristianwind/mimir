@@ -98,6 +98,11 @@ func (s *Server) Router() http.Handler {
 			r.Get("/gamedata", s.handleGameDataStatus)
 			r.Get("/kvasir", s.handleKvasirStatus)
 
+			// The game's own character art, fetched once and kept. Behind
+			// the session like everything else: which characters an instance
+			// asks for is a fact about its household.
+			r.Get("/art/{characterKey}", s.handleCharacterArt)
+
 			r.Route("/system", func(r chi.Router) {
 				r.Get("/", s.handleSystemStatus)
 				r.Post("/update/check", s.handleCheckUpdate)

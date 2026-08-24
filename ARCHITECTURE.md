@@ -393,6 +393,22 @@ identical payload and still consume rate limit. Mimir caches on that TTL, and
 degrades to labelled stale data on a rate limit or outage rather than showing
 an empty page — the player's build did not change in the meantime.
 
+**Character art is cached, not hot-linked.** The roster shows the game's own
+namecard banner behind each card, and those pictures come from Enka. They are
+fetched once and kept in the data directory rather than pointed at from the
+browser, for three reasons in descending order of importance: a page that loads
+eight images from a third party tells that third party which characters this
+household plays, and this is a product with no telemetry in it; Enka is a
+volunteer service that already provides the data, and serving art off their
+bandwidth on every page view is not how to treat that; and a cached picture
+survives their downtime.
+
+The only input is a character key, checked against the active snapshot before
+anything is fetched, and the URL is then built from mined data — so it is a
+cache with a fixed source rather than a proxy. A character with no picture is
+remembered as such, or a Traveler would cost three requests on every page view
+forever.
+
 HoYoLAB is an unofficial API. It requires the user to enable Real-Time Notes
 themselves, and its cookies are full account credentials. It is opt-in, it is
 never required, and nothing else depends on it.

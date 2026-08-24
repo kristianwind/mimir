@@ -95,6 +95,11 @@ type Character struct {
 	Element    model.Element `json:"element"`
 	WeaponType string        `json:"weaponType"`
 	Rarity     int           `json:"rarity"`
+	// Art is the suffix the game's own image names are built from —
+	// "Shougun" for the Raiden Shogun. It is not a URL and not a file: the
+	// server turns it into one when a page asks for the picture, so the
+	// snapshot stays a description of the game rather than of a CDN.
+	Art string `json:"art,omitempty"`
 	// BaseHP/ATK/DEF are the level-1 values; the ascension curve below
 	// expands them to any level/ascension pair.
 	BaseHP  float64 `json:"baseHp"`

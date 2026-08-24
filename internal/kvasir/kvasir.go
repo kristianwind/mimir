@@ -50,6 +50,13 @@ var ErrNoFacts = errors.New("kvasir: there is nothing calculated to have an opin
 // fabricated figure in it is worse than no sentence.
 var ErrUnsourced = errors.New("kvasir: the answer used numbers that are not in the calculation")
 
+// ErrBudget means the model spent its whole token budget before writing an
+// answer. On a reasoning model that is the normal way to fail: the chain of
+// thought is charged to the same budget, so a limit sized for the answer never
+// reaches it. Distinct from every other failure because the fix is a setting,
+// not a different model or a better prompt.
+var ErrBudget = errors.New("kvasir: the model ran out of tokens before it answered")
+
 // Opinion is what Kvasir says.
 type Opinion struct {
 	// Verdict is the one thing that matters most right now.
@@ -134,6 +141,10 @@ func (a *Advisor) Advise(ctx context.Context, brief *Brief) (Result, error) {
 		out.Model = a.Client.Model
 		out.Usage = reply.Usage
 
+		if strings.TrimSpace(reply.Message.Content) == "" && reply.FinishReason == "length" {
+			return out, ErrBudget
+		}
+
 		opinion, err := parseOpinion(reply.Message.Content)
 		if err != nil {
 			if attempt == 2 {
@@ -169,11 +180,19 @@ func (a *Advisor) Advise(ctx context.Context, brief *Brief) (Result, error) {
 	return out, ErrUnsourced
 }
 
+// DefaultMaxTokens bounds one answer.
+//
+// Generous on purpose. A reasoning model's thinking is charged to this budget
+// before a word of the answer is written, so a limit sized for four bullet
+// points produces an empty reply and a confusing error. Costing a few thousand
+// tokens of headroom is the cheaper mistake.
+const DefaultMaxTokens = 4000
+
 func (a *Advisor) maxTokens() int {
 	if a.MaxTokens > 0 {
 		return a.MaxTokens
 	}
-	return 1200
+	return DefaultMaxTokens
 }
 
 // verify strips the parts of an opinion that quote unsourced numbers.

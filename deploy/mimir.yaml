@@ -89,6 +89,12 @@ gameskill:
       default: ""
       secret: true
 
+    - key: MIMIR_LLM_MAX_TOKENS
+      name: "LLM answer budget (tokens)"
+      type: string
+      default: "4000"
+      hint: "A model that reasons before answering charges its thinking to this budget before writing a word, so keep it well above the length of the answer itself. Too low looks like an empty reply."
+
     - key: MIMIR_LLM_TIMEOUT
       name: "LLM timeout (seconds)"
       type: string

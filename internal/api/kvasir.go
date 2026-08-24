@@ -241,6 +241,10 @@ func (s *Server) writeKvasirError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusUnprocessableEntity,
 			"there is nothing calculated to have an opinion about",
 			"Import an account and set up a goal, and the engine has something to hand over.")
+	case errors.Is(err, kvasir.ErrBudget):
+		writeError(w, http.StatusUnprocessableEntity,
+			"the model ran out of tokens before it answered",
+			"Raise MIMIR_LLM_MAX_TOKENS. A model that reasons before answering spends this budget on its thinking first, so it has to be well above the length of the answer you want.")
 	case errors.Is(err, kvasir.ErrUnsourced):
 		writeError(w, http.StatusUnprocessableEntity,
 			"Kvasir used numbers that are not in the calculation, twice in a row",

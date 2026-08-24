@@ -106,6 +106,14 @@ type Reply struct {
 	Usage Usage
 	// FinishReason distinguishes a complete answer from one the token budget
 	// cut off, which is the difference between an opinion and half of one.
+	//
+	// "length" deserves special handling by the caller. A reasoning model
+	// writes its chain of thought into a separate field — reasoning_content,
+	// which Mimir neither reads nor needs — but charges those tokens to the
+	// same budget. A limit sized for the answer therefore runs out before the
+	// answer begins, and what comes back is a perfectly well-formed reply with
+	// an empty content. Reported as "the model said nothing", that sends
+	// whoever is debugging it in exactly the wrong direction.
 	FinishReason string
 }
 

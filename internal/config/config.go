@@ -46,6 +46,10 @@ type Config struct {
 	LLMBaseURL string
 	LLMModel   string
 	LLMAPIKey  string
+	// LLMMaxTokens bounds one answer. A reasoning model spends this budget on
+	// its chain of thought before it writes anything, so the default is
+	// generous — see kvasir.DefaultMaxTokens.
+	LLMMaxTokens int
 	// LLMTimeout bounds one call to the endpoint. The default sits inside
 	// the server's own write timeout on purpose: an answer that arrives
 	// after the browser's connection has been closed costs the same tokens
@@ -68,6 +72,7 @@ func Load() (*Config, error) {
 		LLMBaseURL:        env("MIMIR_LLM_BASE_URL", ""),
 		LLMModel:          env("MIMIR_LLM_MODEL", ""),
 		LLMAPIKey:         env("MIMIR_LLM_API_KEY", ""),
+		LLMMaxTokens:      envInt("MIMIR_LLM_MAX_TOKENS", 4000),
 		LLMTimeout:        time.Duration(envInt("MIMIR_LLM_TIMEOUT", 90)) * time.Second,
 	}
 

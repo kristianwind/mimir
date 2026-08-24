@@ -9,7 +9,6 @@ import (
 	"github.com/kristianwind/mimir/internal/calc"
 	"github.com/kristianwind/mimir/internal/effect"
 	"github.com/kristianwind/mimir/internal/gamedata"
-	"github.com/kristianwind/mimir/internal/i18n"
 	"github.com/kristianwind/mimir/internal/model"
 	"github.com/kristianwind/mimir/internal/optimizer"
 )
@@ -38,9 +37,6 @@ type Request struct {
 	ResinPerDay float64
 	// Sim estimates artifact farming. Nil disables those candidates.
 	Sim *FarmSim
-	// Lang is the language the plan's prose is written in. The engine's
-	// numbers do not depend on it; only the sentences that explain them do.
-	Lang i18n.Lang
 }
 
 // BuildPlan generates and ranks every upgrade candidate for one goal.
@@ -74,7 +70,7 @@ func BuildPlan(ctx context.Context, req Request) (Plan, error) {
 		}
 	}
 	skip := func(format string, args ...any) {
-		plan.Skipped = append(plan.Skipped, i18n.T(req.Lang, format, args...))
+		plan.Skipped = append(plan.Skipped, fmt.Sprintf(format, args...))
 	}
 
 	if a, err := reequipCandidate(ctx, req, eval, base, baseline); err != nil {
@@ -198,7 +194,7 @@ func reequipCandidate(
 	action := Action{
 		Kind:     KindReequip,
 		Subject:  req.Goal.CharacterKey,
-		Headline: i18n.T(req.Lang, "Switch to %s on %s", res.BestConfig, req.Goal.CharacterKey),
+		Headline: fmt.Sprintf("Switch to %s on %s", res.BestConfig, req.Goal.CharacterKey),
 		GainPct:  gain,
 		Detail: map[string]any{
 			"config": res.BestConfig.String(),
@@ -206,7 +202,7 @@ func reequipCandidate(
 		},
 	}
 	if taken := takenFrom(res.Best.Pieces, req.Goal.CharacterKey); len(taken) > 0 {
-		action.Note = i18n.T(req.Lang, "Takes pieces from %s", joinNames(taken))
+		action.Note = fmt.Sprintf("Takes pieces from %s", joinNames(taken))
 		action.Detail["takenFrom"] = taken
 	}
 	return &action, nil
@@ -314,18 +310,18 @@ func talentCandidates(
 		action := Action{
 			Kind:     KindTalent,
 			Subject:  fmt.Sprintf("%s %s", req.Goal.CharacterKey, slot),
-			Headline: fmt.Sprintf("%s: %s %d → %d", req.Goal.CharacterKey, slotLabel(req.Lang, slot), level, level+1),
+			Headline: fmt.Sprintf("%s: %s %d → %d", req.Goal.CharacterKey, slotLabel(slot), level, level+1),
 			GainPct:  gain,
 			Detail:   map[string]any{"slot": slot, "from": level, "to": level + 1},
 		}
 		if cost, ok := costs["talent_domain"]; ok {
 			action.ResinCost = cost
 		} else {
-			action.BlockedBy = i18n.T(req.Lang, "the resin cost of talent domains is not synced")
+			action.BlockedBy = "the resin cost of talent domains is not synced"
 		}
 		// Level 10 needs a Crown of Insight, which is not farmable.
 		if level+1 == 10 {
-			action.BlockedBy = i18n.T(req.Lang, "requires a Crown of Insight")
+			action.BlockedBy = "requires a Crown of Insight"
 		}
 		out = append(out, action)
 	}
@@ -344,14 +340,14 @@ func withTalent(c model.Character, slot string, level int) model.Character {
 	return c
 }
 
-func slotLabel(lang i18n.Lang, slot string) string {
+func slotLabel(slot string) string {
 	switch slot {
 	case gamedata.TalentAuto:
-		return i18n.T(lang, "normal attack")
+		return "normal attack"
 	case gamedata.TalentSkill:
-		return i18n.T(lang, "elemental skill")
+		return "elemental skill"
 	case gamedata.TalentBurst:
-		return i18n.T(lang, "elemental burst")
+		return "elemental burst"
 	default:
 		return slot
 	}
@@ -418,7 +414,7 @@ func levelCandidate(
 		// ascension do, and those are priced once the material bills are
 		// mined. Reporting zero here would rank it above real work.
 		ResinCost: 0,
-		BlockedBy: i18n.T(req.Lang, "the resin cost of ascension materials is not synced"),
+		BlockedBy: "the resin cost of ascension materials is not synced",
 		Detail:    map[string]any{"from": current, "to": next, "ascension": ascension},
 	}, nil
 }
@@ -468,7 +464,7 @@ func weaponCandidates(
 			action := Action{
 				Kind:     KindWeapon,
 				Subject:  w.Key,
-				Headline: i18n.T(req.Lang, "Give %s the weapon %s (R%d)", req.Goal.CharacterKey, wd.Name, w.Refinement),
+				Headline: fmt.Sprintf("Give %s the weapon %s (R%d)", req.Goal.CharacterKey, wd.Name, w.Refinement),
 				GainPct:  gain,
 				Detail: map[string]any{
 					"weapon": w.Key, "refinement": w.Refinement,
@@ -479,7 +475,7 @@ func weaponCandidates(
 			// transfer. Saying so is the difference between advice you can
 			// act on and advice that quietly breaks another build.
 			if w.Location != "" {
-				action.Note = i18n.T(req.Lang, "Currently on %s", w.Location)
+				action.Note = fmt.Sprintf("Currently on %s", w.Location)
 			}
 			best = &action
 		}
@@ -500,11 +496,11 @@ const farmPieceHorizon = 100
 
 func farmCandidates(ctx context.Context, req Request, eval Evaluator, base State) ([]Action, string) {
 	if req.Sim == nil {
-		return nil, i18n.T(req.Lang, "artifact farming is not priced: the drop model is missing. "+
-			"Upload a .good file with your whole inventory, and it is measured on your own artifacts.")
+		return nil, "artifact farming is not priced: the drop model is missing. " +
+			"Upload a .good file with your whole inventory, and it is measured on your own artifacts."
 	}
 	if len(req.Snapshot.Domains) == 0 {
-		return nil, i18n.T(req.Lang, "artifact farming is not priced: the domains are not synced")
+		return nil, "artifact farming is not priced: the domains are not synced"
 	}
 	days := req.FarmDays
 	if days <= 0 {
@@ -557,7 +553,7 @@ func farmCandidates(ctx context.Context, req Request, eval Evaluator, base State
 		switch {
 		case err == nil:
 			est = e
-			action.Headline = i18n.T(req.Lang, "Farm %s for %d days", domain.Name, days)
+			action.Headline = fmt.Sprintf("Farm %s for %d days", domain.Name, days)
 			action.ResinCost = est.ResinCost
 		default:
 			// No measured per-run yield, so the plan ranks this domain in
@@ -569,9 +565,9 @@ func farmCandidates(ctx context.Context, req Request, eval Evaluator, base State
 				continue
 			}
 			est = e
-			action.Headline = i18n.T(req.Lang, "Farm %s (%d 5★ pieces)", domain.Name, farmPieceHorizon)
+			action.Headline = fmt.Sprintf("Farm %s (%d 5★ pieces)", domain.Name, farmPieceHorizon)
 			action.Unpriced = true
-			action.Note = i18n.T(req.Lang, "Priced in pieces, not resin: your drop rate is not measured.")
+			action.Note = "Priced in pieces, not resin: your drop rate is not measured."
 		}
 
 		action.GainPct = est.MeanGain

@@ -6,7 +6,7 @@
 |---|---|---|
 | Backend | Go, single static binary | Ships as a Yggdrasil rune; the calculation core is CPU-bound and benefits from real concurrency |
 | Database | SQLite via `modernc.org/sqlite` | Pure Go, no cgo, no separate service. A rune that needs Postgres is a rune nobody installs |
-| Frontend | Svelte 5 + Tailwind, built by Vite, `go:embed`ed | ~22 KB gzipped of JS; the theme system is CSS custom properties, so seven element themes cost nothing at runtime |
+| Frontend | Svelte 5 + Tailwind, built by Vite, `go:embed`ed | ~35 KB gzipped of JS; the theme system is CSS custom properties, so seven element themes cost nothing at runtime |
 | Vector search | float32 blobs + linear scan in Go | A few thousand guide chunks. pgvector would add a database server to save microseconds |
 | Container | Alpine, `CGO_ENABLED=0` | One file, no runtime dependencies |
 
@@ -314,9 +314,10 @@ number.
 **Every number in the answer is checked back against that fact sheet.** This is
 the same rule that makes the hand-written effect library safe — a claim only
 loads if its numbers are in the text it cites — pointed at a sentence instead
-of a set bonus. The check reads both a Danish decimal comma and an English
-decimal point, allows a figure to be rounded but not to gain precision it never
-had, and exempts integers up to ten, because counting is not calculating.
+of a set bonus. The check reads a decimal point and a decimal comma alike —
+models trained on European text write 34,53 whatever they are asked for —
+allows a figure to be rounded but not to gain precision it never had, and
+exempts integers up to ten, because counting is not calculating.
 
 What happens on a violation differs by shape, and deliberately:
 

@@ -77,7 +77,7 @@ func TestKvasirReportsItselfOffWhenUnconfigured(t *testing.T) {
 	s, do := newServer(t)
 	s.Kvasir = &kvasir.Advisor{Client: llm.New("", "", "", 0)}
 
-	res := do("menig", "GET", "/api/kvasir", "")
+	res := do("member", "GET", "/api/kvasir", "")
 	if res.Code != http.StatusOK {
 		t.Fatalf("status = %d", res.Code)
 	}
@@ -93,9 +93,9 @@ func TestKvasirReportsItselfOffWhenUnconfigured(t *testing.T) {
 func TestAskingWithNoModelConfiguredSaysSo(t *testing.T) {
 	s, do := newServer(t)
 	s.Kvasir = &kvasir.Advisor{Client: llm.New("", "", "", 0)}
-	id := seedAccount(t, s, "menig")
+	id := seedAccount(t, s, "member")
 
-	res := do("menig", "POST", fmt.Sprintf("/api/accounts/%d/kvasir/opinion", id),
+	res := do("member", "POST", fmt.Sprintf("/api/accounts/%d/kvasir/opinion", id),
 		`{"surface":"artifacts"}`)
 	if res.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, body = %s", res.Code, res.Body.String())
@@ -108,11 +108,11 @@ func TestAnOpinionIsAnsweredOnceAndThenRemembered(t *testing.T) {
 	  "points":[{"headline":"Get the rest of the artifacts in","why":"Only 6 pieces are known."}]}`}
 	s.Kvasir = stub.advisor(t)
 
-	id := seedAccount(t, s, "menig")
+	id := seedAccount(t, s, "member")
 	seedInventory(t, s, id)
 	path := fmt.Sprintf("/api/accounts/%d/kvasir/opinion", id)
 
-	res := do("menig", "POST", path, `{"surface":"artifacts"}`)
+	res := do("member", "POST", path, `{"surface":"artifacts"}`)
 	if res.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", res.Code, res.Body.String())
 	}
@@ -132,7 +132,7 @@ func TestAnOpinionIsAnsweredOnceAndThenRemembered(t *testing.T) {
 		t.Errorf("the fact sheet does not describe the inventory:\n%s", first.Brief)
 	}
 
-	res = do("menig", "POST", path, `{"surface":"artifacts"}`)
+	res = do("member", "POST", path, `{"surface":"artifacts"}`)
 	var second opinionResponse
 	if err := json.Unmarshal(res.Body.Bytes(), &second); err != nil {
 		t.Fatal(err)
@@ -145,7 +145,7 @@ func TestAnOpinionIsAnsweredOnceAndThenRemembered(t *testing.T) {
 	}
 
 	// An explicit refresh is the one thing that spends a second completion.
-	do("menig", "POST", path, `{"surface":"artifacts","refresh":true}`)
+	do("member", "POST", path, `{"surface":"artifacts","refresh":true}`)
 	if stub.calls != 2 {
 		t.Fatalf("refresh did not re-ask the model (calls = %d)", stub.calls)
 	}
@@ -158,11 +158,11 @@ func TestNewGearMeansANewOpinion(t *testing.T) {
 	stub := &modelStub{reply: `{"verdict":"Fine.","points":[]}`}
 	s.Kvasir = stub.advisor(t)
 
-	id := seedAccount(t, s, "menig")
+	id := seedAccount(t, s, "member")
 	seedInventory(t, s, id)
 	path := fmt.Sprintf("/api/accounts/%d/kvasir/opinion", id)
 
-	do("menig", "POST", path, `{"surface":"artifacts"}`)
+	do("member", "POST", path, `{"surface":"artifacts"}`)
 	if _, err := s.DB.Exec(`
 		INSERT INTO artifacts (account_id, fingerprint, identity, set_key, slot_key,
 		                       rarity, level, main_stat, substats, crit_value, source)
@@ -170,7 +170,7 @@ func TestNewGearMeansANewOpinion(t *testing.T) {
 		id); err != nil {
 		t.Fatal(err)
 	}
-	do("menig", "POST", path, `{"surface":"artifacts"}`)
+	do("member", "POST", path, `{"surface":"artifacts"}`)
 
 	if stub.calls != 2 {
 		t.Fatalf("the model was asked %d times; new gear should mean a new opinion", stub.calls)
@@ -181,9 +181,9 @@ func TestAnUnknownSurfaceIsRefused(t *testing.T) {
 	s, do := newServer(t)
 	stub := &modelStub{reply: `{"verdict":"?","points":[]}`}
 	s.Kvasir = stub.advisor(t)
-	id := seedAccount(t, s, "menig")
+	id := seedAccount(t, s, "member")
 
-	res := do("menig", "POST", fmt.Sprintf("/api/accounts/%d/kvasir/opinion", id),
+	res := do("member", "POST", fmt.Sprintf("/api/accounts/%d/kvasir/opinion", id),
 		`{"surface":"whatever"}`)
 	if res.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status = %d", res.Code)
@@ -200,9 +200,9 @@ func TestAnotherUsersAccountIsNotVisibleToKvasir(t *testing.T) {
 	s, do := newServer(t)
 	stub := &modelStub{reply: `{"verdict":"?","points":[]}`}
 	s.Kvasir = stub.advisor(t)
-	id := seedAccount(t, s, "chef")
+	id := seedAccount(t, s, "boss")
 
-	res := do("menig", "POST", fmt.Sprintf("/api/accounts/%d/kvasir/opinion", id),
+	res := do("member", "POST", fmt.Sprintf("/api/accounts/%d/kvasir/opinion", id),
 		`{"surface":"artifacts"}`)
 	if res.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, body = %s", res.Code, res.Body.String())
@@ -221,13 +221,13 @@ func TestNoGameDataMeansNoOpinion(t *testing.T) {
 	s.Kvasir = stub.advisor(t)
 	s.GameData = gamedata.NewStore(s.DB)
 
-	id := seedAccount(t, s, "menig")
+	id := seedAccount(t, s, "member")
 	if _, err := s.DB.Exec(
 		`INSERT INTO goals (account_id, char_key, rotation) VALUES (?, 'RaidenShogun', '{}')`, id); err != nil {
 		t.Fatal(err)
 	}
 
-	res := do("menig", "POST", fmt.Sprintf("/api/accounts/%d/kvasir/opinion", id), `{"surface":"plan"}`)
+	res := do("member", "POST", fmt.Sprintf("/api/accounts/%d/kvasir/opinion", id), `{"surface":"plan"}`)
 	if res.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, body = %s", res.Code, res.Body.String())
 	}
@@ -244,7 +244,7 @@ func TestStoredOpinionsAreCapped(t *testing.T) {
 	stub := &modelStub{reply: `{"verdict":"Fine.","points":[]}`}
 	s.Kvasir = stub.advisor(t)
 
-	id := seedAccount(t, s, "menig")
+	id := seedAccount(t, s, "member")
 	seedInventory(t, s, id)
 	path := fmt.Sprintf("/api/accounts/%d/kvasir/opinion", id)
 
@@ -253,13 +253,13 @@ func TestStoredOpinionsAreCapped(t *testing.T) {
 	// do the pruning.
 	for i := 0; i < keptOpinions+20; i++ {
 		if _, err := s.DB.Exec(`
-			INSERT INTO kvasir_opinions (account_id, surface, subject, lang, facts_hash, body)
-			VALUES (?, 'plan', ?, 'en', ?, '{}')`,
+			INSERT INTO kvasir_opinions (account_id, surface, subject, facts_hash, body)
+			VALUES (?, 'plan', ?, ?, '{}')`,
 			id, fmt.Sprintf("old-%d", i), fmt.Sprintf("hash-%d", i)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	do("menig", "POST", path, `{"surface":"artifacts"}`)
+	do("member", "POST", path, `{"surface":"artifacts"}`)
 
 	var rows int
 	if err := s.DB.QueryRow(`SELECT count(*) FROM kvasir_opinions WHERE account_id = ?`, id).Scan(&rows); err != nil {
@@ -271,7 +271,7 @@ func TestStoredOpinionsAreCapped(t *testing.T) {
 
 	// The answer just given has to be one of the survivors, or the cache
 	// prunes the very row it wrote.
-	res := do("menig", "POST", path, `{"surface":"artifacts"}`)
+	res := do("member", "POST", path, `{"surface":"artifacts"}`)
 	var out opinionResponse
 	if err := json.Unmarshal(res.Body.Bytes(), &out); err != nil {
 		t.Fatal(err)

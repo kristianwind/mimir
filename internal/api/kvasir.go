@@ -13,7 +13,6 @@ import (
 	"github.com/kristianwind/mimir/internal/advisor"
 	"github.com/kristianwind/mimir/internal/db"
 	"github.com/kristianwind/mimir/internal/gamedata"
-	"github.com/kristianwind/mimir/internal/i18n"
 	"github.com/kristianwind/mimir/internal/kvasir"
 	"github.com/kristianwind/mimir/internal/model"
 )
@@ -77,7 +76,7 @@ func (s *Server) handleKvasirCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.Kvasir.Available() {
-		writeError(w, r, http.StatusServiceUnavailable, "no language model is configured",
+		writeError(w, http.StatusServiceUnavailable, "no language model is configured",
 			"Set MIMIR_LLM_BASE_URL to an OpenAI-compatible endpoint. Everything else in Mimir works without one.")
 		return
 	}
@@ -106,27 +105,26 @@ func (s *Server) handleKvasirCheck(w http.ResponseWriter, r *http.Request) {
 // handleKvasirOpinion answers "how do I get better?" for one page.
 func (s *Server) handleKvasirOpinion(w http.ResponseWriter, r *http.Request) {
 	a := accountFrom(r.Context())
-	lang := i18n.FromRequest(r)
 
 	if !s.Kvasir.Available() {
-		writeError(w, r, http.StatusServiceUnavailable, "no language model is configured",
+		writeError(w, http.StatusServiceUnavailable, "no language model is configured",
 			"Set MIMIR_LLM_BASE_URL to an OpenAI-compatible endpoint. Everything else in Mimir works without one.")
 		return
 	}
 
 	var req opinionRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(&req); err != nil {
-		writeError(w, r, http.StatusBadRequest, "malformed request", "")
+		writeError(w, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 
-	brief, err := s.briefFor(r.Context(), a, req.Surface, req.Subject, lang)
+	brief, err := s.briefFor(r.Context(), a, req.Surface, req.Subject)
 	if err != nil {
-		s.writeKvasirError(w, r, err)
+		s.writeKvasirError(w, err)
 		return
 	}
 	if !brief.Facts() {
-		writeError(w, r, http.StatusUnprocessableEntity,
+		writeError(w, http.StatusUnprocessableEntity,
 			"there is nothing calculated to have an opinion about",
 			"Import an account and set up a goal, and the engine has something to hand over.")
 		return
@@ -134,7 +132,7 @@ func (s *Server) handleKvasirOpinion(w http.ResponseWriter, r *http.Request) {
 
 	hash := brief.Hash()
 	if !req.Refresh {
-		if cached, ok := s.cachedOpinion(r.Context(), a.ID, req.Surface, req.Subject, lang, hash); ok {
+		if cached, ok := s.cachedOpinion(r.Context(), a.ID, req.Surface, req.Subject, hash); ok {
 			cached.Brief = brief.Text()
 			writeJSON(w, http.StatusOK, cached)
 			return
@@ -146,9 +144,9 @@ func (s *Server) handleKvasirOpinion(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), kvasirBudget)
 	defer cancel()
 
-	result, err := s.Kvasir.Advise(ctx, brief, lang)
+	result, err := s.Kvasir.Advise(ctx, brief)
 	if err != nil {
-		s.writeKvasirError(w, r, err)
+		s.writeKvasirError(w, err)
 		return
 	}
 
@@ -161,7 +159,7 @@ func (s *Server) handleKvasirOpinion(w http.ResponseWriter, r *http.Request) {
 		Model:       result.Model,
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 	}
-	s.storeOpinion(ctx, a.ID, req.Surface, req.Subject, lang, hash, brief.Text(), out)
+	s.storeOpinion(ctx, a.ID, req.Surface, req.Subject, hash, brief.Text(), out)
 	writeJSON(w, http.StatusOK, out)
 }
 
@@ -174,28 +172,27 @@ type chatRequest struct {
 // handleKvasirChat answers a follow-up question against the engine.
 func (s *Server) handleKvasirChat(w http.ResponseWriter, r *http.Request) {
 	a := accountFrom(r.Context())
-	lang := i18n.FromRequest(r)
 
 	if !s.Kvasir.Available() {
-		writeError(w, r, http.StatusServiceUnavailable, "no language model is configured",
+		writeError(w, http.StatusServiceUnavailable, "no language model is configured",
 			"Set MIMIR_LLM_BASE_URL to an OpenAI-compatible endpoint. Everything else in Mimir works without one.")
 		return
 	}
 
 	var req chatRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<18)).Decode(&req); err != nil {
-		writeError(w, r, http.StatusBadRequest, "malformed request", "")
+		writeError(w, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 	req.Messages = trimHistory(req.Messages)
 	if len(req.Messages) == 0 {
-		writeError(w, r, http.StatusBadRequest, "there is no question to answer", "")
+		writeError(w, http.StatusBadRequest, "there is no question to answer", "")
 		return
 	}
 
 	// A brief that cannot be built is not a failure here: the conversation
 	// still works, the model just has to fetch what it needs.
-	brief, _ := s.briefFor(r.Context(), a, req.Surface, req.Subject, lang)
+	brief, _ := s.briefFor(r.Context(), a, req.Surface, req.Subject)
 
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), kvasirBudget)
 	defer cancel()
@@ -203,11 +200,10 @@ func (s *Server) handleKvasirChat(w http.ResponseWriter, r *http.Request) {
 	result, err := s.Kvasir.Chat(ctx, kvasir.ChatRequest{
 		Brief:   brief,
 		History: req.Messages,
-		Lang:    lang,
-		Runner:  &kvasirRunner{server: s, account: a, lang: lang},
+		Runner:  &kvasirRunner{server: s, account: a},
 	})
 	if err != nil {
-		s.writeKvasirError(w, r, err)
+		s.writeKvasirError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
@@ -236,39 +232,39 @@ func trimHistory(in []kvasir.Turn) []kvasir.Turn {
 }
 
 // writeKvasirError maps the layer's failures onto something actionable.
-func (s *Server) writeKvasirError(w http.ResponseWriter, r *http.Request, err error) {
+func (s *Server) writeKvasirError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, kvasir.ErrNotConfigured):
-		writeError(w, r, http.StatusServiceUnavailable, "no language model is configured",
+		writeError(w, http.StatusServiceUnavailable, "no language model is configured",
 			"Set MIMIR_LLM_BASE_URL to an OpenAI-compatible endpoint. Everything else in Mimir works without one.")
 	case errors.Is(err, kvasir.ErrNoFacts):
-		writeError(w, r, http.StatusUnprocessableEntity,
+		writeError(w, http.StatusUnprocessableEntity,
 			"there is nothing calculated to have an opinion about",
 			"Import an account and set up a goal, and the engine has something to hand over.")
 	case errors.Is(err, kvasir.ErrUnsourced):
-		writeError(w, r, http.StatusUnprocessableEntity,
+		writeError(w, http.StatusUnprocessableEntity,
 			"Kvasir used numbers that are not in the calculation, twice in a row",
 			"The answer was discarded rather than shown. A smaller or better-instructed model usually fixes this.")
 	case errors.Is(err, context.DeadlineExceeded):
-		writeError(w, r, http.StatusGatewayTimeout, "the model did not answer in time",
+		writeError(w, http.StatusGatewayTimeout, "the model did not answer in time",
 			"A local model on a small machine can take longer than Mimir waits.")
 	case errors.Is(err, gamedata.ErrNoSnapshot), errors.Is(err, gamedata.ErrMissing):
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 	default:
-		writeError(w, r, http.StatusUnprocessableEntity, err.Error(), "")
+		writeError(w, http.StatusUnprocessableEntity, err.Error(), "")
 	}
 }
 
 // ---------------------------------------------------------------- the cache
 
 func (s *Server) cachedOpinion(
-	ctx context.Context, accountID int64, surface, subject string, lang i18n.Lang, hash string,
+	ctx context.Context, accountID int64, surface, subject, hash string,
 ) (opinionResponse, bool) {
 	var body, modelName, created string
 	err := s.DB.QueryRowContext(ctx, `
 		SELECT body, model, created_at FROM kvasir_opinions
-		WHERE account_id = ? AND surface = ? AND subject = ? AND lang = ? AND facts_hash = ?`,
-		accountID, surface, subject, string(lang), hash).Scan(&body, &modelName, &created)
+		WHERE account_id = ? AND surface = ? AND subject = ? AND facts_hash = ?`,
+		accountID, surface, subject, hash).Scan(&body, &modelName, &created)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) && s.Log != nil {
 			s.Log.Warn("could not read a stored opinion", "error", err)
@@ -297,19 +293,19 @@ func (s *Server) cachedOpinion(
 // writes shows up as a model being asked the same question every page load.
 func (s *Server) storeOpinion(
 	ctx context.Context, accountID int64, surface, subject string,
-	lang i18n.Lang, hash, brief string, out opinionResponse,
+	hash, brief string, out opinionResponse,
 ) {
 	body, err := json.Marshal(map[string]any{"opinion": out.Opinion, "dropped": out.Dropped})
 	if err != nil {
 		return
 	}
 	if _, err := s.DB.ExecContext(ctx, `
-		INSERT INTO kvasir_opinions (account_id, surface, subject, lang, facts_hash, model, body, brief)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(account_id, surface, subject, lang, facts_hash) DO UPDATE SET
+		INSERT INTO kvasir_opinions (account_id, surface, subject, facts_hash, model, body, brief)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(account_id, surface, subject, facts_hash) DO UPDATE SET
 			model = excluded.model, body = excluded.body, brief = excluded.brief,
 			created_at = datetime('now')`,
-		accountID, surface, subject, string(lang), hash, out.Model, string(body), brief,
+		accountID, surface, subject, hash, out.Model, string(body), brief,
 	); err != nil && s.Log != nil {
 		s.Log.Warn("could not store an opinion", "error", err)
 	}
@@ -346,7 +342,6 @@ const keptOpinions = 200
 type kvasirRunner struct {
 	server  *Server
 	account model.Account
-	lang    i18n.Lang
 }
 
 func (k *kvasirRunner) Run(ctx context.Context, name string, args map[string]any) (string, error) {
@@ -370,12 +365,12 @@ func (k *kvasirRunner) Run(ctx context.Context, name string, args map[string]any
 	case "drop_model":
 		return k.brief(ctx, "artifacts", "")
 	default:
-		return "", fmt.Errorf("%s", i18n.T(k.lang, "there is no such tool"))
+		return "", fmt.Errorf("%s", "there is no such tool")
 	}
 }
 
 func (k *kvasirRunner) brief(ctx context.Context, surface, subject string) (string, error) {
-	b, err := k.server.briefFor(ctx, k.account, surface, subject, k.lang)
+	b, err := k.server.briefFor(ctx, k.account, surface, subject)
 	if err != nil {
 		return "", err
 	}
@@ -387,7 +382,7 @@ func (k *kvasirRunner) brief(ctx context.Context, surface, subject string) (stri
 // levelling needs the multipliers themselves.
 func (k *kvasirRunner) talents(ctx context.Context, key string) (string, error) {
 	if key == "" {
-		return "", fmt.Errorf("%s", i18n.T(k.lang, "that needs a character"))
+		return "", fmt.Errorf("%s", "that needs a character")
 	}
 	snap, err := k.server.GameData.Current()
 	if err != nil {
@@ -399,17 +394,17 @@ func (k *kvasirRunner) talents(ctx context.Context, key string) (string, error) 
 	}
 	character, err := k.server.loadCharacter(ctx, k.account.ID, key)
 	if err != nil {
-		return "", fmt.Errorf("%s", i18n.T(k.lang, "%s is not on the account", key))
+		return "", fmt.Errorf("%s", fmt.Sprintf("%s is not on the account", key))
 	}
 
-	b := kvasir.NewBrief("talents", key, i18n.T(k.lang, "%s's talent table", key), "")
+	b := kvasir.NewBrief("talents", key, fmt.Sprintf("%s's talent table", key), "")
 	for _, slot := range []string{"auto", "skill", "burst"} {
 		talent, ok := def.Talents[slot]
 		if !ok {
 			continue
 		}
 		level := advisor.EffectiveTalentLevel(def, character, slot)
-		sec := b.Add(i18n.T(k.lang, "%s — %s, at level %d", slot, talent.Name, level))
+		sec := b.Add(fmt.Sprintf("%s — %s, at level %d", slot, talent.Name, level))
 		for _, entry := range talent.Entries {
 			value, err := entry.Multiplier(level)
 			if err != nil {
@@ -431,13 +426,13 @@ func (k *kvasirRunner) inventory(ctx context.Context, setKey, slot string) (stri
 		return "", err
 	}
 	if len(inventory) == 0 {
-		return "", fmt.Errorf("%s", i18n.T(k.lang, "no artifacts have been imported yet"))
+		return "", fmt.Errorf("%s", "no artifacts have been imported yet")
 	}
-	title := i18n.T(k.lang, "The artifact inventory on account %s", k.account.UID)
+	title := fmt.Sprintf("The artifact inventory on account %s", k.account.UID)
 	b := kvasir.NewBrief("inventory", setKey, title, "")
-	k.server.addInventoryFacts(b, inventory, setKey, slot, k.lang)
+	k.server.addInventoryFacts(b, inventory, setKey, slot)
 	if !b.Facts() {
-		return "", fmt.Errorf("%s", i18n.T(k.lang, "nothing in the inventory matches that"))
+		return "", fmt.Errorf("%s", "nothing in the inventory matches that")
 	}
 	return b.Text(), nil
 }

@@ -36,13 +36,13 @@ func TestInventedFiguresAreCaught(t *testing.T) {
 	}
 }
 
-// Kvasir answers Danish users in Danish, and Danish writes the decimal
-// separator as a comma. A check that fired on correctly quoted figures would
-// be switched off within a week.
-func TestDanishDecimalsAreTheSameNumber(t *testing.T) {
+// A model trained on European text writes 34,53 whatever it was asked for. A
+// check that fired on correctly quoted figures would be switched off within a
+// week.
+func TestAContinentalDecimalCommaIsTheSameNumber(t *testing.T) {
 	s := Collect(facts)
-	if bad := s.Unsourced("Byt til Emblem først: +34,53 % gratis."); len(bad) != 0 {
-		t.Fatalf("a Danish decimal comma was rejected: %v", bad)
+	if bad := s.Unsourced("Swap to Emblem first: +34,53 % for nothing."); len(bad) != 0 {
+		t.Fatalf("a decimal comma was rejected: %v", bad)
 	}
 }
 

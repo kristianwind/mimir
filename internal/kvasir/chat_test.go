@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kristianwind/mimir/internal/i18n"
 	"github.com/kristianwind/mimir/internal/llm"
 )
 
@@ -68,7 +67,6 @@ func TestChatFetchesFactsBeforeAnswering(t *testing.T) {
 
 	got, err := a.Chat(context.Background(), ChatRequest{
 		History: []Turn{{Role: "user", Content: "Where is Raiden weak?"}},
-		Lang:    i18n.EN,
 		Runner:  runner,
 	})
 	if err != nil {
@@ -99,7 +97,6 @@ func TestChatFlagsFiguresNothingProduced(t *testing.T) {
 
 	got, err := a.Chat(context.Background(), ChatRequest{
 		History: []Turn{{Role: "user", Content: "What about the Catch?"}},
-		Lang:    i18n.EN,
 		Runner:  &fakeRunner{},
 	})
 	if err != nil {
@@ -121,7 +118,6 @@ func TestChatStopsAskingForDataEventually(t *testing.T) {
 
 	_, err := a.Chat(context.Background(), ChatRequest{
 		History: []Turn{{Role: "user", Content: "Well?"}},
-		Lang:    i18n.EN,
 		Runner:  &fakeRunner{result: "- nothing"},
 	})
 	if err == nil {
@@ -141,7 +137,6 @@ func TestAToolFailureBecomesAFact(t *testing.T) {
 
 	got, err := a.Chat(context.Background(), ChatRequest{
 		History: []Turn{{Role: "user", Content: "And Xianglong?"}},
-		Lang:    i18n.EN,
 		Runner:  &fakeRunner{},
 	})
 	if err != nil {

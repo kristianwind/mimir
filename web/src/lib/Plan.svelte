@@ -1,6 +1,5 @@
 <script>
   import { api } from './api.js'
-  import { t } from './lang.svelte.js'
   import Kvasir from './Kvasir.svelte'
 
   let { account, ongotogoals } = $props()
@@ -40,23 +39,23 @@
   }
 
   function cost(a) {
-    if (a.free) return t('free')
-    if (a.unpriced) return t('not priced')
-    return t('{n} resin', { n: Math.round(a.resinCost) })
+    if (a.free) return 'free'
+    if (a.unpriced) return 'not priced'
+    return `${Math.round(a.resinCost)} resin`
   }
 </script>
 
 {#if loading}
-  <p class="text-sm text-muted">{t('Calculating…')}</p>
+  <p class="text-sm text-muted">Calculating…</p>
 {:else if error && error.status === 404}
   <div class="card p-8">
     <h2 class="text-lg font-medium">{error.message}</h2>
     <p class="mt-2 max-w-prose text-sm text-muted">
-      {t(
-        'The plan ranks every possible upgrade across your whole account by expected damage gained per resin — the free rearrangements first, then talents, levels and artifact domains. It needs at least one goal: which character, and which rotation the gain is measured on.',
-      )}
+      The plan ranks every possible upgrade across your whole account by expected damage gained per
+      resin — the free rearrangements first, then talents, levels and artifact domains. It needs at
+      least one goal: which character, and which rotation the gain is measured on.
     </p>
-    <button class="btn-primary mt-6" onclick={ongotogoals}>{t('Create a goal')}</button>
+    <button class="btn-primary mt-6" onclick={ongotogoals}>Create a goal</button>
   </div>
 {:else if error}
   <div class="card p-8">
@@ -69,7 +68,7 @@
   {#if goals.length > 1}
     <div class="mb-5 flex flex-wrap gap-2">
       <button type="button" class="chip {filter === '' ? 'border-accent text-ink' : ''}" onclick={() => (filter = '')}>
-        {t('All goals')}
+        All goals
       </button>
       {#each goals as goal (goal)}
         <button type="button" class="chip {filter === goal ? 'border-accent text-ink' : ''}" onclick={() => (filter = goal)}>
@@ -82,13 +81,13 @@
   {#if shown.length === 0}
     <div class="card p-8 text-center">
       <p class="text-muted">
-        {t('No upgrades found — your builds are already the best your gear allows.')}
+        No upgrades found — your builds are already the best your gear allows.
       </p>
     </div>
   {:else}
     <p class="mb-4 text-sm text-muted">
-      {t('{n} things you can do now', { n: actionable })}{shown.length > actionable
-        ? t(', {n} blocked', { n: shown.length - actionable })
+      {actionable} things you can do now{shown.length > actionable
+        ? `, ${shown.length - actionable} blocked`
         : ''}.
     </p>
 
@@ -107,20 +106,17 @@
               <p class="font-medium">{action.headline}</p>
               <p class="mt-0.5 text-xs text-muted">
                 <span class="text-accent">{action.goal}</span>
-                · {t(KIND_LABELS[action.kind] ?? action.kind)}
+                · {KIND_LABELS[action.kind] ?? action.kind}
                 {#if action.note}· {action.note}{/if}
               </p>
               {#if action.blockedBy}
-                <p class="mt-1 text-xs text-warn">{t('Blocked: {what}', { what: action.blockedBy })}</p>
+                <p class="mt-1 text-xs text-warn">Blocked: {action.blockedBy}</p>
               {/if}
               {#if action.kind === 'farm' && action.detail}
                 <p class="mt-1 text-xs text-muted">
-                  {t('median {median} · spread {low}–{high} · gives nothing {none} of the time', {
-                    median: pct(action.detail.medianGain),
-                    low: pct(action.detail.p10Gain),
-                    high: pct(action.detail.p90Gain),
-                    none: `${(action.detail.noImprovementChance * 100).toFixed(0)} %`,
-                  })}
+                  median {pct(action.detail.medianGain)} · spread {pct(action.detail.p10Gain)}–{pct(
+                    action.detail.p90Gain,
+                  )} · gives nothing {(action.detail.noImprovementChance * 100).toFixed(0)} % of the time
                 </p>
               {/if}
             </div>
@@ -142,16 +138,11 @@
 
   {#if plan.conflicts?.length}
     <div class="card mt-6 p-4">
-      <h3 class="text-sm font-medium">{t('The fight over the gear')}</h3>
+      <h3 class="text-sm font-medium">The fight over the gear</h3>
       <ul class="mt-2 space-y-1 text-xs text-muted">
         {#each plan.conflicts as conflict}
           <li>
-            {t('{wants} wants {item} from {holds} — {resolution}', {
-              wants: conflict.wants,
-              item: conflict.item,
-              holds: conflict.holds,
-              resolution: conflict.resolution,
-            })}
+            {conflict.wants} wants {conflict.item} from {conflict.holds} — {conflict.resolution}
           </li>
         {/each}
       </ul>
@@ -160,7 +151,7 @@
 
   {#if plan.plans?.some((p) => p.skipped?.length) || plan.caveats?.length}
     <div class="card mt-4 p-4">
-      <h3 class="text-sm font-medium">{t('Caveats')}</h3>
+      <h3 class="text-sm font-medium">Caveats</h3>
       <ul class="mt-2 space-y-1 text-xs text-muted">
         {#each plan.caveats ?? [] as line}
           <li>· {line}</li>

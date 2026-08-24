@@ -34,10 +34,30 @@ func Open(path string) (*sql.DB, error) {
 }
 
 func migrate(conn *sql.DB) error {
+	if err := dropStaleCaches(conn); err != nil {
+		return err
+	}
 	if _, err := conn.Exec(schema); err != nil {
 		return err
 	}
 	return addColumns(conn)
+}
+
+// dropStaleCaches throws away a cache whose shape has changed.
+//
+// The opinion table was keyed on a language back when there were two of them,
+// and its uniqueness constraint names its columns — so an install carrying the
+// old shape would fail every ON CONFLICT against the new statement. Adding a
+// column cannot fix a constraint, and the contents are a cache: the cheapest
+// correct migration is to let it be rebuilt. It runs before the schema, so the
+// CREATE TABLE below puts it back in the new shape.
+func dropStaleCaches(conn *sql.DB) error {
+	stale, err := hasColumn(conn, "kvasir_opinions", "lang")
+	if err != nil || !stale {
+		return err
+	}
+	_, err = conn.Exec(`DROP TABLE kvasir_opinions`)
+	return err
 }
 
 // addedColumn is a column introduced after a table shipped.
@@ -54,7 +74,6 @@ type addedColumn struct {
 
 var addedColumns = []addedColumn{
 	{"goals", "conditions", `ALTER TABLE goals ADD COLUMN conditions TEXT NOT NULL DEFAULT '{}'`},
-	{"users", "lang", `ALTER TABLE users ADD COLUMN lang TEXT NOT NULL DEFAULT 'da'`},
 }
 
 func addColumns(conn *sql.DB) error {
@@ -102,7 +121,6 @@ CREATE TABLE IF NOT EXISTS users (
 	role          TEXT NOT NULL DEFAULT 'user',
 	theme         TEXT NOT NULL DEFAULT 'anemo',
 	theme_mode    TEXT NOT NULL DEFAULT 'system',
-	lang          TEXT NOT NULL DEFAULT 'da',
 	disabled      INTEGER NOT NULL DEFAULT 0,
 	created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -323,7 +341,7 @@ CREATE INDEX IF NOT EXISTS idx_chunks_guide ON guide_chunks(guide_id);
 -- What the AI layer said, and the fact sheet it was given.
 --
 -- Keyed on a hash of the facts rather than on time: an account that has not
--- changed gets the answer it already got, in the language it was asked in.
+-- changed gets the answer it already got.
 -- That is a cache, but the reason it is a table and not a map is the brief
 -- column — an opinion whose evidence has been thrown away cannot be checked
 -- afterwards, and every other number in Mimir can be traced to where it came
@@ -334,13 +352,12 @@ CREATE TABLE IF NOT EXISTS kvasir_opinions (
 	account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
 	surface    TEXT NOT NULL,
 	subject    TEXT NOT NULL DEFAULT '',
-	lang       TEXT NOT NULL DEFAULT 'en',
 	facts_hash TEXT NOT NULL,
 	model      TEXT NOT NULL DEFAULT '',
 	body       TEXT NOT NULL,
 	brief      TEXT NOT NULL DEFAULT '',
 	created_at TEXT NOT NULL DEFAULT (datetime('now')),
-	UNIQUE(account_id, surface, subject, lang, facts_hash)
+	UNIQUE(account_id, surface, subject, facts_hash)
 );
 CREATE INDEX IF NOT EXISTS idx_kvasir_account ON kvasir_opinions(account_id, surface);
 

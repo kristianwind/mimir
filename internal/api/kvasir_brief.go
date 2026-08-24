@@ -11,7 +11,6 @@ import (
 	"github.com/kristianwind/mimir/internal/db"
 	"github.com/kristianwind/mimir/internal/effect"
 	"github.com/kristianwind/mimir/internal/gamedata"
-	"github.com/kristianwind/mimir/internal/i18n"
 	"github.com/kristianwind/mimir/internal/kvasir"
 	"github.com/kristianwind/mimir/internal/model"
 	"github.com/kristianwind/mimir/internal/optimizer"
@@ -34,10 +33,6 @@ import (
 //   - The set of numbers the answer is allowed to contain is exactly the set
 //     of numbers in here. That is what internal/kvasir/numbers.go checks, and
 //     it is only meaningful because this file is the sole source.
-//
-// The briefs are written in the reader's language for the same reason the
-// plan's prose is: the player is shown the fact sheet behind any answer, and
-// evidence they cannot read is not evidence.
 
 // briefActions caps how much of a ranking goes into a brief. Past the top
 // couple of dozen the actions are rounding errors, and the tail costs context
@@ -45,28 +40,28 @@ import (
 const briefActions = 25
 
 // briefFor assembles the fact sheet for one surface.
-func (s *Server) briefFor(ctx context.Context, a model.Account, surface, subject string, lang i18n.Lang) (*kvasir.Brief, error) {
+func (s *Server) briefFor(ctx context.Context, a model.Account, surface, subject string) (*kvasir.Brief, error) {
 	switch surface {
 	case "plan":
-		return s.planBrief(ctx, a, lang)
+		return s.planBrief(ctx, a)
 	case "goal":
-		return s.goalBrief(ctx, a, subject, lang)
+		return s.goalBrief(ctx, a, subject)
 	case "character":
-		return s.characterBrief(ctx, a, subject, lang)
+		return s.characterBrief(ctx, a, subject)
 	case "roster":
-		return s.rosterBrief(ctx, a, lang)
+		return s.rosterBrief(ctx, a)
 	case "artifacts":
-		return s.artifactsBrief(ctx, a, lang)
+		return s.artifactsBrief(ctx, a)
 	case "goals":
-		return s.goalsBrief(ctx, a, lang)
+		return s.goalsBrief(ctx, a)
 	default:
-		return nil, fmt.Errorf("%s", i18n.T(lang, "Kvasir has no fact sheet for that page"))
+		return nil, fmt.Errorf("%s", "Kvasir has no fact sheet for that page")
 	}
 }
 
 // ---------------------------------------------------------------- the plan
 
-func (s *Server) planBrief(ctx context.Context, a model.Account, lang i18n.Lang) (*kvasir.Brief, error) {
+func (s *Server) planBrief(ctx context.Context, a model.Account) (*kvasir.Brief, error) {
 	snap, err := s.GameData.Current()
 	if err != nil {
 		return nil, err
@@ -76,7 +71,7 @@ func (s *Server) planBrief(ctx context.Context, a model.Account, lang i18n.Lang)
 		return nil, err
 	}
 	if len(keys) == 0 {
-		return nil, fmt.Errorf("%s", i18n.T(lang, "no goals have been set up"))
+		return nil, fmt.Errorf("%s", "no goals have been set up")
 	}
 
 	inventory, err := db.LoadArtifacts(s.DB, a.ID)
@@ -92,7 +87,7 @@ func (s *Server) planBrief(ctx context.Context, a model.Account, lang i18n.Lang)
 	var reqs []advisor.Request
 	var unplannable []string
 	for _, key := range keys {
-		req, err := s.planRequest(ctx, a.ID, key, snap, inventory, weapons, sim, lang)
+		req, err := s.planRequest(ctx, a.ID, key, snap, inventory, weapons, sim)
 		if err != nil {
 			unplannable = append(unplannable, fmt.Sprintf("%s: %v", key, err))
 			continue
@@ -100,7 +95,7 @@ func (s *Server) planBrief(ctx context.Context, a model.Account, lang i18n.Lang)
 		reqs = append(reqs, req)
 	}
 	if len(reqs) == 0 {
-		return nil, fmt.Errorf("%s", i18n.T(lang, "none of the goals could be calculated"))
+		return nil, fmt.Errorf("%s", "none of the goals could be calculated")
 	}
 
 	plan, err := advisor.BuildAccountPlan(ctx, reqs)
@@ -109,40 +104,40 @@ func (s *Server) planBrief(ctx context.Context, a model.Account, lang i18n.Lang)
 	}
 
 	b := kvasir.NewBrief("plan", "",
-		i18n.T(lang, "The resin plan for account %s", a.UID),
-		i18n.T(lang, "This is the ranked plan the player is looking at. What should they do first, what does the ranking not make obvious, and what is holding this account back?"))
+		fmt.Sprintf("The resin plan for account %s", a.UID),
+		"This is the ranked plan the player is looking at. What should they do first, what does the ranking not make obvious, and what is holding this account back?")
 
-	method := b.Add(i18n.T(lang, "How these numbers were measured"))
-	method.T(lang, "Every gain is the change in that goal's whole rotation damage, calculated on the gear this account actually owns.")
-	method.T(lang, "Free actions rank above paid ones. An action that cannot be carried out today ranks last, however large it looks.")
-	method.T(lang, "Efficiency is the gain per 100 resin. A day is 180 resin.")
+	method := b.Add("How these numbers were measured")
+	method.Line("Every gain is the change in that goal's whole rotation damage, calculated on the gear this account actually owns.")
+	method.Line("Free actions rank above paid ones. An action that cannot be carried out today ranks last, however large it looks.")
+	method.Line("Efficiency is the gain per 100 resin. A day is 180 resin.")
 
-	goals := b.Add(i18n.T(lang, "The goals being optimised"))
+	goals := b.Add("The goals being optimised")
 	for _, p := range plan.Plans {
-		goals.T(lang, "%s: baseline %s damage per rotation, %d upgrades found",
+		goals.Linef("%s: baseline %s damage per rotation, %d upgrades found",
 			p.Goal, num(p.Baseline), len(p.Actions))
 	}
 
-	ranked := b.Add(i18n.T(lang, "The ranked plan"))
+	ranked := b.Add("The ranked plan")
 	for i, act := range plan.Ranked {
 		if i >= briefActions {
-			ranked.T(lang, "…and %d smaller actions below these.", len(plan.Ranked)-briefActions)
+			ranked.Linef("…and %d smaller actions below these.", len(plan.Ranked)-briefActions)
 			break
 		}
-		ranked.Line(fmt.Sprintf("%d. [%s] %s", i+1, act.Goal, actionFacts(lang, act.Action)))
+		ranked.Linef("%d. [%s] %s", i+1, act.Goal, actionFacts(act.Action))
 	}
 	if len(plan.Ranked) == 0 {
-		ranked.T(lang, "Nothing. Every goal is already the best this gear allows.")
+		ranked.Line("Nothing. Every goal is already the best this gear allows.")
 	}
 
 	if len(plan.Conflicts) > 0 {
-		conflicts := b.Add(i18n.T(lang, "Gear two goals both want"))
+		conflicts := b.Add("Gear two goals both want")
 		for _, c := range plan.Conflicts {
-			conflicts.T(lang, "%s wants %s from %s — %s", c.Wants, c.Item, c.Holds, c.Resolution)
+			conflicts.Linef("%s wants %s from %s — %s", c.Wants, c.Item, c.Holds, c.Resolution)
 		}
 	}
 
-	limits := b.Add(i18n.T(lang, "What the engine refused to price"))
+	limits := b.Add("What the engine refused to price")
 	for _, c := range plan.Caveats {
 		limits.Line(c)
 	}
@@ -155,32 +150,32 @@ func (s *Server) planBrief(ctx context.Context, a model.Account, lang i18n.Lang)
 		limits.Line(u)
 	}
 
-	s.addAccountFacts(ctx, b, a, inventory, lang)
+	s.addAccountFacts(ctx, b, a, inventory)
 	return b, nil
 }
 
 // actionFacts writes one ranked action down without editorialising: the
 // headline the engine wrote, the gain, the price, and what stops it.
-func actionFacts(lang i18n.Lang, act advisor.Action) string {
+func actionFacts(act advisor.Action) string {
 	parts := []string{act.Headline, "+" + pct(act.GainPct)}
 	switch {
 	case act.Free:
-		parts = append(parts, i18n.T(lang, "free"))
+		parts = append(parts, "free")
 	case act.Unpriced:
-		parts = append(parts, i18n.T(lang, "not priced in resin"))
+		parts = append(parts, "not priced in resin")
 	default:
-		parts = append(parts, i18n.T(lang, "%s resin", num(act.ResinCost)),
-			i18n.T(lang, "%s per 100 resin", pct(act.Efficiency)))
+		parts = append(parts, fmt.Sprintf("%s resin", num(act.ResinCost)),
+			fmt.Sprintf("%s per 100 resin", pct(act.Efficiency)))
 	}
 	if act.Note != "" {
 		parts = append(parts, act.Note)
 	}
 	if act.BlockedBy != "" {
-		parts = append(parts, i18n.T(lang, "blocked: %s", act.BlockedBy))
+		parts = append(parts, fmt.Sprintf("blocked: %s", act.BlockedBy))
 	}
 	if act.Kind == advisor.KindFarm && act.Detail != nil {
 		if median, ok := act.Detail["medianGain"].(float64); ok {
-			parts = append(parts, i18n.T(lang,
+			parts = append(parts, fmt.Sprintf(
 				"median %s, p10 %s, p90 %s, and %s of simulated runs changed nothing",
 				pct(median), pct(detailFloat(act.Detail, "p10Gain")), pct(detailFloat(act.Detail, "p90Gain")),
 				pct(detailFloat(act.Detail, "noImprovementChance"))))
@@ -196,9 +191,9 @@ func detailFloat(detail map[string]any, key string) float64 {
 
 // ---------------------------------------------------------------- one goal
 
-func (s *Server) goalBrief(ctx context.Context, a model.Account, key string, lang i18n.Lang) (*kvasir.Brief, error) {
+func (s *Server) goalBrief(ctx context.Context, a model.Account, key string) (*kvasir.Brief, error) {
 	if key == "" {
-		return nil, fmt.Errorf("%s", i18n.T(lang, "that needs a character"))
+		return nil, fmt.Errorf("%s", "that needs a character")
 	}
 	snap, err := s.GameData.Current()
 	if err != nil {
@@ -213,7 +208,7 @@ func (s *Server) goalBrief(ctx context.Context, a model.Account, key string, lan
 		return nil, err
 	}
 
-	req, err := s.planRequest(ctx, a.ID, key, snap, inventory, weapons, farmSim(snap, inventory), lang)
+	req, err := s.planRequest(ctx, a.ID, key, snap, inventory, weapons, farmSim(snap, inventory))
 	if err != nil {
 		return nil, err
 	}
@@ -223,44 +218,44 @@ func (s *Server) goalBrief(ctx context.Context, a model.Account, key string, lan
 	}
 
 	b := kvasir.NewBrief("goal", key,
-		i18n.T(lang, "%s as a goal", key),
-		i18n.T(lang, "How does this player make %s hit harder? Weigh what the ranking costs elsewhere, and say what is missing from the goal itself.", key))
+		fmt.Sprintf("%s as a goal", key),
+		fmt.Sprintf("How does this player make %s hit harder? Weigh what the ranking costs elsewhere, and say what is missing from the goal itself.", key))
 
-	setup := b.Add(i18n.T(lang, "The goal"))
-	setup.T(lang, "Priority %d among this account's goals.", req.Goal.Priority)
-	setup.T(lang, "Baseline: %s damage per rotation.", num(plan.Baseline))
-	setup.T(lang, "Measured against a level %d enemy.", req.Goal.Target.Level)
+	setup := b.Add("The goal")
+	setup.Linef("Priority %d among this account's goals.", req.Goal.Priority)
+	setup.Linef("Baseline: %s damage per rotation.", num(plan.Baseline))
+	setup.Linef("Measured against a level %d enemy.", req.Goal.Target.Level)
 	if name := req.Goal.Spec.Name; name != "" {
-		setup.T(lang, "Rotation: %s", name)
+		setup.Linef("Rotation: %s", name)
 	}
 	for i, step := range req.Goal.Spec.Steps {
-		line := i18n.T(lang, "Step %d: %s %s ×%d", i+1, step.Talent, step.Entry, step.Hits)
+		line := fmt.Sprintf("Step %d: %s %s ×%d", i+1, step.Talent, step.Entry, step.Hits)
 		if step.Amplify != "" {
-			line += i18n.T(lang, ", amplified by %s", string(step.Amplify))
+			line += fmt.Sprintf(", amplified by %s", string(step.Amplify))
 		}
 		setup.Line(line)
 	}
 	if len(req.Goal.Conditions) > 0 {
 		for _, k := range sortedKeys(req.Goal.Conditions) {
-			setup.T(lang, "Declared condition: %s = %s", k, num(req.Goal.Conditions[k]))
+			setup.Linef("Declared condition: %s = %s", k, num(req.Goal.Conditions[k]))
 		}
 	}
 
-	s.addBuildFacts(b, snap, req.Loadout, req.Goal.Conditions, lang)
+	s.addBuildFacts(b, snap, req.Loadout, req.Goal.Conditions)
 
-	actions := b.Add(i18n.T(lang, "Ranked upgrades for this goal"))
+	actions := b.Add("Ranked upgrades for this goal")
 	for i, act := range plan.Actions {
 		if i >= briefActions {
 			break
 		}
-		actions.Line(fmt.Sprintf("%d. %s", i+1, actionFacts(lang, act)))
+		actions.Line(fmt.Sprintf("%d. %s", i+1, actionFacts(act)))
 	}
 	if len(plan.Actions) == 0 {
-		actions.T(lang, "None. This build is the best the account's gear allows.")
+		actions.Line("None. This build is the best the account's gear allows.")
 	}
 
 	if len(plan.Skipped) > 0 {
-		limits := b.Add(i18n.T(lang, "What the engine refused to price"))
+		limits := b.Add("What the engine refused to price")
 		for _, line := range plan.Skipped {
 			limits.Line(line)
 		}
@@ -270,9 +265,9 @@ func (s *Server) goalBrief(ctx context.Context, a model.Account, key string, lan
 
 // ---------------------------------------------------------------- one build
 
-func (s *Server) characterBrief(ctx context.Context, a model.Account, key string, lang i18n.Lang) (*kvasir.Brief, error) {
+func (s *Server) characterBrief(ctx context.Context, a model.Account, key string) (*kvasir.Brief, error) {
 	if key == "" {
-		return nil, fmt.Errorf("%s", i18n.T(lang, "that needs a character"))
+		return nil, fmt.Errorf("%s", "that needs a character")
 	}
 	snap, err := s.GameData.Current()
 	if err != nil {
@@ -280,7 +275,7 @@ func (s *Server) characterBrief(ctx context.Context, a model.Account, key string
 	}
 	character, err := s.loadCharacter(ctx, a.ID, key)
 	if err != nil {
-		return nil, fmt.Errorf("%s", i18n.T(lang, "%s is not on the account", key))
+		return nil, fmt.Errorf("%s", fmt.Sprintf("%s is not on the account", key))
 	}
 	weapon, err := s.loadEquippedWeapon(ctx, a.ID, key)
 	if err != nil {
@@ -305,14 +300,14 @@ func (s *Server) characterBrief(ctx context.Context, a model.Account, key string
 	}
 
 	b := kvasir.NewBrief("character", key,
-		i18n.T(lang, "%s's build", key),
-		i18n.T(lang, "What is wrong with this build, and what is the cheapest thing that would fix it? Say what the stats show, not what is usually recommended."))
+		fmt.Sprintf("%s's build", key),
+		"What is wrong with this build, and what is the cheapest thing that would fix it? Say what the stats show, not what is usually recommended.")
 
-	s.addBuildFacts(b, snap, advisor.Loadout{Character: character, Weapon: weapon, Artifacts: equipped}, conditions, lang)
+	s.addBuildFacts(b, snap, advisor.Loadout{Character: character, Weapon: weapon, Artifacts: equipped}, conditions)
 
 	if !hasGoal {
-		note := b.Add(i18n.T(lang, "No goal"))
-		note.T(lang, "This character has no goal, so nothing has been ranked for them: Mimir measures a gain against a rotation, and there is none to measure against.")
+		note := b.Add("No goal")
+		note.Line("This character has no goal, so nothing has been ranked for them: Mimir measures a gain against a rotation, and there is none to measure against.")
 	}
 	return b, nil
 }
@@ -324,52 +319,52 @@ func (s *Server) characterBrief(ctx context.Context, a model.Account, key string
 // set bonus is a model that has no reason to paraphrase one from memory.
 func (s *Server) addBuildFacts(
 	b *kvasir.Brief, snap *gamedata.Snapshot, loadout advisor.Loadout,
-	conditions map[string]float64, lang i18n.Lang,
+	conditions map[string]float64,
 ) {
 	c := loadout.Character
-	who := b.Add(i18n.T(lang, "The character"))
-	who.T(lang, "%s, level %d, constellation %d.", c.Key, c.Level, c.Constellation)
-	who.T(lang, "Talent levels: normal attack %d, elemental skill %d, elemental burst %d.",
+	who := b.Add("The character")
+	who.Linef("%s, level %d, constellation %d.", c.Key, c.Level, c.Constellation)
+	who.Linef("Talent levels: normal attack %d, elemental skill %d, elemental burst %d.",
 		c.TalentAuto, c.TalentSkill, c.TalentBurst)
 	if loadout.Weapon != nil {
-		who.T(lang, "Weapon: %s, level %d, refinement %d.",
+		who.Linef("Weapon: %s, level %d, refinement %d.",
 			loadout.Weapon.Key, loadout.Weapon.Level, loadout.Weapon.Refinement)
 	} else {
-		who.T(lang, "No weapon is equipped.")
+		who.Line("No weapon is equipped.")
 	}
 
-	gear := b.Add(i18n.T(lang, "Equipped artifacts"))
+	gear := b.Add("Equipped artifacts")
 	for _, art := range loadout.Artifacts {
-		gear.T(lang, "%s %s +%d, main stat %s%s",
+		gear.Linef("%s %s +%d, main stat %s%s",
 			art.SetKey, string(art.SlotKey), art.Level, statName(art.MainStat), substatList(art))
 	}
 	if len(loadout.Artifacts) == 0 {
-		gear.T(lang, "Nothing is equipped, so there is no build to resolve.")
+		gear.Line("Nothing is equipped, so there is no build to resolve.")
 		return
 	}
 
 	state, err := advisor.Assemble(snap, loadout)
 	if err != nil {
-		gear.T(lang, "The build could not be resolved: %v", err)
+		gear.Linef("The build could not be resolved: %v", err)
 		return
 	}
 	sheet, err := advisor.BuildSheet(snap, state, conditions)
 	if err != nil {
-		gear.T(lang, "The build could not be resolved: %v", err)
+		gear.Linef("The build could not be resolved: %v", err)
 		return
 	}
 
 	for _, setKey := range sortedKeys(sheet.SetCounts) {
-		gear.T(lang, "Set bonus in effect: %d pieces of %s.", sheet.SetCounts[setKey], setKey)
+		gear.Linef("Set bonus in effect: %d pieces of %s.", sheet.SetCounts[setKey], setKey)
 	}
 
-	totals := b.Add(i18n.T(lang, "Resolved stats, everything included"))
+	totals := b.Add("Resolved stats, everything included")
 	for _, stat := range statOrder(sheet.Totals) {
 		totals.Linef("%s: %s", statName(stat), statValue(stat, sheet.Totals[stat]))
 	}
 
 	if len(sheet.Effects) > 0 {
-		effects := b.Add(i18n.T(lang, "What the conditional layer contributed, and the game text it was checked against"))
+		effects := b.Add("What the conditional layer contributed, and the game text it was checked against")
 		for _, g := range sheet.Effects {
 			line := fmt.Sprintf("%s: %s %s", g.Source, statName(g.Stat), statValue(g.Stat, g.Value))
 			if g.Cite != "" {
@@ -380,19 +375,19 @@ func (s *Server) addBuildFacts(
 	}
 
 	if len(sheet.Instances) > 0 {
-		hits := b.Add(i18n.T(lang, "Damage the gear adds by itself"))
+		hits := b.Add("Damage the gear adds by itself")
 		for _, in := range sheet.Instances {
-			hits.T(lang, "%s adds its own hit at %s scaling.", in.Source, pct(in.Instance.Multiplier))
+			hits.Linef("%s adds its own hit at %s scaling.", in.Source, pct(in.Instance.Multiplier))
 		}
 	}
 
 	if len(sheet.Undeclared) > 0 {
-		gaps := b.Add(i18n.T(lang, "Conditions nobody has answered"))
-		gaps.T(lang, "These are switched off in every number above. They are not absent bonuses; they are bonuses nobody has been asked about.")
+		gaps := b.Add("Conditions nobody has answered")
+		gaps.Line("These are switched off in every number above. They are not absent bonuses; they are bonuses nobody has been asked about.")
 		for _, m := range sheet.Undeclared {
 			line := fmt.Sprintf("%s (%s)", m.Source, m.Key)
 			if m.MaxStacks > 0 {
-				line += i18n.T(lang, ", up to %s", num(m.MaxStacks))
+				line += fmt.Sprintf(", up to %s", num(m.MaxStacks))
 			}
 			if m.Note != "" {
 				line += " — " + trim(m.Note, 200)
@@ -404,13 +399,13 @@ func (s *Server) addBuildFacts(
 
 // ---------------------------------------------------------------- the roster
 
-func (s *Server) rosterBrief(ctx context.Context, a model.Account, lang i18n.Lang) (*kvasir.Brief, error) {
+func (s *Server) rosterBrief(ctx context.Context, a model.Account) (*kvasir.Brief, error) {
 	characters, err := s.loadCharacters(ctx, a.ID)
 	if err != nil {
 		return nil, err
 	}
 	if len(characters) == 0 {
-		return nil, fmt.Errorf("%s", i18n.T(lang, "no characters have been imported yet"))
+		return nil, fmt.Errorf("%s", "no characters have been imported yet")
 	}
 	weapons, err := s.loadWeapons(ctx, a.ID)
 	if err != nil {
@@ -443,61 +438,61 @@ func (s *Server) rosterBrief(ctx context.Context, a model.Account, lang i18n.Lan
 	}
 
 	b := kvasir.NewBrief("roster", "",
-		i18n.T(lang, "The roster on account %s", a.UID),
-		i18n.T(lang, "Who is worth investing in next, and who is being carried by gear they should not have? Only judge what is listed here."))
+		fmt.Sprintf("The roster on account %s", a.UID),
+		"Who is worth investing in next, and who is being carried by gear they should not have? Only judge what is listed here.")
 
-	roster := b.Add(i18n.T(lang, "Every character on the account"))
+	roster := b.Add("Every character on the account")
 	for _, c := range characters {
-		line := i18n.T(lang, "%s: level %d, C%d, talents %d/%d/%d, %d artifacts equipped",
+		line := fmt.Sprintf("%s: level %d, C%d, talents %d/%d/%d, %d artifacts equipped",
 			c.Key, c.Level, c.Constellation, c.TalentAuto, c.TalentSkill, c.TalentBurst, equippedCount[c.Key])
 		if w, ok := weaponOf[c.Key]; ok {
-			line += i18n.T(lang, ", holding %s R%d", w.Key, w.Refinement)
+			line += fmt.Sprintf(", holding %s R%d", w.Key, w.Refinement)
 		} else {
-			line += i18n.T(lang, ", no weapon")
+			line += ", no weapon"
 		}
 		if hasGoal[c.Key] {
-			line += i18n.T(lang, ", has a goal")
+			line += ", has a goal"
 		} else {
-			line += i18n.T(lang, ", no goal set up")
+			line += ", no goal set up"
 		}
 		roster.Line(line)
 	}
 
-	s.addAccountFacts(ctx, b, a, inventory, lang)
+	s.addAccountFacts(ctx, b, a, inventory)
 
-	method := b.Add(i18n.T(lang, "What Mimir can and cannot say here"))
-	method.T(lang, "Nothing on this page has been through the damage engine: a character with no goal has no rotation, and without a rotation there is no number. Say what is worth setting up as a goal rather than claiming a gain.")
+	method := b.Add("What Mimir can and cannot say here")
+	method.Line("Nothing on this page has been through the damage engine: a character with no goal has no rotation, and without a rotation there is no number. Say what is worth setting up as a goal rather than claiming a gain.")
 	return b, nil
 }
 
 // ---------------------------------------------------------------- inventory
 
-func (s *Server) artifactsBrief(ctx context.Context, a model.Account, lang i18n.Lang) (*kvasir.Brief, error) {
+func (s *Server) artifactsBrief(ctx context.Context, a model.Account) (*kvasir.Brief, error) {
 	inventory, err := db.LoadArtifacts(s.DB, a.ID)
 	if err != nil {
 		return nil, err
 	}
 	if len(inventory) == 0 {
-		return nil, fmt.Errorf("%s", i18n.T(lang, "no artifacts have been imported yet"))
+		return nil, fmt.Errorf("%s", "no artifacts have been imported yet")
 	}
 
 	b := kvasir.NewBrief("artifacts", "",
-		i18n.T(lang, "The artifact inventory on account %s", a.UID),
-		i18n.T(lang, "What should this player do with this inventory — what is worth levelling, what is dead weight, and which domain is worth a week? Do not claim a gain the engine has not measured."))
+		fmt.Sprintf("The artifact inventory on account %s", a.UID),
+		"What should this player do with this inventory — what is worth levelling, what is dead weight, and which domain is worth a week? Do not claim a gain the engine has not measured.")
 
-	s.addInventoryFacts(b, inventory, "", "", lang)
+	s.addInventoryFacts(b, inventory, "", "")
 
 	est, err := advisor.EstimateDropModel(inventory)
-	drops := b.Add(i18n.T(lang, "The drop model measured from this inventory"))
+	drops := b.Add("The drop model measured from this inventory")
 	if err != nil {
-		drops.T(lang, "There is no measured drop model: %v", err)
-		drops.T(lang, "Without one, farming is ranked in artifacts examined rather than in resin.")
+		drops.Linef("There is no measured drop model: %v", err)
+		drops.Line("Without one, farming is ranked in artifacts examined rather than in resin.")
 	} else {
-		drops.T(lang, "Measured from %d five-star artifacts.", est.Sample)
+		drops.Linef("Measured from %d five-star artifacts.", est.Sample)
 		if est.HasYield {
-			drops.T(lang, "Runs can be priced in resin: %s pieces per run.", num(est.Model.PiecesPerRun))
+			drops.Linef("Runs can be priced in resin: %s pieces per run.", num(est.Model.PiecesPerRun))
 		} else {
-			drops.T(lang, "The per-run yield is unknown, so farming cannot be priced in resin. An inventory records what dropped, never how many runs it took.")
+			drops.Line("The per-run yield is unknown, so farming cannot be priced in resin. An inventory records what dropped, never how many runs it took.")
 		}
 		for _, c := range est.Caveats {
 			drops.Line(c)
@@ -514,7 +509,7 @@ func (s *Server) artifactsBrief(ctx context.Context, a model.Account, lang i18n.
 // are deep enough to build around, which slots are thin, and what good gear is
 // sitting unequipped.
 func (s *Server) addInventoryFacts(
-	b *kvasir.Brief, inventory []model.Artifact, setFilter, slotFilter string, lang i18n.Lang,
+	b *kvasir.Brief, inventory []model.Artifact, setFilter, slotFilter string,
 ) {
 	type setStat struct {
 		total, fiveStar, maxed, equipped int
@@ -558,11 +553,11 @@ func (s *Server) addInventoryFacts(
 		bySlot[art.SlotKey]++
 	}
 
-	totals := b.Add(i18n.T(lang, "The inventory"))
-	totals.T(lang, "%d artifacts, %d of them equipped on somebody.", shown, equipped)
+	totals := b.Add("The inventory")
+	totals.Linef("%d artifacts, %d of them equipped on somebody.", shown, equipped)
 	for _, slot := range model.Slots {
 		if bySlot[slot] > 0 {
-			totals.T(lang, "%s: %d pieces", string(slot), bySlot[slot])
+			totals.Linef("%s: %d pieces", string(slot), bySlot[slot])
 		}
 	}
 
@@ -577,14 +572,14 @@ func (s *Server) addInventoryFacts(
 		return keys[i] < keys[j]
 	})
 
-	bySet := b.Add(i18n.T(lang, "By set, deepest first"))
+	bySet := b.Add("By set, deepest first")
 	for i, k := range keys {
 		if i >= 15 {
-			bySet.T(lang, "…and %d further sets with less in them.", len(keys)-15)
+			bySet.Linef("…and %d further sets with less in them.", len(keys)-15)
 			break
 		}
 		st := sets[k]
-		bySet.T(lang, "%s: %d pieces, %d of them five-star, %d at +20, %d equipped, best crit value %s",
+		bySet.Linef("%s: %d pieces, %d of them five-star, %d at +20, %d equipped, best crit value %s",
 			k, st.total, st.fiveStar, st.maxed, st.equipped, num1(st.bestCV))
 	}
 
@@ -597,13 +592,13 @@ func (s *Server) addInventoryFacts(
 	sort.Slice(spare, func(i, j int) bool { return spare[i].CritValue() > spare[j].CritValue() })
 
 	if len(spare) > 0 {
-		best := b.Add(i18n.T(lang, "The best pieces nobody is wearing"))
-		best.T(lang, "Crit value is 2×crit rate + crit damage. It is triage, not a verdict — the optimizer decides what is actually worn.")
+		best := b.Add("The best pieces nobody is wearing")
+		best.Line("Crit value is 2×crit rate + crit damage. It is triage, not a verdict — the optimizer decides what is actually worn.")
 		for i, art := range spare {
 			if i >= 10 {
 				break
 			}
-			best.T(lang, "%s %s +%d, main stat %s, crit value %s%s",
+			best.Linef("%s %s +%d, main stat %s, crit value %s%s",
 				art.SetKey, string(art.SlotKey), art.Level, statName(art.MainStat),
 				num1(art.CritValue()*100), substatList(art))
 		}
@@ -628,7 +623,7 @@ func filterArtifacts(in []model.Artifact, setFilter, slotFilter string, keep fun
 
 // ---------------------------------------------------------------- the goals
 
-func (s *Server) goalsBrief(ctx context.Context, a model.Account, lang i18n.Lang) (*kvasir.Brief, error) {
+func (s *Server) goalsBrief(ctx context.Context, a model.Account) (*kvasir.Brief, error) {
 	keys, err := s.goalKeys(ctx, a.ID)
 	if err != nil {
 		return nil, err
@@ -639,24 +634,24 @@ func (s *Server) goalsBrief(ctx context.Context, a model.Account, lang i18n.Lang
 	}
 
 	b := kvasir.NewBrief("goals", "",
-		i18n.T(lang, "The goals on account %s", a.UID),
-		i18n.T(lang, "Are these goals set up so the ranking can be trusted? Name what is missing — an unanswered condition, a rotation that does not match how the character is played, a priority order that fights itself."))
+		fmt.Sprintf("The goals on account %s", a.UID),
+		"Are these goals set up so the ranking can be trusted? Name what is missing — an unanswered condition, a rotation that does not match how the character is played, a priority order that fights itself.")
 
 	snap, snapErr := s.GameData.Current()
 
-	list := b.Add(i18n.T(lang, "Goals, highest priority first"))
+	list := b.Add("Goals, highest priority first")
 	for _, key := range keys {
 		goal, _, _, err := s.loadGoal(ctx, a.ID, key)
 		if err != nil {
 			continue
 		}
-		list.T(lang, "%s: priority %d, rotation %q with %d steps, enemy level %d",
+		list.Linef("%s: priority %d, rotation %q with %d steps, enemy level %d",
 			key, goal.Priority, goal.Spec.Name, len(goal.Spec.Steps), goal.Target.Level)
 		for i, step := range goal.Spec.Steps {
-			list.T(lang, "    %s step %d: %s %s ×%d", key, i+1, step.Talent, step.Entry, step.Hits)
+			list.Linef("    %s step %d: %s %s ×%d", key, i+1, step.Talent, step.Entry, step.Hits)
 		}
 		for _, k := range sortedKeys(goal.Conditions) {
-			list.T(lang, "    %s declared condition: %s = %s", key, k, num(goal.Conditions[k]))
+			list.Linef("    %s declared condition: %s = %s", key, k, num(goal.Conditions[k]))
 		}
 
 		// Which conditions this goal's own gear would use, but nobody has
@@ -665,23 +660,23 @@ func (s *Server) goalsBrief(ctx context.Context, a model.Account, lang i18n.Lang
 		// build sheet.
 		if snapErr == nil {
 			for _, m := range s.undeclaredFor(ctx, a.ID, key, snap, goal.Conditions) {
-				list.T(lang, "    %s has not been asked: %s (%s)", key, m.Source, m.Key)
+				list.Linef("    %s has not been asked: %s (%s)", key, m.Source, m.Key)
 			}
 		}
 	}
 	if len(keys) == 0 {
-		list.T(lang, "No goals have been set up, so nothing on this account has been ranked.")
+		list.Line("No goals have been set up, so nothing on this account has been ranked.")
 	}
 
 	if len(characters) > len(keys) {
-		without := b.Add(i18n.T(lang, "Characters with no goal"))
+		without := b.Add("Characters with no goal")
 		has := map[string]bool{}
 		for _, k := range keys {
 			has[k] = true
 		}
 		for _, c := range characters {
 			if !has[c.Key] {
-				without.T(lang, "%s, level %d, C%d", c.Key, c.Level, c.Constellation)
+				without.Linef("%s, level %d, C%d", c.Key, c.Level, c.Constellation)
 			}
 		}
 	}
@@ -735,23 +730,23 @@ func (s *Server) undeclaredFor(
 // an answer cannot tell an eight-character showcase from a full inventory, and
 // the advice for those two accounts is not the same.
 func (s *Server) addAccountFacts(
-	ctx context.Context, b *kvasir.Brief, a model.Account, inventory []model.Artifact, lang i18n.Lang,
+	ctx context.Context, b *kvasir.Brief, a model.Account, inventory []model.Artifact,
 ) {
 	characters, _ := s.loadCharacters(ctx, a.ID)
 	weapons, _ := s.loadWeapons(ctx, a.ID)
 
-	sec := b.Add(i18n.T(lang, "The account"))
-	sec.T(lang, "%d characters, %d weapons and %d artifacts have been imported.",
+	sec := b.Add("The account")
+	sec.Linef("%d characters, %d weapons and %d artifacts have been imported.",
 		len(characters), len(weapons), len(inventory))
 	if a.ARLevel > 0 {
-		sec.T(lang, "Adventure rank %d, world level %d.", a.ARLevel, a.WLLevel)
+		sec.Linef("Adventure rank %d, world level %d.", a.ARLevel, a.WLLevel)
 	}
 	source := map[string]int{}
 	for _, art := range inventory {
 		source[art.Source]++
 	}
 	if source["good"] == 0 && len(inventory) > 0 {
-		sec.T(lang, "The inventory came from Enka, which only reports equipped pieces. Everything unequipped is invisible here — a .good file would change that.")
+		sec.Line("The inventory came from Enka, which only reports equipped pieces. Everything unequipped is invisible here — a .good file would change that.")
 	}
 }
 

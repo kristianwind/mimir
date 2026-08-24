@@ -32,18 +32,18 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
-		writeError(w, r, http.StatusBadRequest, "malformed request", "")
+		writeError(w, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 
 	token, user, err := s.Auth.Login(r.Context(), body.Username, body.Password, r.UserAgent())
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
-			writeError(w, r, http.StatusUnauthorized, "wrong username or password", "")
+			writeError(w, http.StatusUnauthorized, "wrong username or password", "")
 			return
 		}
 		s.Log.Error("login failed", "error", err)
-		writeError(w, r, http.StatusInternalServerError, "login failed", "")
+		writeError(w, http.StatusInternalServerError, "login failed", "")
 		return
 	}
 
@@ -61,65 +61,51 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
-	var theme, mode, lang string
+	var theme, mode string
 	err := s.DB.QueryRowContext(r.Context(),
-		`SELECT theme, theme_mode, lang FROM users WHERE id = ?`, u.ID).Scan(&theme, &mode, &lang)
+		`SELECT theme, theme_mode FROM users WHERE id = ?`, u.ID).Scan(&theme, &mode)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"id": u.ID, "username": u.Username, "role": u.Role,
-		"theme": theme, "themeMode": mode, "lang": lang,
+		"theme": theme, "themeMode": mode,
 	})
 }
 
 // handlePrefs stores the presentation preferences that follow the account
-// rather than the browser: element theme, light/dark mode and language.
+// rather than the browser: element theme and light/dark mode.
 //
-// One endpoint for all three because they are one decision from the user's
-// side — "how should this look" — and splitting them would mean three round
-// trips to render the same page correctly on a new device.
+// One endpoint for both because they are one decision from the user's side —
+// "how should this look" — and splitting them would mean two round trips to
+// render the same page correctly on a new device.
 func (s *Server) handleSetPrefs(w http.ResponseWriter, r *http.Request) {
 	u, _ := auth.FromContext(r.Context())
 	var body struct {
 		Theme string `json:"theme"`
 		Mode  string `json:"themeMode"`
-		Lang  string `json:"lang"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&body); err != nil {
-		writeError(w, r, http.StatusBadRequest, "malformed request", "")
+		writeError(w, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 	if !validTheme(body.Theme) {
-		writeError(w, r, http.StatusBadRequest, "unknown theme", "Pick one of the seven elements.")
+		writeError(w, http.StatusBadRequest, "unknown theme", "Pick one of the seven elements.")
 		return
 	}
 	if body.Mode != "light" && body.Mode != "dark" && body.Mode != "system" {
 		body.Mode = "system"
 	}
-	// An unknown language falls back rather than failing: a preference the
-	// server does not recognise is a reason to show the source language, not
-	// a reason to reject the whole request and lose the theme with it.
-	if !validLang(body.Lang) {
-		body.Lang = "en"
-	}
 	if _, err := s.DB.ExecContext(r.Context(),
-		`UPDATE users SET theme = ?, theme_mode = ?, lang = ? WHERE id = ?`,
-		body.Theme, body.Mode, body.Lang, u.ID); err != nil {
-		writeDomainError(w, r, err)
+		`UPDATE users SET theme = ?, theme_mode = ? WHERE id = ?`,
+		body.Theme, body.Mode, u.ID); err != nil {
+		writeDomainError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{
-		"theme": body.Theme, "themeMode": body.Mode, "lang": body.Lang,
+		"theme": body.Theme, "themeMode": body.Mode,
 	})
-}
-
-// Languages the bundled frontend actually ships a dictionary for. Kept here
-// rather than inferred, so an unshipped code cannot be stored and then render
-// as untranslated keys.
-func validLang(lang string) bool {
-	return lang == "da" || lang == "en"
 }
 
 func validTheme(theme string) bool {
@@ -134,7 +120,7 @@ func validTheme(theme string) bool {
 func (s *Server) handleGameDataStatus(w http.ResponseWriter, r *http.Request) {
 	versions, err := s.GameData.Versions()
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	snap, err := s.GameData.Current()
@@ -158,7 +144,7 @@ func (s *Server) requireAccount(next http.Handler) http.Handler {
 		u, _ := auth.FromContext(r.Context())
 		id, err := strconv.ParseInt(chi.URLParam(r, "accountID"), 10, 64)
 		if err != nil {
-			writeError(w, r, http.StatusBadRequest, "invalid account id", "")
+			writeError(w, http.StatusBadRequest, "invalid account id", "")
 			return
 		}
 
@@ -170,11 +156,11 @@ func (s *Server) requireAccount(next http.Handler) http.Handler {
 		if errors.Is(err, sql.ErrNoRows) {
 			// Not "forbidden": a user must not learn that an account id
 			// exists on somebody else's profile.
-			writeError(w, r, http.StatusNotFound, "the account does not exist", "")
+			writeError(w, http.StatusNotFound, "the account does not exist", "")
 			return
 		}
 		if err != nil {
-			writeDomainError(w, r, err)
+			writeDomainError(w, err)
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), accountKey{}, a)))
@@ -192,7 +178,7 @@ func (s *Server) handleListAccounts(w http.ResponseWriter, r *http.Request) {
 		`SELECT id, user_id, uid, nickname, region, ar_level, wl_level
 		 FROM accounts WHERE user_id = ? ORDER BY created_at`, u.ID)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	defer rows.Close()
@@ -201,7 +187,7 @@ func (s *Server) handleListAccounts(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var a model.Account
 		if err := rows.Scan(&a.ID, &a.UserID, &a.UID, &a.Nickname, &a.Region, &a.ARLevel, &a.WLLevel); err != nil {
-			writeDomainError(w, r, err)
+			writeDomainError(w, err)
 			return
 		}
 		out = append(out, a)
@@ -215,11 +201,11 @@ func (s *Server) handleCreateAccount(w http.ResponseWriter, r *http.Request) {
 		UID string `json:"uid"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&body); err != nil {
-		writeError(w, r, http.StatusBadRequest, "malformed request", "")
+		writeError(w, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 	if err := enka.ValidateUID(body.UID); err != nil {
-		writeError(w, r, http.StatusBadRequest, "invalid UID",
+		writeError(w, http.StatusBadRequest, "invalid UID",
 			"The UID is at the bottom right in the game and is nine digits.")
 		return
 	}
@@ -229,7 +215,7 @@ func (s *Server) handleCreateAccount(w http.ResponseWriter, r *http.Request) {
 		 ON CONFLICT(user_id, uid) DO UPDATE SET updated_at = datetime('now')`,
 		u.ID, body.UID, enka.Region(body.UID))
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	id, _ := res.LastInsertId()
@@ -245,7 +231,7 @@ func (s *Server) handleGetAccount(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	a := accountFrom(r.Context())
 	if _, err := s.DB.ExecContext(r.Context(), `DELETE FROM accounts WHERE id = ?`, a.ID); err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusNoContent, nil)
@@ -259,13 +245,13 @@ func (s *Server) handleImportEnka(w http.ResponseWriter, r *http.Request) {
 
 	snap, err := s.GameData.Current()
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 
 	fetched, err := s.Enka.Fetch(r.Context(), a.UID)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 
@@ -273,7 +259,7 @@ func (s *Server) handleImportEnka(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := s.DB.BeginTx(r.Context(), nil)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	defer tx.Rollback()
@@ -282,24 +268,24 @@ func (s *Server) handleImportEnka(w http.ResponseWriter, r *http.Request) {
 		`UPDATE accounts SET nickname = ?, region = ?, ar_level = ?, wl_level = ?, updated_at = datetime('now')
 		 WHERE id = ?`,
 		res.Account.Nickname, res.Account.Region, res.Account.ARLevel, res.Account.WLLevel, a.ID); err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	if err := upsertCharacters(r.Context(), tx, a.ID, res.Characters); err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	if err := upsertEquippedWeapons(r.Context(), tx, a.ID, res.Weapons); err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	stats, err := db.UpsertArtifacts(tx, a.ID, res.Artifacts)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	if err := tx.Commit(); err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 
@@ -320,7 +306,7 @@ func (s *Server) handleImportGOOD(w http.ResponseWriter, r *http.Request) {
 
 	f, err := good.Parse(http.MaxBytesReader(w, r.Body, maxGOODUpload))
 	if err != nil {
-		writeError(w, r, http.StatusBadRequest, err.Error(),
+		writeError(w, http.StatusBadRequest, err.Error(),
 			"Export a .good file from Inventory Kamera or Genshin Optimizer.")
 		return
 	}
@@ -328,26 +314,26 @@ func (s *Server) handleImportGOOD(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := s.DB.BeginTx(r.Context(), nil)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	defer tx.Rollback()
 
 	if err := upsertCharacters(r.Context(), tx, a.ID, chars); err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	if err := upsertWeapons(r.Context(), tx, a.ID, weapons); err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	stats, err := db.UpsertArtifacts(tx, a.ID, arts)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	if err := tx.Commit(); err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 
@@ -443,7 +429,7 @@ func (s *Server) handleListCharacters(w http.ResponseWriter, r *http.Request) {
 		       talent_auto, talent_skill, talent_burst, source
 		FROM characters WHERE account_id = ? ORDER BY char_key`, a.ID)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	defer rows.Close()
@@ -453,7 +439,7 @@ func (s *Server) handleListCharacters(w http.ResponseWriter, r *http.Request) {
 		c := model.Character{AccountID: a.ID}
 		if err := rows.Scan(&c.ID, &c.Key, &c.Level, &c.Ascension, &c.Constellation,
 			&c.TalentAuto, &c.TalentSkill, &c.TalentBurst, &c.Source); err != nil {
-			writeDomainError(w, r, err)
+			writeDomainError(w, err)
 			return
 		}
 		out = append(out, c)
@@ -465,7 +451,7 @@ func (s *Server) handleListArtifacts(w http.ResponseWriter, r *http.Request) {
 	a := accountFrom(r.Context())
 	arts, err := db.LoadArtifacts(s.DB, a.ID)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	if arts == nil {

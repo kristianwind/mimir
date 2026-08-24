@@ -1,6 +1,5 @@
 <script>
   import { api } from './api.js'
-  import { t } from './lang.svelte.js'
 
   let { accounts, onchange } = $props()
 
@@ -59,7 +58,7 @@
 <div class="space-y-6">
   <form class="card flex flex-wrap items-end gap-3 p-5" onsubmit={addAccount}>
     <div class="min-w-48 flex-1">
-      <label class="label" for="uid">{t('Genshin UID')}</label>
+      <label class="label" for="uid">Genshin UID</label>
       <input
         id="uid"
         class="field font-mono"
@@ -69,11 +68,10 @@
         required
       />
     </div>
-    <button class="btn-primary" disabled={busy === 'add'}>{t('Add')}</button>
+    <button class="btn-primary" disabled={busy === 'add'}>Add</button>
     <p class="w-full text-xs text-muted">
-      {@html t(
-        'The UID is at the bottom right in the game. Enka fetches your showcase characters without a login — remember to switch on <em>Show Character Details</em> in your profile.',
-      )}
+      {@html 'The UID is at the bottom right in the game. Enka fetches your showcase characters ' +
+        'without a login — remember to switch on <em>Show Character Details</em> in your profile.'}
     </p>
   </form>
 
@@ -86,22 +84,12 @@
   {#if result}
     <div class="rounded-xl border border-good/40 bg-good/10 px-4 py-3 text-sm">
       <p class="font-medium">
-        {t('Import from {source} for {account}', {
-          source: result.source,
-          account: result.account,
-        })}
+        Import from {result.source} for {result.account}
       </p>
       <p class="text-muted">
-        {t(
-          '{characters} characters · {inserted} new artifacts, {upgraded} upgraded, {unchanged} unchanged',
-          {
-            characters: result.characters,
-            inserted: result.artifacts.inserted,
-            upgraded: result.artifacts.upgraded,
-            unchanged: result.artifacts.unchanged,
-          },
-        )}
-        {#if result.stale}{t('· data is from the cache')}{/if}
+        {result.characters} characters · {result.artifacts.inserted} new artifacts,
+        {result.artifacts.upgraded} upgraded, {result.artifacts.unchanged} unchanged
+        {#if result.stale}· data is from the cache{/if}
       </p>
       {#if result.warnings?.length}
         <ul class="mt-2 list-inside list-disc text-xs text-warn">
@@ -117,7 +105,7 @@
     {#each accounts as account (account.id)}
       <div class="card flex flex-wrap items-center gap-4 p-5">
         <div class="min-w-40 flex-1">
-          <p class="font-medium">{account.nickname || t('Unnamed')}</p>
+          <p class="font-medium">{account.nickname || 'Unnamed'}</p>
           <p class="font-mono text-xs text-muted">{account.uid} · {account.region}</p>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -126,10 +114,10 @@
             onclick={() => importEnka(account)}
             disabled={busy === `enka-${account.id}`}
           >
-            {busy === `enka-${account.id}` ? t('Fetching…') : t('Fetch from Enka')}
+            {busy === `enka-${account.id}` ? 'Fetching…' : 'Fetch from Enka'}
           </button>
           <label class="btn-ghost cursor-pointer">
-            {busy === `good-${account.id}` ? t('Importing…') : t('Upload .good')}
+            {busy === `good-${account.id}` ? 'Importing…' : 'Upload .good'}
             <input
               type="file"
               accept=".good,.json,application/json"
@@ -140,7 +128,7 @@
         </div>
       </div>
     {:else}
-      <p class="text-sm text-muted">{t('No accounts yet.')}</p>
+      <p class="text-sm text-muted">No accounts yet.</p>
     {/each}
   </div>
 </div>

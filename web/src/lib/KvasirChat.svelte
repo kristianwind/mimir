@@ -8,14 +8,10 @@
    * It still cannot produce a number, only fetch one.
    */
   import { api } from './api.js'
-  import { t } from './lang.svelte.js'
   import { kvasirStatus } from './Kvasir.svelte'
 
   let { account, surface = 'plan', subject = '' } = $props()
 
-  // Written as labels rather than bare strings so the translation coverage
-  // test sees them: a source string it cannot find renders English inside an
-  // otherwise Danish page, which reads as working software.
   const SUGGESTIONS = [
     { label: 'What should I spend tomorrow’s resin on?' },
     { label: 'Which of my characters is furthest from their potential?' },
@@ -73,11 +69,11 @@
 
 {#if !enabled}
   <div class="card p-8 text-center">
-    <p class="text-muted">{t('Kvasir is not switched on.')}</p>
+    <p class="text-muted">Kvasir is not switched on.</p>
     <p class="mx-auto mt-2 max-w-prose text-sm text-muted">
-      {t(
-        'Point MIMIR_LLM_BASE_URL at an OpenAI-compatible endpoint — LM Studio, Ollama, vLLM — and Kvasir appears on every page. Nothing else in Mimir depends on it: no number here comes from a language model.',
-      )}
+      Point MIMIR_LLM_BASE_URL at an OpenAI-compatible endpoint — LM Studio, Ollama, vLLM — and
+      Kvasir appears on every page. Nothing else in Mimir depends on it: no number here comes from a
+      language model.
     </p>
   </div>
 {:else}
@@ -85,18 +81,18 @@
     {#if messages.length === 0}
       <div class="card p-6">
         <p class="text-sm leading-relaxed">
-          {t(
-            'Kvasir reads what the engine calculated for this account and answers questions about it. It looks things up rather than remembering them, and every figure it uses has to come from a calculation — so it will tell you when it cannot answer.',
-          )}
+          Kvasir reads what the engine calculated for this account and answers questions about it.
+          It looks things up rather than remembering them, and every figure it uses has to come from
+          a calculation — so it will tell you when it cannot answer.
         </p>
         <div class="mt-4 flex flex-wrap gap-2">
           {#each SUGGESTIONS as suggestion (suggestion.label)}
             <button
               type="button"
               class="chip hover:border-accent hover:text-ink"
-              onclick={() => send(t(suggestion.label))}
+              onclick={() => send(suggestion.label)}
             >
-              {t(suggestion.label)}
+              {suggestion.label}
             </button>
           {/each}
         </div>
@@ -106,13 +102,13 @@
     {#each messages as message, i (i)}
       <div class="card p-4 {message.role === 'user' ? 'border-accent/40' : ''}">
         <p class="mb-1.5 text-[11px] uppercase tracking-wide text-muted">
-          {message.role === 'user' ? t('You') : 'Kvasir'}
+          {message.role === 'user' ? 'You' : 'Kvasir'}
         </p>
         <p class="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
 
         {#if message.used?.length}
           <p class="mt-2 text-[11px] text-muted">
-            {t('Looked up: {tools}', { tools: [...new Set(message.used)].join(', ') })}
+            Looked up: {[...new Set(message.used)].join(', ')}
           </p>
         {/if}
 
@@ -123,16 +119,14 @@
         -->
         {#if message.unsourced?.length}
           <p class="mt-2 rounded-lg border border-warn/40 bg-warn/10 px-2.5 py-1.5 text-xs text-warn">
-            {t('Do not trust these figures — no calculation produced them: {numbers}', {
-              numbers: message.unsourced.join(', '),
-            })}
+            Do not trust these figures — no calculation produced them: {message.unsourced.join(', ')}
           </p>
         {/if}
       </div>
     {/each}
 
     {#if pending}
-      <p class="text-sm text-muted">{t('Kvasir is reading the numbers…')}</p>
+      <p class="text-sm text-muted">Kvasir is reading the numbers…</p>
     {/if}
 
     {#if error}
@@ -148,10 +142,10 @@
         rows="2"
         bind:value={question}
         {onkeydown}
-        placeholder={t('Ask about your account…')}
+        placeholder="Ask about your account…"
       ></textarea>
       <button class="btn-primary" disabled={pending || !question.trim()} onclick={() => send()}>
-        {t('Ask')}
+        Ask
       </button>
     </div>
   </div>

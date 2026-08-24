@@ -1,9 +1,8 @@
 <script>
   import { api } from './api.js'
-  import { t } from './lang.svelte.js'
   import ThemePicker from './ThemePicker.svelte'
 
-  let { onauthenticated, theme, mode, setTheme, onlangchange } = $props()
+  let { onauthenticated, theme, mode, setTheme } = $props()
 
   let username = $state('')
   let password = $state('')
@@ -30,11 +29,11 @@
 
     if (first) {
       if (password !== confirm) {
-        error = t('The two passwords do not match.')
+        error = 'The two passwords do not match.'
         return
       }
       if (password.length < 12) {
-        error = t('The password must be at least 12 characters.')
+        error = 'The password must be at least 12 characters.'
         return
       }
     }
@@ -63,7 +62,7 @@
         🜁
       </div>
       <h1 class="text-2xl font-semibold tracking-tight">Mimir</h1>
-      <p class="mt-1 text-sm text-muted">{t('The adviser at the well')}</p>
+      <p class="mt-1 text-sm text-muted">The adviser at the well</p>
     </div>
 
     {#if !checked}
@@ -74,17 +73,16 @@
       <form class="card space-y-4 p-6" onsubmit={submit}>
         {#if first}
           <div class="rounded-xl border border-accent/40 bg-accent/10 px-3 py-2.5">
-            <p class="text-sm font-medium">{t('Create the first administrator')}</p>
+            <p class="text-sm font-medium">Create the first administrator</p>
             <p class="mt-1 text-xs text-muted">
-              {t(
-                'This instance is empty. Mimir has no default account — this form only appears until the first one exists, and disappears by itself afterwards.',
-              )}
+              This instance is empty. Mimir has no default account — this form only appears until
+              the first one exists, and disappears by itself afterwards.
             </p>
           </div>
         {/if}
 
         <div>
-          <label class="label" for="username">{t('Username')}</label>
+          <label class="label" for="username">Username</label>
           <input
             id="username"
             class="field"
@@ -95,7 +93,7 @@
         </div>
 
         <div>
-          <label class="label" for="password">{t('Password')}</label>
+          <label class="label" for="password">Password</label>
           <input
             id="password"
             class="field"
@@ -105,13 +103,13 @@
             required
           />
           {#if first}
-            <p class="mt-1.5 text-xs text-muted">{t('At least 12 characters.')}</p>
+            <p class="mt-1.5 text-xs text-muted">At least 12 characters.</p>
           {/if}
         </div>
 
         {#if first}
           <div>
-            <label class="label" for="confirm">{t('Repeat the password')}</label>
+            <label class="label" for="confirm">Repeat the password</label>
             <input
               id="confirm"
               class="field"
@@ -132,17 +130,17 @@
         <button class="btn-primary w-full" disabled={busy}>
           {busy
             ? first
-              ? t('Creating…')
-              : t('Logging in…')
+              ? 'Creating…'
+              : 'Logging in…'
             : first
-              ? t('Create and log in')
-              : t('Log in')}
+              ? 'Create and log in'
+              : 'Log in'}
         </button>
       </form>
     {/if}
 
     <div class="mt-6 flex justify-center">
-      <ThemePicker {theme} {mode} {setTheme} {onlangchange} />
+      <ThemePicker {theme} {mode} {setTheme} />
     </div>
   </div>
 </div>

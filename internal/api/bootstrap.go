@@ -31,7 +31,7 @@ import (
 func (s *Server) handleBootstrapStatus(w http.ResponseWriter, r *http.Request) {
 	needed, err := s.needsBootstrap(r.Context())
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"needed": needed})
@@ -44,22 +44,22 @@ func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
-		writeError(w, r, http.StatusBadRequest, "malformed request", "")
+		writeError(w, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 	body.Username = strings.TrimSpace(body.Username)
 	if body.Username == "" {
-		writeError(w, r, http.StatusBadRequest, "username is missing", "")
+		writeError(w, http.StatusBadRequest, "username is missing", "")
 		return
 	}
 	if err := checkPassword(body.Password); err != nil {
-		writeError(w, r, http.StatusBadRequest, passwordError(r, err), "")
+		writeError(w, http.StatusBadRequest, passwordError(err), "")
 		return
 	}
 
 	hash, err := auth.HashPassword(body.Password)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 
@@ -72,16 +72,16 @@ func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 		SELECT ?, ?, 'admin' WHERE NOT EXISTS (SELECT 1 FROM users)`,
 		body.Username, hash)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	n, err := res.RowsAffected()
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	if n == 0 {
-		writeError(w, r, http.StatusConflict,
+		writeError(w, http.StatusConflict,
 			"the instance already has a user",
 			"Log in instead. If you have lost access, create a new user with `mimir useradd` on the host.")
 		return
@@ -92,7 +92,7 @@ func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 	// no security in it.
 	token, user, err := s.Auth.Login(r.Context(), body.Username, body.Password, r.UserAgent())
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	s.Auth.SetCookie(w, token)

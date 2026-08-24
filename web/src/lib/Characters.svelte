@@ -1,6 +1,5 @@
 <script>
   import { api } from './api.js'
-  import { t } from './lang.svelte.js'
   import Kvasir from './Kvasir.svelte'
 
   let { account } = $props()
@@ -26,12 +25,12 @@
 </script>
 
 {#if loading}
-  <p class="text-sm text-muted">{t('Fetching characters…')}</p>
+  <p class="text-sm text-muted">Fetching characters…</p>
 {:else if error}
   <p class="rounded-xl border border-bad/40 bg-bad/10 px-4 py-3 text-sm text-bad">{error}</p>
 {:else if characters.length === 0}
   <div class="card p-8 text-center">
-    <p class="text-muted">{t('No characters yet. Fetch from Enka or upload a .good file.')}</p>
+    <p class="text-muted">No characters yet. Fetch from Enka or upload a .good file.</p>
   </div>
 {:else}
   <Kvasir {account} surface="roster" />
@@ -43,7 +42,7 @@
           <h2 class="font-medium">{character.key}</h2>
           <span class="chip">C{character.constellation}</span>
         </div>
-        <p class="mt-1 text-sm text-muted">{t('Level {n}', { n: character.level })}</p>
+        <p class="mt-1 text-sm text-muted">Level {character.level}</p>
         <dl class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
           <div class="rounded-lg bg-raised py-2">
             <dt class="text-muted">Normal</dt>
@@ -64,7 +63,7 @@
           class="btn-ghost mt-3 w-full text-xs"
           onclick={() => (asking = asking === character.key ? null : character.key)}
         >
-          {asking === character.key ? t('Hide Kvasir') : t('What does Kvasir think of this build?')}
+          {asking === character.key ? 'Hide Kvasir' : 'What does Kvasir think of this build?'}
         </button>
         {#if asking === character.key}
           <div class="mt-3">

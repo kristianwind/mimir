@@ -21,9 +21,8 @@ import (
 // a lie the player has no way to catch.
 
 // numberToken finds anything that could be read as a number: digit groups
-// optionally separated by dots or commas. Which of those is the decimal point
-// depends on the language, and Kvasir writes Danish for Danish users, so the
-// separator is resolved per token rather than assumed.
+// optionally separated by dots or commas. Which of the two is the decimal
+// point is resolved per token rather than assumed — see values.
 var numberToken = regexp.MustCompile(`\d+(?:[.,]\d+)*`)
 
 // smallCount is the one exemption: integers up to ten.
@@ -36,11 +35,13 @@ const smallCount = 10
 
 // values returns every reading of a numeric token.
 //
-// "1,446" is one thousand four hundred and forty-six to an English reader and
-// one point four four six to a Danish one, and the fact sheet is written in
-// one language while the answer is written in the other. Returning both and
-// accepting either is deliberate: the alternative is a check that fires on
-// correctly quoted figures, and a check that cries wolf gets switched off.
+// The fact sheet writes 1446 and 34.53; a model quoting them may write 1,446
+// with a thousands separator, and a model trained on European text will write
+// 34,53 whatever it was asked for. "1,446" is one thousand four hundred and
+// forty-six under one convention and one point four four six under the other,
+// and nothing in the string says which. Returning both readings and accepting
+// either is deliberate: the alternative is a check that fires on correctly
+// quoted figures, and a check that cries wolf gets switched off.
 func values(token string) []float64 {
 	cleaned := token
 	if cleaned == "" {

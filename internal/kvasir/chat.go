@@ -152,6 +152,9 @@ func (a *Advisor) Chat(ctx context.Context, req ChatRequest) (ChatResult, error)
 		if len(reply.Message.ToolCalls) == 0 {
 			out.Reply = strings.TrimSpace(reply.Message.Content)
 			if out.Reply == "" {
+				if reply.FinishReason == "length" {
+					return out, ErrBudget
+				}
 				return out, fmt.Errorf("kvasir: the model answered with nothing")
 			}
 			out.Unsourced = sourced.Unsourced(out.Reply)

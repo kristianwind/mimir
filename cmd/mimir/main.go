@@ -138,7 +138,8 @@ func serve(args []string) error {
 		// anything — the rest of Mimir does not know the difference, because
 		// no number in it comes from a model.
 		Kvasir: &kvasir.Advisor{
-			Client: llm.New(cfg.LLMBaseURL, cfg.LLMModel, cfg.LLMAPIKey, cfg.LLMTimeout),
+			Client:    llm.New(cfg.LLMBaseURL, cfg.LLMModel, cfg.LLMAPIKey, cfg.LLMTimeout),
+			MaxTokens: cfg.LLMMaxTokens,
 		},
 	}
 	if srv.Kvasir.Available() {

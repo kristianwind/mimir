@@ -158,3 +158,56 @@ func TestMigrationAddsColumnsToAnExistingDatabase(t *testing.T) {
 		t.Error("reopening an older database did not add the new column")
 	}
 }
+
+// The opinion cache used to be keyed on a language, and its uniqueness
+// constraint named that column — so an install carrying the old shape would
+// fail every ON CONFLICT the new code writes. Adding a column cannot fix a
+// constraint, so the table is dropped and rebuilt. It is a cache; the only
+// thing that must survive is the ability to write to it.
+func TestUpgradingRebuildsTheOpinionCache(t *testing.T) {
+	path := t.TempDir() + "/upgrade.db"
+
+	old, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := old.Exec(`
+		DROP TABLE kvasir_opinions;
+		CREATE TABLE kvasir_opinions (
+			id         INTEGER PRIMARY KEY AUTOINCREMENT,
+			account_id INTEGER NOT NULL,
+			surface    TEXT NOT NULL,
+			subject    TEXT NOT NULL DEFAULT '',
+			lang       TEXT NOT NULL DEFAULT 'da',
+			facts_hash TEXT NOT NULL,
+			model      TEXT NOT NULL DEFAULT '',
+			body       TEXT NOT NULL,
+			brief      TEXT NOT NULL DEFAULT '',
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			UNIQUE(account_id, surface, subject, lang, facts_hash)
+		);
+		INSERT INTO kvasir_opinions (account_id, surface, facts_hash, body)
+		VALUES (1, 'plan', 'abc', '{}')`); err != nil {
+		t.Fatalf("could not simulate the older schema: %v", err)
+	}
+	old.Close()
+
+	conn, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+
+	if has, err := hasColumn(conn, "kvasir_opinions", "lang"); err != nil || has {
+		t.Fatalf("the old column survived the upgrade (has=%v err=%v)", has, err)
+	}
+
+	// The statement the server actually writes has to work against it.
+	if _, err := conn.Exec(`
+		INSERT INTO kvasir_opinions (account_id, surface, subject, facts_hash, model, body, brief)
+		VALUES (1, 'plan', '', 'abc', 'm', '{}', '')
+		ON CONFLICT(account_id, surface, subject, facts_hash) DO UPDATE SET body = excluded.body`,
+	); err != nil {
+		t.Fatalf("the upgraded table does not take the server's insert: %v", err)
+	}
+}

@@ -40,7 +40,7 @@ func (s *toolStub) start() *llm.Client {
 		_, _ = io.WriteString(w, `{"choices":[{"message":`+msg+`,"finish_reason":"stop"}],"usage":{}}`)
 	}))
 	s.t.Cleanup(srv.Close)
-	return llm.New(srv.URL, "test-model", "", 0)
+	return llm.New(srv.URL, "test-model", "", 0, false)
 }
 
 // fakeRunner stands in for the engine.

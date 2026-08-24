@@ -123,6 +123,12 @@ accurate, not what makes it work.
       page. The answer is stored next to the sheet it came from, keyed on that
       sheet's hash: an unchanged account is not asked again, and an old answer
       cannot sit next to numbers it was not about
+- [x] **Thinking is off** — Kvasir asks for a short answer built from a fact
+      sheet, and a reasoning model spends the whole token budget and most of
+      the wait on a chain of thought nothing reads. Measured on the model this
+      instance is configured with: 16,000 tokens and three and a half minutes
+      without answering, against five seconds with it off. `MIMIR_LLM_THINKING`
+      turns it back on for a model that needs it
 - [x] **Optional all the way down** — without `MIMIR_LLM_BASE_URL` the layer
       does not exist: no card, no page, no request. The endpoint is any
       OpenAI-compatible one, so the operator decides where the household's game

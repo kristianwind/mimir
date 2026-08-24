@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -130,6 +131,19 @@ type Client struct {
 	Model   string
 	APIKey  string
 	HTTP    *http.Client
+	// Thinking lets a reasoning model reason before it answers. Off by
+	// default, and deliberately: Kvasir asks for a JSON object built from a
+	// fact sheet, not for an essay. A model left to think spends the token
+	// budget and most of the wall clock on a chain of thought nothing reads —
+	// measured at over 16,000 tokens and three and a half minutes on one
+	// local 26B, which never got as far as answering.
+	Thinking bool
+
+	// noKwargs remembers that this endpoint rejected chat_template_kwargs, so
+	// the retry that discovered it happens once rather than on every call.
+	// The field is not part of the OpenAI API — llama.cpp and vLLM read it,
+	// a hosted API may refuse the whole request over it.
+	noKwargs atomic.Bool
 }
 
 // New returns a client, or nil when no endpoint is configured.
@@ -137,7 +151,7 @@ type Client struct {
 // Nil rather than an error: "the operator did not want an AI layer" is a
 // configuration, not a fault, and returning nil lets every call site test for
 // it with the same `if s.LLM == nil` it would need anyway.
-func New(baseURL, model, apiKey string, timeout time.Duration) *Client {
+func New(baseURL, model, apiKey string, timeout time.Duration, thinking bool) *Client {
 	if strings.TrimSpace(baseURL) == "" {
 		return nil
 	}
@@ -145,10 +159,11 @@ func New(baseURL, model, apiKey string, timeout time.Duration) *Client {
 		timeout = 2 * time.Minute
 	}
 	return &Client{
-		BaseURL: strings.TrimRight(strings.TrimSpace(baseURL), "/"),
-		Model:   strings.TrimSpace(model),
-		APIKey:  strings.TrimSpace(apiKey),
-		HTTP:    &http.Client{Timeout: timeout},
+		BaseURL:  strings.TrimRight(strings.TrimSpace(baseURL), "/"),
+		Model:    strings.TrimSpace(model),
+		APIKey:   strings.TrimSpace(apiKey),
+		HTTP:     &http.Client{Timeout: timeout},
+		Thinking: thinking,
 	}
 }
 
@@ -163,7 +178,12 @@ type wireRequest struct {
 	Temperature    float64         `json:"temperature"`
 	MaxTokens      int             `json:"max_tokens,omitempty"`
 	ResponseFormat *responseFormat `json:"response_format,omitempty"`
-	Stream         bool            `json:"stream"`
+	// ChatTemplateKwargs reaches the model's own chat template. It is how
+	// thinking is switched off, and the only one of the four plausible spellings
+	// that a current llama.cpp actually honours — reasoning_effort,
+	// reasoning_budget and a bare enable_thinking are all accepted and ignored.
+	ChatTemplateKwargs map[string]any `json:"chat_template_kwargs,omitempty"`
+	Stream             bool           `json:"stream"`
 }
 
 type responseFormat struct {
@@ -202,35 +222,29 @@ func (c *Client) Complete(ctx context.Context, req Request) (Reply, error) {
 		body.ToolChoice = "auto"
 	}
 
-	raw, err := json.Marshal(body)
-	if err != nil {
-		return Reply{}, fmt.Errorf("llm: encode request: %w", err)
+	if !c.Thinking && !c.noKwargs.Load() {
+		body.ChatTemplateKwargs = map[string]any{"enable_thinking": false}
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/chat/completions", bytes.NewReader(raw))
+	payload, status, err := c.post(ctx, body)
 	if err != nil {
-		return Reply{}, fmt.Errorf("llm: build request: %w", err)
+		return Reply{}, err
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	if c.APIKey != "" {
-		httpReq.Header.Set("Authorization", "Bearer "+c.APIKey)
+	// A strict endpoint rejects the request over a field it does not know
+	// rather than ignoring it. Dropping the field and asking again — once,
+	// remembered — is better than making every operator of a hosted API find
+	// a setting to turn off.
+	if status == http.StatusBadRequest && body.ChatTemplateKwargs != nil {
+		c.noKwargs.Store(true)
+		body.ChatTemplateKwargs = nil
+		payload, status, err = c.post(ctx, body)
+		if err != nil {
+			return Reply{}, err
+		}
 	}
 
-	res, err := c.HTTP.Do(httpReq)
-	if err != nil {
-		return Reply{}, fmt.Errorf("llm: %s is not answering: %w", c.BaseURL, err)
-	}
-	defer res.Body.Close()
-
-	// Capped: an endpoint that is actually an HTML error page should not be
-	// read into memory in full before being rejected.
-	payload, err := io.ReadAll(io.LimitReader(res.Body, 8<<20))
-	if err != nil {
-		return Reply{}, fmt.Errorf("llm: read response: %w", err)
-	}
-
-	if res.StatusCode != http.StatusOK {
-		return Reply{}, fmt.Errorf("llm: %s answered %s: %s", c.BaseURL, res.Status, snippet(payload))
+	if status != http.StatusOK {
+		return Reply{}, fmt.Errorf("llm: %s answered %d: %s", c.BaseURL, status, snippet(payload))
 	}
 
 	var out wireReply
@@ -249,6 +263,38 @@ func (c *Client) Complete(ctx context.Context, req Request) (Reply, error) {
 		Usage:        out.Usage,
 		FinishReason: out.Choices[0].FinishReason,
 	}, nil
+}
+
+// post sends one request and returns the body and status, so a caller can
+// react to a status without having to re-encode anything.
+func (c *Client) post(ctx context.Context, body wireRequest) ([]byte, int, error) {
+	raw, err := json.Marshal(body)
+	if err != nil {
+		return nil, 0, fmt.Errorf("llm: encode request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/chat/completions", bytes.NewReader(raw))
+	if err != nil {
+		return nil, 0, fmt.Errorf("llm: build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if c.APIKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.APIKey)
+	}
+
+	res, err := c.HTTP.Do(req)
+	if err != nil {
+		return nil, 0, fmt.Errorf("llm: %s is not answering: %w", c.BaseURL, err)
+	}
+	defer res.Body.Close()
+
+	// Capped: an endpoint that is actually an HTML error page should not be
+	// read into memory in full before being rejected.
+	payload, err := io.ReadAll(io.LimitReader(res.Body, 8<<20))
+	if err != nil {
+		return nil, 0, fmt.Errorf("llm: read response: %w", err)
+	}
+	return payload, res.StatusCode, nil
 }
 
 // Models lists what the endpoint serves.

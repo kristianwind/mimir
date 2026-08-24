@@ -30,6 +30,12 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
+  # Spelled out rather than taken from github.repository, which is
+  # "kristianwind/mimir" here and "kw/mimir" on the Gitea mirror — where the
+  # push then failed with "permission_denied: create_package", because it was
+  # asking to create a package for a GitHub user called kw. The image has one
+  # name wherever it is built from.
+  IMAGE: kristianwind/mimir
 
 jobs:
   test:
@@ -89,13 +95,13 @@ jobs:
       - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.GHCR_USER || github.repository_owner }}
+          username: ${{ secrets.GHCR_USER || 'kristianwind' }}
           password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
 
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=semver,pattern={{version}}
@@ -105,10 +111,13 @@ jobs:
         with:
           context: .
           file: deploy/Dockerfile
-          # arm64 as well as amd64: a Yggdrasil host may be a Pi or an
-          # Apple-silicon VM, and a single-arch image fails there with the
-          # same unhelpful "denied" as a missing one.
-          platforms: linux/amd64,linux/arm64
+          # A release builds for arm64 too — a Yggdrasil host may be a Pi or
+          # an Apple-silicon VM, and a single-arch image fails there with the
+          # same unhelpful "denied" as a missing one. A push to main does not:
+          # every host that pulls this image today is x86_64, and the arm64
+          # half is compiled under QEMU, which is most of the wall clock of a
+          # deploy. Tags stay universal; main stays quick.
+          platforms: ${{ github.ref_type == 'tag' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

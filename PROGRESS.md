@@ -47,6 +47,32 @@ accurate, not what makes it work.
 - [x] **Account plan** across goals with priority resolution
 - [x] Anything that cannot be priced appears in `skipped` with the reason
 
+### Potential: which characters are worth building
+- [x] **A yardstick that needs no rotation** — one cast of the elemental skill
+      and one of the burst, at the character's own talent levels, against a
+      level 90 enemy. Stated on the page, not implied: a damage number with no
+      named conditions is not comparable to anything
+- [x] **Every owned character measured**, including the ones the plan cannot
+      see because they have no goal
+- [x] **Ranked on gain alone** — resin is not in the ordering, so a talent book
+      that buys more damage outranks a free rearrangement that buys less
+- [x] **Two numbers, because they answer different questions**: damage added
+      (what one upgrade buys, which favours strong builds) and headroom (how
+      much owned gear is unequipped, which is where the neglected ones show up)
+- [x] **Unlevelled artifacts called out** — the one upgrade that costs no resin
+      and no domain run. Only the main stat is projected; the substat rolls a
+      piece gains on the way are the one thing nobody can predict
+- [x] **Actions are never summed** — re-equipping and levelling the piece it
+      replaced overlap, so the ranking uses the largest single upgrade
+- [x] **Goals can be written from it**, marked `derived` and saying so wherever
+      their numbers appear. A goal you wrote is never touched; saving a derived
+      one makes it yours
+- [x] **A hit and a buff are no longer the same thing** — `IsDamage` treated any
+      percentage row containing "DMG" as damage, so Raiden's *Elemental Burst
+      DMG Bonus* was a valid rotation step the engine multiplied by her attack.
+      Checked against all 117 mined characters: 44 rows are modifiers, 1,300
+      are hits, and none of the real ones are excluded
+
 ### Data in
 - [x] **Enka.Network** — client, TTL cache with labelled stale fallback,
       setId as the primary bridge, Traveler variants via the skill depot

@@ -136,6 +136,11 @@ func (s *Server) Router() http.Handler {
 					r.Put("/goals", s.handleSaveGoal)
 					r.Delete("/goals/{characterKey}", s.handleDeleteGoal)
 
+					// The ranking that needs no goal, and the one endpoint
+					// that writes goals from it.
+					r.Get("/potential", s.handlePotential)
+					r.Post("/goals/derive", s.handleDeriveGoals)
+
 					r.Get("/dropmodel", s.handleDropModel)
 					r.Get("/plan", s.handleAccountPlan)
 					r.Get("/plan/{characterKey}", s.handlePlanForGoal)

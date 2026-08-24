@@ -50,6 +50,41 @@ from genshin-db. The obvious route — TextMap — does not work: the hashes in 
 current mirror resolve zero out of 165 character names.
 [docs/GAMEDATA.md](docs/GAMEDATA.md) explains why, and what is done instead.
 
+## Which characters are worth building
+
+The plan needs a goal with a rotation before it can say anything, which makes
+every character without one invisible to it. The **Potential** page answers the
+question before that one: of everybody on the account, who is worth investing
+in, and what is the one thing to do for each.
+
+It measures every character with the same ruler, stated on the page rather than
+implied:
+
+> one cast of the elemental skill and one of the elemental burst, at that
+> character's own talent levels, against a level 90 enemy with 10% resistance
+
+No teams, no rotations, no resin. Artifacts, sets, weapon, passives,
+constellations and talent levels all count, because the ruler runs through the
+same engine everything else does. What it leaves out is on the page too:
+normal attacks, reactions, and the fact that a support who exists to enable
+somebody else scores as their own raw hit.
+
+Two numbers per character, because they answer different questions. **Damage
+added** is what one upgrade buys — the ranking sorts on it, so the same weapon
+upgrade ranks higher on a strong build than a weak one, which is what "most
+value from the account" means. **Headroom** is how much of the gear you already
+own is not equipped, which is where to look for who is being neglected.
+
+Unlevelled artifacts get their own section, because artifact experience is not
+resin and a +8 piece on a finished build is free damage sitting in a drawer.
+Only the main stat's growth is projected: the substat rolls a piece gains on
+the way up are exactly the thing nobody can predict, so they are not counted.
+
+The page can write the goals for you. Those rotations are Mimir's guess — the
+same two casts it measured with — so they are stored as **derived** and say so
+everywhere their numbers appear, including in the plan's caveats. A goal you
+wrote is never touched, and saving a derived one makes it yours.
+
 ## Kvasir's opinion
 
 The plan is ranked, but it is silent. It says Emblem is +34.53 % and that it

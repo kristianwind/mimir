@@ -227,6 +227,43 @@ answer; artifact farming has a distribution. The simulator samples the drop
 model, equips whatever beats the current build, and reports mean, median, p10,
 p90 and the probability the whole run changed nothing.
 
+## The potential view
+
+The plan is measured against a rotation and ranked per resin. Both are right
+for "what do I do with tomorrow's resin" and wrong for "which of these
+characters is worth investing in at all": a character with no goal has no
+rotation, so the plan cannot see them, and dividing by resin buries a large
+upgrade behind a cheap one.
+
+So `internal/advisor/potential.go` measures the same builds with a **yardstick**
+— one cast of the elemental skill and one of the burst, at the character's own
+talent levels, against a level 90 enemy — and ranks on the gain alone.
+
+The yardstick is not "one hit of 100% of your scaling stat", and the difference
+matters: a flat multiplier makes talent levels invisible, and "should I level
+this talent" is half of what investing means. Using the mined multipliers keeps
+talents, constellations and character level in the number.
+
+Everything it leaves out is stated in the output rather than in a comment
+here — normal attacks, teams, reactions, and the fact that each character is
+measured as though it could take any piece on the account, so two bests may
+want the same artifact. A ranking whose ruler is hidden gets read as a verdict
+on who is worth playing.
+
+**Artifact levelling is its own upgrade kind**, because it is the only one that
+costs no resin and no domain run, and because a plan that only ever says "farm
+a better sands" never notices that the sands on the character is at +8. Only
+the main stat is projected: a piece gains a substat roll every four levels and
+which stat it lands on is the whole reason farming is a distribution rather
+than a purchase. Under-reporting is the right direction — it cannot talk
+anybody into levelling a piece on a promise the game did not make.
+
+**Goals can be derived from the ranking**, using the same two casts, and are
+stored marked as such. Every gain in the plan is measured against the rotation,
+so a guessed one is wrong all the way down — and a guess that cannot be told
+apart from an authored one is the version of that nobody catches. The plan
+names them in its caveats; saving one makes it the player's.
+
 ## The optimizer
 
 Five slots over a few hundred owned pieces each is a fifteen-digit combination

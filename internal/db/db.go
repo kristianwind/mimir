@@ -73,6 +73,7 @@ type addedColumn struct {
 }
 
 var addedColumns = []addedColumn{
+	{"goals", "source", `ALTER TABLE goals ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'`},
 	{"goals", "conditions", `ALTER TABLE goals ADD COLUMN conditions TEXT NOT NULL DEFAULT '{}'`},
 }
 
@@ -270,6 +271,11 @@ CREATE TABLE IF NOT EXISTS goals (
 	-- The player's answers to what the effect layer cannot infer: is
 	-- Noblesse up, how many Marechaussee stacks, is the enemy frozen.
 	conditions    TEXT NOT NULL DEFAULT '{}',
+	-- "manual" when the player wrote the rotation, "derived" when Mimir did.
+	-- Every gain in the plan is measured against the rotation, so a guessed
+	-- one is wrong all the way down — and a guess that cannot be told apart
+	-- from an authored one is the version of that which nobody catches.
+	source        TEXT NOT NULL DEFAULT 'manual',
 	notes         TEXT NOT NULL DEFAULT '',
 	created_at    TEXT NOT NULL DEFAULT (datetime('now')),
 	UNIQUE(account_id, char_key)

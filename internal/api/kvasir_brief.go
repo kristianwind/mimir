@@ -54,6 +54,8 @@ func (s *Server) briefFor(ctx context.Context, a model.Account, surface, subject
 		return s.artifactsBrief(ctx, a)
 	case "goals":
 		return s.goalsBrief(ctx, a)
+	case "potential":
+		return s.potentialBrief(ctx, a)
 	default:
 		return nil, fmt.Errorf("%s", "Kvasir has no fact sheet for that page")
 	}
@@ -619,6 +621,77 @@ func filterArtifacts(in []model.Artifact, setFilter, slotFilter string, keep fun
 		}
 	}
 	return out
+}
+
+// ------------------------------------------------------------- the potential
+
+// potentialBrief is the roster measured with one ruler and no goals.
+//
+// It is the only fact sheet that covers characters the plan cannot see, so it
+// is what an answer to "who should I build" has to be built from. The ruler's
+// limits are in the sheet rather than in a footnote: a model handed a ranking
+// with no stated method will explain it as if it were a verdict.
+func (s *Server) potentialBrief(ctx context.Context, a model.Account) (*kvasir.Brief, error) {
+	reqs, err := s.potentialRequests(ctx, a.ID)
+	if err != nil {
+		return nil, err
+	}
+	if len(reqs) == 0 {
+		return nil, fmt.Errorf("none of the characters have anything equipped")
+	}
+	ranking, err := advisor.AccountPotential(ctx, reqs)
+	if err != nil {
+		return nil, err
+	}
+
+	b := kvasir.NewBrief("potential", "",
+		fmt.Sprintf("What every character on account %s is worth building", a.UID),
+		"Which characters should this player invest in, and what should they do first for each? "+
+			"Say who is being neglected as well as who buys the most damage — those are different questions and the ranking only answers the second.")
+
+	method := b.Add("How every character here was measured")
+	for _, c := range ranking.Caveats {
+		method.Line(c)
+	}
+
+	list := b.Add("The roster, best single upgrade first")
+	for i, c := range ranking.Characters {
+		line := fmt.Sprintf("%d. %s (%s): scores %s today, %s with the best gear it owns — %s of headroom sitting unequipped",
+			i+1, c.Character, c.Element, num(c.Current), num(c.Best), pct(c.Headroom))
+		if c.TopAction != nil {
+			line += fmt.Sprintf(". Biggest single upgrade: %s, +%s (%s points)",
+				c.TopAction.Headline, pct(c.TopAction.GainPct), num(c.TopGain))
+		}
+		list.Line(line)
+	}
+
+	// Artifact levelling is called out separately because it is the one
+	// upgrade that costs no resin and no domain run, and the one people
+	// forget: a +8 piece on a finished build is free damage in a drawer.
+	pieces := b.Add("Pieces that are not levelled")
+	for _, c := range ranking.Characters {
+		for _, act := range c.Actions {
+			if act.Kind == advisor.KindArtifact {
+				pieces.Linef("%s: %s (+%s)", c.Character, act.Headline, pct(act.GainPct))
+			}
+		}
+	}
+	if pieces.Empty() {
+		pieces.Line("None: every equipped piece is at its cap.")
+	}
+
+	limits := b.Add("What could not be measured")
+	for _, sk := range ranking.Skipped {
+		limits.Line(sk)
+	}
+	for _, c := range ranking.Characters {
+		for _, sk := range c.Skipped {
+			limits.Linef("%s: %s", c.Character, sk)
+		}
+	}
+
+	s.addAccountFacts(ctx, b, a, nil)
+	return b, nil
 }
 
 // ---------------------------------------------------------------- the goals

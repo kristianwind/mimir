@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -29,6 +30,10 @@ type goalPayload struct {
 	Conditions   map[string]float64 `json:"conditions,omitempty"`
 	Constraints  []constraint       `json:"constraints,omitempty"`
 	Notes        string             `json:"notes,omitempty"`
+	// Source is "manual" when the player wrote the rotation and "derived"
+	// when Mimir did. Read-only from the client's side: saving a goal makes
+	// it the player's, which is the whole point of opening it.
+	Source string `json:"source,omitempty"`
 }
 
 type constraint struct {
@@ -53,7 +58,7 @@ func defaultTarget() calc.Target {
 func (s *Server) handleListGoals(w http.ResponseWriter, r *http.Request) {
 	a := accountFrom(r.Context())
 	rows, err := s.DB.QueryContext(r.Context(),
-		`SELECT char_key, priority, team, rotation, target, conditions, notes FROM goals
+		`SELECT char_key, priority, team, rotation, target, conditions, notes, source FROM goals
 		 WHERE account_id = ? ORDER BY priority DESC, char_key`, a.ID)
 	if err != nil {
 		writeDomainError(w, err)
@@ -68,7 +73,7 @@ func (s *Server) handleListGoals(w http.ResponseWriter, r *http.Request) {
 			team, rotation, target, conditions string
 		)
 		if err := rows.Scan(&g.CharacterKey, &g.Priority, &team, &rotation, &target,
-			&conditions, &g.Notes); err != nil {
+			&conditions, &g.Notes, &g.Source); err != nil {
 			writeDomainError(w, err)
 			return
 		}
@@ -135,7 +140,10 @@ func (s *Server) handleSaveGoal(w http.ResponseWriter, r *http.Request) {
 			rotation = excluded.rotation,
 			target = excluded.target,
 			conditions = excluded.conditions,
-			notes = excluded.notes`,
+			notes = excluded.notes,
+			-- Saving is the player taking ownership: a rotation they have
+			-- looked at and kept is theirs, derived or not.
+			source = 'manual'`,
 		a.ID, g.CharacterKey, g.Priority, string(team), string(rotation),
 		string(target), string(conditions), g.Notes,
 	); err != nil {
@@ -259,6 +267,12 @@ func (s *Server) handleAccountPlan(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeDomainError(w, err)
 		return
+	}
+	if derived, err := s.derivedGoals(r.Context(), a.ID); err == nil && len(derived) > 0 {
+		plan.Caveats = append(plan.Caveats, fmt.Sprintf(
+			"%s: the rotation was derived by Mimir, not written by you — one cast of the skill and one of the burst. "+
+				"Every gain below for those goals is measured against that, so open them and say what you actually press.",
+			strings.Join(derived, ", ")))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"plan":    plan,
@@ -610,6 +624,27 @@ func (s *Server) loadWeapons(ctx context.Context, accountID int64) ([]model.Weap
 			return nil, err
 		}
 		out = append(out, wp)
+	}
+	return out, rows.Err()
+}
+
+// derivedGoals names the goals whose rotation Mimir guessed.
+func (s *Server) derivedGoals(ctx context.Context, accountID int64) ([]string, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT char_key FROM goals WHERE account_id = ? AND source = 'derived' ORDER BY char_key`,
+		accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []string
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return nil, err
+		}
+		out = append(out, key)
 	}
 	return out, rows.Err()
 }

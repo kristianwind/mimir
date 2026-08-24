@@ -94,6 +94,7 @@ func Tools() []llm.Tool {
 		tool("build_sheet", "One character's resolved stats, which effects fired, the text each was checked against, and which conditions nobody has answered.", character),
 		tool("talents", "One character's talent table: the real labels and their multipliers at the levels this account has.", character),
 		tool("roster", "Every character on the account with level, constellation and talent levels.", none),
+		tool("potential", "Every character measured with one ruler and no goals: what they score now, what the gear they own would give them, and the biggest single upgrade for each. Covers characters that have no goal and are therefore missing from the plan.", none),
 		tool("goals", "The goals set up on this account: rotation, priority, declared conditions.", none),
 		tool("inventory", "A summary of the artifact inventory: how many of each set, by slot, and the best unequipped pieces.", map[string]any{
 			"type": "object",

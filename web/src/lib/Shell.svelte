@@ -5,6 +5,7 @@
   import Characters from './Characters.svelte'
   import Artifacts from './Artifacts.svelte'
   import Plan from './Plan.svelte'
+  import Potential from './Potential.svelte'
   import Goals from './Goals.svelte'
   import KvasirChat from './KvasirChat.svelte'
   import { kvasirStatus } from './Kvasir.svelte'
@@ -17,6 +18,12 @@
   const PAGES = [
     { key: 'plan', label: 'Plan', icon: '◎', hint: 'What should you spend resin on?' },
     { key: 'kvasir', label: 'Kvasir', icon: '🜛', hint: 'Ask how to get better', ai: true },
+    {
+      key: 'potential',
+      label: 'Potential',
+      icon: '△',
+      hint: 'Who is worth building, measured with one ruler',
+    },
     { key: 'goals', label: 'Goals', icon: '⌖', hint: 'Who are you building, and how do you play them?' },
     { key: 'characters', label: 'Characters', icon: '☗', hint: 'Your roster' },
     { key: 'artifacts', label: 'Artifacts', icon: '✦', hint: 'The whole inventory' },
@@ -135,6 +142,8 @@
       <Characters account={selected} />
     {:else if view === 'artifacts'}
       <Artifacts account={selected} />
+    {:else if view === 'potential'}
+      <Potential account={selected} ongotogoals={() => (view = 'goals')} />
     {:else if view === 'goals'}
       <Goals account={selected} />
     {:else if view === 'kvasir'}

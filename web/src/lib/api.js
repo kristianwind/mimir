@@ -108,6 +108,9 @@ export const api = {
   saveGoal: (id, goal) => request('PUT', `/accounts/${id}/goals`, goal),
   deleteGoal: (id, key) => request('DELETE', `/accounts/${id}/goals/${key}`),
 
+  potential: (id) => request('GET', `/accounts/${id}/potential`),
+  deriveGoals: (id, body) => request('POST', `/accounts/${id}/goals/derive`, body),
+
   dropModel: (id) => request('GET', `/accounts/${id}/dropmodel`),
   accountPlan: (id) => request('GET', `/accounts/${id}/plan`),
   plan: (id, key) => request('GET', `/accounts/${id}/plan/${key}`),

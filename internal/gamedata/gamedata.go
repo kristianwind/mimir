@@ -18,6 +18,7 @@ package gamedata
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/kristianwind/mimir/internal/model"
@@ -207,8 +208,26 @@ type TalentEntry struct {
 // IsDamage reports whether this entry is a damage multiplier, which is the
 // only kind the damage engine can consume.
 func (t TalentEntry) IsDamage() bool {
-	return t.Unit == "percent" && strings.Contains(strings.ToUpper(t.Label), "DMG")
+	if t.Unit != "percent" || !strings.Contains(strings.ToUpper(t.Label), "DMG") {
+		return false
+	}
+	return !damageModifier.MatchString(t.Label)
 }
+
+// damageModifier separates a hit from a change to one.
+//
+// A talent table puts both in the same shape: "Skill DMG" and "Elemental Burst
+// DMG Bonus" are each a percentage, and nothing structural tells them apart.
+// Without this, Raiden's Eye of Stormy Judgment — a 30% buff to burst damage —
+// is a valid rotation step that the engine happily multiplies by her attack,
+// and the resulting number looks exactly like damage.
+//
+// The words are taken from the data rather than imagined: across all 117 mined
+// characters they catch 44 rows, every one of them a bonus, a reduction or a
+// conversion ratio, and they exclude none of the 1,300 real damage rows. A row
+// that is a hit is called "… DMG"; a row that changes a hit says what it does
+// to it.
+var damageModifier = regexp.MustCompile(`(?i)\b(Bonus|Increase|Reduction|Decrease|Conversion|Resistance|RES)\b`)
 
 // Multiplier returns the scaling value at a 1-based talent level.
 func (t TalentEntry) Multiplier(level int) (float64, error) {

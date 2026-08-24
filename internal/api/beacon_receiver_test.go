@@ -130,10 +130,7 @@ func TestKnownInstancesKeepReportingPastTheCap(t *testing.T) {
 	known := "aabbccddeeff0011"
 	post(s, "/api/beacon", fmt.Sprintf(`{"instance_id":%q,"version":"v1.0.0"}`, known))
 
-	for i := 0; i < maxInstances+1; i++ {
-		s.DB.Exec(`INSERT OR IGNORE INTO beacon_pings (instance_id, version) VALUES (?, 'v1')`,
-			fmt.Sprintf("%064x", i+1000))
-	}
+	fillToTheCap(t, s)
 
 	if w := post(s, "/api/beacon", `{"instance_id":"ffffffffffffffff","version":"v1.0.0"}`); w.Code != http.StatusServiceUnavailable {
 		t.Errorf("a new instance past the cap gave %d, want 503", w.Code)
@@ -232,5 +229,36 @@ func TestOnlyAdminsMine(t *testing.T) {
 		if w.Code != http.StatusForbidden {
 			t.Errorf("%s as a plain user gave %d, want 403", c.method, w.Code)
 		}
+	}
+}
+
+// fillToTheCap puts the table one row over the limit.
+//
+// In one transaction, because the alternative is 50,001 statements that each
+// commit and each fsync: three minutes on CI and over twenty on a slow disk,
+// for a fixture. The test is about what the endpoint does at the cap, not
+// about how the rows got there — and a test nobody can afford to run locally
+// is a test that stops being run.
+func fillToTheCap(t *testing.T, s *Server) {
+	t.Helper()
+	tx, err := s.DB.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback() //nolint:errcheck // committed below; this is the failure path
+
+	stmt, err := tx.Prepare(`INSERT OR IGNORE INTO beacon_pings (instance_id, version) VALUES (?, 'v1')`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stmt.Close()
+
+	for i := 0; i < maxInstances+1; i++ {
+		if _, err := stmt.Exec(fmt.Sprintf("%064x", i+1000)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
 	}
 }

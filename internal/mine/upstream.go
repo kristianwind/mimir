@@ -113,7 +113,12 @@ type elementCoeffRow struct {
 // because it is keyed by exactly the avatarId that arrives in a showcase.
 // A name resolved this way cannot disagree with the data being imported.
 type enkaCharacter struct {
-	Element         string         `json:"Element"`
+	Element string `json:"Element"`
+	// SideIconName is "UI_AvatarIcon_Side_Shougun". Every other image the
+	// game ships for a character is that suffix under a different prefix, so
+	// this one field is the whole art mapping — and it is the only place it
+	// exists in a form keyed by avatarId.
+	SideIconName    string         `json:"SideIconName"`
 	SkillOrder      []int          `json:"SkillOrder"`
 	Skills          map[string]any `json:"Skills"`
 	ProudMap        map[string]int `json:"ProudMap"`

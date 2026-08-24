@@ -232,6 +232,7 @@ func (m *Miner) mineCharacters(ctx context.Context, snap *gamedata.Snapshot) err
 			Key:        key,
 			Name:       name,
 			Element:    element,
+			Art:        artBase(ec.SideIconName),
 			WeaponType: friendlyWeaponType(av.WeaponType),
 			Rarity:     rarityFromQuality(ec.QualityType),
 			BaseHP:     av.HPBase,
@@ -616,6 +617,20 @@ func statBlock(props []addProp) model.StatBlock {
 	return out
 }
 
+// artBase turns "UI_AvatarIcon_Side_Shougun" into "Shougun".
+//
+// Every picture the game ships for a character is that suffix under a
+// different prefix — the portrait, the splash, the namecard — so one field
+// carries the lot. An entry that does not match the pattern returns nothing
+// rather than a guess: a wrong suffix is a 404 on every page that asks.
+func artBase(sideIcon string) string {
+	const prefix = "UI_AvatarIcon_Side_"
+	if !strings.HasPrefix(sideIcon, prefix) {
+		return ""
+	}
+	return strings.TrimPrefix(sideIcon, prefix)
+}
+
 func rarityFromQuality(q string) int {
 	switch q {
 	case "QUALITY_ORANGE", "QUALITY_ORANGE_SP":
@@ -699,14 +714,17 @@ func (m *Miner) addTraveler(
 	names map[string]string,
 ) {
 	base := "Traveler"
+	art := ""
 	if ec, ok := enkaChars[strconv.Itoa(av.ID)]; ok {
 		if n := names[strconv.FormatInt(ec.NameTextMapHash, 10)]; n != "" {
 			base = n
 		}
+		art = artBase(ec.SideIconName)
 	}
 
 	proto := gamedata.Character{
 		Name:       base,
+		Art:        art,
 		WeaponType: friendlyWeaponType(av.WeaponType),
 		Rarity:     5,
 		BaseHP:     av.HPBase,

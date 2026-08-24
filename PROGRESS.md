@@ -151,6 +151,10 @@ accurate, not what makes it work.
 - [x] **Kvasir cards** on the plan, the goals, the characters and the
       artifacts, and a Kvasir page for the conversation. All of it invisible
       when the layer is switched off
+- [x] **Character art behind the roster cards** — the game's own namecard
+      banner, fetched from Enka once and then served locally. The browser
+      never talks to a third party: a page that loads eight pictures from
+      somebody else tells them which characters this household plays
 - [x] PWA manifest
 
 ### Deployment

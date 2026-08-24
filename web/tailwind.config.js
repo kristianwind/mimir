@@ -1,6 +1,10 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{svelte,js}'],
+  // Bound to the app's own switch rather than to prefers-color-scheme. The
+  // mode is a stored preference on <html>, and a user who picked light while
+  // their OS is dark would otherwise get dark: styles on a light page.
+  darkMode: ['selector', '[data-mode="dark"]'],
   theme: {
     extend: {
       // Every colour is a CSS custom property so the seven element themes

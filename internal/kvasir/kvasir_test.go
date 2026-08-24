@@ -46,7 +46,7 @@ func (s *stub) start() *llm.Client {
 			mustJSON(reply)+`},"finish_reason":"stop"}],"usage":{"total_tokens":42}}`)
 	}))
 	s.t.Cleanup(srv.Close)
-	return llm.New(srv.URL, "test-model", "", 0)
+	return llm.New(srv.URL, "test-model", "", 0, false)
 }
 
 func mustJSON(s string) string {
@@ -159,7 +159,7 @@ func TestAdviseRefusesAnEmptyFactSheet(t *testing.T) {
 }
 
 func TestWithoutAnEndpointTheLayerIsSimplyOff(t *testing.T) {
-	a := &Advisor{Client: llm.New("", "", "", 0)}
+	a := &Advisor{Client: llm.New("", "", "", 0, false)}
 	if a.Available() {
 		t.Fatal("an unconfigured advisor reports itself available")
 	}

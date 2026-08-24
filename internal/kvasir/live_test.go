@@ -30,7 +30,8 @@ func liveClient(t *testing.T) *llm.Client {
 	if base == "" {
 		t.Skip("set MIMIR_LIVE_LLM to run against a real endpoint")
 	}
-	return llm.New(base, os.Getenv("MIMIR_LIVE_MODEL"), os.Getenv("MIMIR_LIVE_KEY"), 5*time.Minute)
+	return llm.New(base, os.Getenv("MIMIR_LIVE_MODEL"), os.Getenv("MIMIR_LIVE_KEY"), 5*time.Minute,
+		os.Getenv("MIMIR_LIVE_THINKING") == "1")
 }
 
 func realPlanBrief() *Brief {

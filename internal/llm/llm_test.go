@@ -12,7 +12,7 @@ import (
 )
 
 func TestNoEndpointIsNotAClient(t *testing.T) {
-	if c := New("  ", "m", "", 0); c != nil {
+	if c := New("  ", "m", "", 0, false); c != nil {
 		t.Fatal("an empty base URL produced a client")
 	}
 	var c *Client
@@ -43,7 +43,7 @@ func TestCompleteSendsTheModelAndTheKey(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := New(srv.URL+"/", "qwen", "sk-test", 0)
+	c := New(srv.URL+"/", "qwen", "sk-test", 0, false)
 	reply, err := c.Complete(context.Background(), Request{
 		Messages:   []Message{{Role: RoleUser, Content: "hello"}},
 		Tools:      []Tool{tool()},
@@ -99,7 +99,7 @@ func TestFailuresNameTheEndpoint(t *testing.T) {
 			srv := httptest.NewServer(handler)
 			defer srv.Close()
 
-			c := New(srv.URL, "m", "", 0)
+			c := New(srv.URL, "m", "", 0, false)
 			_, err := c.Complete(context.Background(), Request{Messages: []Message{{Role: RoleUser}}})
 			if err == nil {
 				t.Fatal("no error")
@@ -120,7 +120,7 @@ func TestModelsListsWhatIsServed(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	got, err := New(srv.URL, "", "", 0).Models(context.Background())
+	got, err := New(srv.URL, "", "", 0, false).Models(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,4 +134,77 @@ func tool() Tool {
 		Name:       "roster",
 		Parameters: map[string]any{"type": "object"},
 	}}
+}
+
+// Thinking is off unless asked for, and off is a field in the body rather than
+// a wish in the prompt.
+func TestThinkingIsSwitchedOffByDefault(t *testing.T) {
+	var bodies []map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		var body map[string]any
+		_ = json.Unmarshal(raw, &body)
+		bodies = append(bodies, body)
+		_, _ = io.WriteString(w, `{"choices":[{"message":{"role":"assistant","content":"ok"}}]}`)
+	}))
+	defer srv.Close()
+
+	off := New(srv.URL, "m", "", 0, false)
+	if _, err := off.Complete(context.Background(), Request{Messages: []Message{{Role: RoleUser}}}); err != nil {
+		t.Fatal(err)
+	}
+	kwargs, ok := bodies[0]["chat_template_kwargs"].(map[string]any)
+	if !ok || kwargs["enable_thinking"] != false {
+		t.Fatalf("thinking was not switched off: %v", bodies[0]["chat_template_kwargs"])
+	}
+
+	on := New(srv.URL, "m", "", 0, true)
+	if _, err := on.Complete(context.Background(), Request{Messages: []Message{{Role: RoleUser}}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, present := bodies[1]["chat_template_kwargs"]; present {
+		t.Error("a client told to allow thinking still sent the switch")
+	}
+}
+
+// chat_template_kwargs is not part of the OpenAI API. An endpoint that refuses
+// the whole request over it must not leave the operator hunting for a setting.
+func TestAnEndpointThatRefusesTheSwitchIsRetriedWithoutIt(t *testing.T) {
+	var seen []bool // whether each request carried the field
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		var body map[string]any
+		_ = json.Unmarshal(raw, &body)
+		_, has := body["chat_template_kwargs"]
+		seen = append(seen, has)
+
+		if has {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = io.WriteString(w, `{"error":{"message":"Unrecognized request argument: chat_template_kwargs"}}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"choices":[{"message":{"role":"assistant","content":"ok"}}]}`)
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, "m", "", 0, false)
+	reply, err := c.Complete(context.Background(), Request{Messages: []Message{{Role: RoleUser}}})
+	if err != nil {
+		t.Fatalf("the retry did not rescue the request: %v", err)
+	}
+	if reply.Message.Content != "ok" {
+		t.Errorf("content = %q", reply.Message.Content)
+	}
+	if len(seen) != 2 || !seen[0] || seen[1] {
+		t.Fatalf("expected one attempt with the field and one without, got %v", seen)
+	}
+
+	// And it is remembered: a second call does not spend a request finding out
+	// the same thing again.
+	if _, err := c.Complete(context.Background(), Request{Messages: []Message{{Role: RoleUser}}}); err != nil {
+		t.Fatal(err)
+	}
+	if len(seen) != 3 || seen[2] {
+		t.Errorf("the refusal was not remembered: %v", seen)
+	}
 }

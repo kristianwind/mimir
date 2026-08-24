@@ -349,6 +349,16 @@ moves, so a stale opinion can never sit next to numbers it was not talking
 about. It is the same instinct as seeding the farm simulator: "why did this
 change?" deserves an answer.
 
+**Thinking is switched off.** Kvasir asks for a short JSON object built from a
+fact sheet it has already been handed; a reasoning model answers that by
+spending its whole token budget on a chain of thought nothing reads. On the
+model one instance is configured with, that was sixteen thousand tokens and
+three and a half minutes without an answer, against five seconds with it off.
+It goes off through `chat_template_kwargs`, which is the only one of the four
+plausible spellings a current llama.cpp actually honours — and since that field
+is not part of the OpenAI API, an endpoint that refuses the request over it is
+retried once without it rather than left for the operator to diagnose.
+
 The endpoint is any OpenAI-compatible one — LM Studio, Ollama, vLLM, or a
 hosted API — so the operator decides where a household's game account is
 allowed to go. Unset, and none of this exists: no card, no page, no request.

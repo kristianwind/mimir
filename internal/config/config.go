@@ -46,6 +46,11 @@ type Config struct {
 	LLMBaseURL string
 	LLMModel   string
 	LLMAPIKey  string
+	// LLMThinking lets a reasoning model reason before answering. Off by
+	// default: Kvasir wants a JSON object built from a fact sheet, and the
+	// chain of thought costs the whole token budget and most of the wait for
+	// something nothing reads.
+	LLMThinking bool
 	// LLMMaxTokens bounds one answer. A reasoning model spends this budget on
 	// its chain of thought before it writes anything, so the default is
 	// generous — see kvasir.DefaultMaxTokens.
@@ -72,6 +77,7 @@ func Load() (*Config, error) {
 		LLMBaseURL:        env("MIMIR_LLM_BASE_URL", ""),
 		LLMModel:          env("MIMIR_LLM_MODEL", ""),
 		LLMAPIKey:         env("MIMIR_LLM_API_KEY", ""),
+		LLMThinking:       envBool("MIMIR_LLM_THINKING", false),
 		LLMMaxTokens:      envInt("MIMIR_LLM_MAX_TOKENS", 4000),
 		LLMTimeout:        time.Duration(envInt("MIMIR_LLM_TIMEOUT", 90)) * time.Second,
 	}

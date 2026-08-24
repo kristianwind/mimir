@@ -33,7 +33,7 @@ func (m *modelStub) advisor(t *testing.T) *kvasir.Advisor {
 			string(body)+`}}],"usage":{}}`)
 	}))
 	t.Cleanup(srv.Close)
-	return &kvasir.Advisor{Client: llm.New(srv.URL, "test-model", "", 0)}
+	return &kvasir.Advisor{Client: llm.New(srv.URL, "test-model", "", 0, false)}
 }
 
 // seedInventory gives the account something the engine can describe without a
@@ -75,7 +75,7 @@ func seedAccount(t *testing.T, s *Server, username string) int64 {
 // reads this to leave the cards out entirely.
 func TestKvasirReportsItselfOffWhenUnconfigured(t *testing.T) {
 	s, do := newServer(t)
-	s.Kvasir = &kvasir.Advisor{Client: llm.New("", "", "", 0)}
+	s.Kvasir = &kvasir.Advisor{Client: llm.New("", "", "", 0, false)}
 
 	res := do("member", "GET", "/api/kvasir", "")
 	if res.Code != http.StatusOK {
@@ -92,7 +92,7 @@ func TestKvasirReportsItselfOffWhenUnconfigured(t *testing.T) {
 
 func TestAskingWithNoModelConfiguredSaysSo(t *testing.T) {
 	s, do := newServer(t)
-	s.Kvasir = &kvasir.Advisor{Client: llm.New("", "", "", 0)}
+	s.Kvasir = &kvasir.Advisor{Client: llm.New("", "", "", 0, false)}
 	id := seedAccount(t, s, "member")
 
 	res := do("member", "POST", fmt.Sprintf("/api/accounts/%d/kvasir/opinion", id),

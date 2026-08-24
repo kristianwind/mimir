@@ -89,6 +89,12 @@ gameskill:
       default: ""
       secret: true
 
+    - key: MIMIR_LLM_THINKING
+      name: "Let the model think first"
+      type: bool
+      default: false
+      hint: "Off by default. Kvasir asks for a short answer built from a fact sheet; a reasoning model spends the whole token budget and most of the wait on a chain of thought nobody reads. Switch on only if a model answers badly without it."
+
     - key: MIMIR_LLM_MAX_TOKENS
       name: "LLM answer budget (tokens)"
       type: string

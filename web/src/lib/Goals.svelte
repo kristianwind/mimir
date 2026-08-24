@@ -1,6 +1,5 @@
 <script>
   import { api } from './api.js'
-  import { t } from './lang.svelte.js'
   import Kvasir from './Kvasir.svelte'
 
   let { account } = $props()
@@ -99,7 +98,7 @@
 
   async function save() {
     if (steps.length === 0) {
-      error = t('Pick at least one attack, otherwise there is nothing to measure the gain on.')
+      error = 'Pick at least one attack, otherwise there is nothing to measure the gain on.'
       return
     }
     busy = true
@@ -142,14 +141,14 @@
 {#if editing}
   <div class="card p-5">
     <div class="mb-4 flex flex-wrap items-baseline justify-between gap-3">
-      <h2 class="text-lg font-medium">{t('Rotation for {name}', { name: editing })}</h2>
-      <button class="btn-ghost text-xs" onclick={() => (editing = null)}>{t('Cancel')}</button>
+      <h2 class="text-lg font-medium">Rotation for {editing}</h2>
+      <button class="btn-ghost text-xs" onclick={() => (editing = null)}>Cancel</button>
     </div>
 
     <p class="mb-5 max-w-prose text-sm text-muted">
-      {t(
-        'Pick which attacks make up one rotation, and how many times each of them hits. The numbers are your actual talent levels. The rotation is what gains are measured on — a burst you never use is worth no gain at all.',
-      )}
+      Pick which attacks make up one rotation, and how many times each of them hits. The numbers are
+      your actual talent levels. The rotation is what gains are measured on — a burst you never use
+      is worth no gain at all.
     </p>
 
     <!-- Only for a goal that already exists: there is nothing to have an
@@ -159,7 +158,7 @@
     {/if}
 
     {#if !talents}
-      <p class="text-sm text-muted">{t('Fetching talent table…')}</p>
+      <p class="text-sm text-muted">Fetching talent table…</p>
     {:else}
       <div class="space-y-6">
         {#each SLOTS as slot (slot.key)}
@@ -167,14 +166,12 @@
           {#if entries.length}
             <section>
               <h3 class="label">
-                {t(slot.label)}
-                <span class="ml-1 text-muted">{t('· level {n}', { n: talents.levels[slot.key] })}</span>
+                {slot.label}
+                <span class="ml-1 text-muted">· level {talents.levels[slot.key]}</span>
                 {#if talents.baseLevels && talents.levels[slot.key] > talents.baseLevels[slot.key]}
                   <span class="ml-1 text-accent">
-                    {t('({base} + {extra} from constellation)', {
-                      base: talents.baseLevels[slot.key],
-                      extra: talents.levels[slot.key] - talents.baseLevels[slot.key],
-                    })}
+                    ({talents.baseLevels[slot.key]} +
+                    {talents.levels[slot.key] - talents.baseLevels[slot.key]} from constellation)
                   </span>
                 {/if}
               </h3>
@@ -193,14 +190,14 @@
                       <button
                         type="button"
                         class="btn-ghost h-7 w-7 !px-0"
-                        aria-label={t('Fewer')}
+                        aria-label="Fewer"
                         onclick={() => setHits(slot.key, entry.label, hits - 1)}>−</button
                       >
                       <span class="w-6 text-center text-sm tabular-nums">{hits}</span>
                       <button
                         type="button"
                         class="btn-ghost h-7 w-7 !px-0"
-                        aria-label={t('More')}
+                        aria-label="More"
                         onclick={() => setHits(slot.key, entry.label, hits + 1)}>+</button
                       >
                     </div>
@@ -214,11 +211,12 @@
 
       {#if conditionFields.length}
         <section class="mt-6 border-t border-line pt-5">
-          <h3 class="label">{t('Conditions')}</h3>
+          <h3 class="label">Conditions</h3>
           <p class="mb-3 max-w-prose text-xs text-muted">
-            {t(
-              'Some bonuses — from sets, constellations and weapons — depend on how you play, and some weapons and constellations land their own extra hit. Mimir does not guess: a bonus switched off because nobody asked looks exactly like a bonus that does not exist. Set 0 if you never have it up.',
-            )}
+            Some bonuses — from sets, constellations and weapons — depend on how you play, and some
+            weapons and constellations land their own extra hit. Mimir does not guess: a bonus
+            switched off because nobody asked looks exactly like a bonus that does not exist. Set 0
+            if you never have it up.
           </p>
           <div class="space-y-2">
             {#each conditionFields as field (field.key)}
@@ -236,7 +234,7 @@
                   oninput={(e) => (conditions = { ...conditions, [field.key]: Number(e.target.value) })}
                 />
                 {#if field.maxStacks > 1}
-                  <span class="text-xs text-muted">{t('of {n}', { n: field.maxStacks })}</span>
+                  <span class="text-xs text-muted">of {field.maxStacks}</span>
                 {/if}
               </div>
             {/each}
@@ -246,15 +244,15 @@
 
       <div class="mt-6 flex flex-wrap items-end gap-4 border-t border-line pt-5">
         <div>
-          <label class="label" for="duration">{t('Rotation length (sec.)')}</label>
+          <label class="label" for="duration">Rotation length (sec.)</label>
           <input id="duration" class="field w-32" type="number" min="1" bind:value={duration} />
         </div>
         <div>
-          <label class="label" for="priority">{t('Priority')}</label>
+          <label class="label" for="priority">Priority</label>
           <input id="priority" class="field w-24" type="number" bind:value={priority} />
         </div>
         <button class="btn-primary ml-auto" disabled={busy} onclick={save}>
-          {busy ? t('Saving…') : t('Save goal')}
+          {busy ? 'Saving…' : 'Save goal'}
         </button>
       </div>
     {/if}
@@ -271,29 +269,26 @@
             <div class="min-w-40 flex-1">
               <p class="font-medium">{goal.characterKey}</p>
               <p class="text-xs text-muted">
-                {t('{hits} attacks over {duration} sec. · priority {priority}', {
-                  hits: goal.rotation?.steps?.reduce((n, s) => n + (s.hits ?? 1), 0) ?? 0,
-                  duration: goal.rotation?.duration ?? 0,
-                  priority: goal.priority,
-                })}
+                {goal.rotation?.steps?.reduce((n, s) => n + (s.hits ?? 1), 0) ?? 0} attacks over
+                {goal.rotation?.duration ?? 0} sec. · priority {goal.priority}
               </p>
             </div>
-            <button class="btn-ghost" onclick={() => edit(goal.characterKey)}>{t('Edit')}</button>
-            <button class="btn-ghost" onclick={() => remove(goal.characterKey)}>{t('Delete')}</button>
+            <button class="btn-ghost" onclick={() => edit(goal.characterKey)}>Edit</button>
+            <button class="btn-ghost" onclick={() => remove(goal.characterKey)}>Delete</button>
           </div>
         {/each}
       </div>
     {:else}
-      <p class="text-sm text-muted">{t('No goals yet. Pick a character below.')}</p>
+      <p class="text-sm text-muted">No goals yet. Pick a character below.</p>
     {/if}
 
     <div>
-      <h3 class="label">{t('Add a goal')}</h3>
+      <h3 class="label">Add a goal</h3>
       <div class="flex flex-wrap gap-2">
         {#each characters.filter((c) => !goals.some((g) => g.characterKey === c.key)) as character (character.id)}
           <button type="button" class="chip hover:border-accent" onclick={() => edit(character.key)}>
             {character.key}
-            <span class="text-muted">{t('lvl {n}', { n: character.level })}</span>
+            <span class="text-muted">lvl {character.level}</span>
           </button>
         {/each}
       </div>

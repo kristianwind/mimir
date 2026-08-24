@@ -27,7 +27,7 @@ func newServer(t *testing.T) (*Server, func(as, method, path, body string) *http
 	s := &Server{DB: conn, Auth: store, Log: slog.Default()}
 
 	seed := func(name, role string) {
-		hash, err := auth.HashPassword("korrekt-hestebatteri")
+		hash, err := auth.HashPassword("correct-horse-battery")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -37,8 +37,8 @@ func newServer(t *testing.T) (*Server, func(as, method, path, body string) *http
 			t.Fatal(err)
 		}
 	}
-	seed("chef", "admin")
-	seed("menig", "user")
+	seed("boss", "admin")
+	seed("member", "user")
 
 	do := func(as, method, path, body string) *httptest.ResponseRecorder {
 		t.Helper()
@@ -52,7 +52,7 @@ func newServer(t *testing.T) (*Server, func(as, method, path, body string) *http
 		// A real login and a real cookie: the middleware is part of what
 		// these tests are checking, and injecting a user past it would
 		// leave the actual authorisation path untested.
-		token, _, err := store.Login(context.Background(), as, "korrekt-hestebatteri", "test")
+		token, _, err := store.Login(context.Background(), as, "correct-horse-battery", "test")
 		if err != nil {
 			t.Fatalf("could not log in as %q: %v", as, err)
 		}
@@ -70,11 +70,11 @@ func TestOnlyAdminsManageUsers(t *testing.T) {
 
 	for _, c := range []struct{ method, path, body string }{
 		{"GET", "/api/users", ""},
-		{"POST", "/api/users", `{"username":"ny","password":"korrekt-hestebatteri"}`},
+		{"POST", "/api/users", `{"username":"ny","password":"correct-horse-battery"}`},
 		{"PUT", "/api/users/2", `{"role":"admin"}`},
 		{"DELETE", "/api/users/2", ""},
 	} {
-		w := do("menig", c.method, c.path, c.body)
+		w := do("member", c.method, c.path, c.body)
 		if w.Code != http.StatusForbidden {
 			t.Errorf("%s %s as a plain user gave %d, want 403", c.method, c.path, w.Code)
 		}
@@ -84,13 +84,13 @@ func TestOnlyAdminsManageUsers(t *testing.T) {
 func TestCreateAndListUsers(t *testing.T) {
 	_, do := newServer(t)
 
-	w := do("chef", "POST", "/api/users",
-		`{"username":"tredje","password":"korrekt-hestebatteri","role":"user"}`)
+	w := do("boss", "POST", "/api/users",
+		`{"username":"tredje","password":"correct-horse-battery","role":"user"}`)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create gave %d: %s", w.Code, w.Body)
 	}
 
-	w = do("chef", "GET", "/api/users", "")
+	w = do("boss", "GET", "/api/users", "")
 	var users []userRecord
 	if err := json.Unmarshal(w.Body.Bytes(), &users); err != nil {
 		t.Fatal(err)
@@ -107,13 +107,13 @@ func TestCreateAndListUsers(t *testing.T) {
 func TestCreateRejectsAShortPasswordAndADuplicate(t *testing.T) {
 	_, do := newServer(t)
 
-	w := do("chef", "POST", "/api/users", `{"username":"kort","password":"kort"}`)
+	w := do("boss", "POST", "/api/users", `{"username":"kort","password":"kort"}`)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("short password gave %d, want 400", w.Code)
 	}
 
-	w = do("chef", "POST", "/api/users",
-		`{"username":"menig","password":"korrekt-hestebatteri"}`)
+	w = do("boss", "POST", "/api/users",
+		`{"username":"member","password":"correct-horse-battery"}`)
 	if w.Code != http.StatusConflict {
 		t.Errorf("duplicate username gave %d, want 409: %s", w.Code, w.Body)
 	}
@@ -123,7 +123,7 @@ func TestCannotRemoveTheLastAdmin(t *testing.T) {
 	s, do := newServer(t)
 
 	var adminID int64
-	s.DB.QueryRow(`SELECT id FROM users WHERE username = 'chef'`).Scan(&adminID)
+	s.DB.QueryRow(`SELECT id FROM users WHERE username = 'boss'`).Scan(&adminID)
 	id := "/api/users/" + itoa(adminID)
 
 	// Demoting, disabling and deleting are three routes to the same
@@ -133,15 +133,15 @@ func TestCannotRemoveTheLastAdmin(t *testing.T) {
 		{"disable", "PUT", `{"disabled":true}`},
 		{"delete", "DELETE", ""},
 	} {
-		w := do("chef", c.method, id, c.body)
+		w := do("boss", c.method, id, c.body)
 		if w.Code != http.StatusConflict {
 			t.Errorf("%s of the last admin gave %d, want 409", c.what, w.Code)
 		}
 	}
 
 	// With a second admin, the same operations are fine.
-	do("chef", "PUT", "/api/users/2", `{"role":"admin"}`)
-	if w := do("chef", "PUT", id, `{"role":"user"}`); w.Code != http.StatusOK {
+	do("boss", "PUT", "/api/users/2", `{"role":"admin"}`)
+	if w := do("boss", "PUT", id, `{"role":"user"}`); w.Code != http.StatusOK {
 		t.Errorf("demoting with a second admin present gave %d: %s", w.Code, w.Body)
 	}
 }
@@ -149,7 +149,7 @@ func TestCannotRemoveTheLastAdmin(t *testing.T) {
 func TestDisablingRevokesSessions(t *testing.T) {
 	s, do := newServer(t)
 
-	token, _, err := s.Auth.Login(context.Background(), "menig", "korrekt-hestebatteri", "test")
+	token, _, err := s.Auth.Login(context.Background(), "member", "correct-horse-battery", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +157,7 @@ func TestDisablingRevokesSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if w := do("chef", "PUT", "/api/users/2", `{"disabled":true}`); w.Code != http.StatusOK {
+	if w := do("boss", "PUT", "/api/users/2", `{"disabled":true}`); w.Code != http.StatusOK {
 		t.Fatalf("disable gave %d: %s", w.Code, w.Body)
 	}
 	// A disabled account whose session still works is not disabled.
@@ -169,17 +169,17 @@ func TestDisablingRevokesSessions(t *testing.T) {
 func TestAdminPasswordResetRevokesSessions(t *testing.T) {
 	s, do := newServer(t)
 
-	token, _, err := s.Auth.Login(context.Background(), "menig", "korrekt-hestebatteri", "test")
+	token, _, err := s.Auth.Login(context.Background(), "member", "correct-horse-battery", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if w := do("chef", "PUT", "/api/users/2", `{"password":"et-helt-nyt-kodeord"}`); w.Code != http.StatusOK {
+	if w := do("boss", "PUT", "/api/users/2", `{"password":"et-helt-nyt-kodeord"}`); w.Code != http.StatusOK {
 		t.Fatalf("reset gave %d: %s", w.Code, w.Body)
 	}
 	if _, err := s.Auth.Resolve(context.Background(), token); err == nil {
 		t.Error("a reset password left the old session alive")
 	}
-	if _, _, err := s.Auth.Login(context.Background(), "menig", "et-helt-nyt-kodeord", "test"); err != nil {
+	if _, _, err := s.Auth.Login(context.Background(), "member", "et-helt-nyt-kodeord", "test"); err != nil {
 		t.Errorf("the new password does not work: %v", err)
 	}
 }
@@ -187,18 +187,18 @@ func TestAdminPasswordResetRevokesSessions(t *testing.T) {
 func TestChangeOwnPasswordNeedsTheCurrentOne(t *testing.T) {
 	s, do := newServer(t)
 
-	w := do("menig", "PUT", "/api/me/password",
-		`{"current":"forkert","new":"et-helt-nyt-kodeord"}`)
+	w := do("member", "PUT", "/api/me/password",
+		`{"current":"wrong","new":"et-helt-nyt-kodeord"}`)
 	if w.Code != http.StatusForbidden {
 		t.Errorf("a wrong current password gave %d, want 403", w.Code)
 	}
 
-	w = do("menig", "PUT", "/api/me/password",
-		`{"current":"korrekt-hestebatteri","new":"et-helt-nyt-kodeord"}`)
+	w = do("member", "PUT", "/api/me/password",
+		`{"current":"correct-horse-battery","new":"et-helt-nyt-kodeord"}`)
 	if w.Code != http.StatusOK {
 		t.Fatalf("change gave %d: %s", w.Code, w.Body)
 	}
-	if _, _, err := s.Auth.Login(context.Background(), "menig", "et-helt-nyt-kodeord", "test"); err != nil {
+	if _, _, err := s.Auth.Login(context.Background(), "member", "et-helt-nyt-kodeord", "test"); err != nil {
 		t.Errorf("the new password does not work: %v", err)
 	}
 	// The caller keeps a working session rather than being logged out of

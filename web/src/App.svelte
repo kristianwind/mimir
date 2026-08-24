@@ -1,7 +1,6 @@
 <script>
   import { api, ApiError } from './lib/api.js'
   import { applyTheme, storedMode, storedTheme, watchSystemMode } from './lib/theme.js'
-  import { lang, langTouched, setLang, t } from './lib/lang.svelte.js'
   import Login from './lib/Login.svelte'
   import Shell from './lib/Shell.svelte'
 
@@ -13,8 +12,7 @@
   // Whether the user has picked a theme during this page session. It decides
   // who wins when the local choice and the stored one disagree: a deliberate
   // click here beats the server, anything else defers to the server so the
-  // theme follows the account to a new device. The language keeps its own
-  // flag in lang.svelte.js under the same rule.
+  // theme follows the account to a new device.
   let touched = $state(false)
 
   $effect(() => watchSystemMode(() => mode))
@@ -26,7 +24,6 @@
       mode = me.themeMode ?? 'system'
       applyTheme(theme, mode)
     }
-    if (!langTouched() && me.lang) setLang(me.lang, { deliberate: false })
   }
 
   async function boot() {
@@ -45,14 +42,14 @@
   boot()
 
   function save() {
-    api.setPrefs(theme, mode, lang()).catch((err) => console.error(err))
+    api.setPrefs(theme, mode).catch((err) => console.error(err))
   }
 
-  // Picking a theme or a language on the login screen has to survive logging
-  // in, so the choice is pushed up the moment there is a session to push it to.
+  // Picking a theme on the login screen has to survive logging in, so the
+  // choice is pushed up the moment there is a session to push it to.
   async function authenticated(u) {
     user = u
-    if (touched || langTouched()) {
+    if (touched) {
       save()
       return
     }
@@ -67,10 +64,6 @@
     if (user) save()
   }
 
-  function langChanged() {
-    if (user) save()
-  }
-
   async function logout() {
     await api.logout()
     user = null
@@ -82,11 +75,11 @@
   <div class="grid min-h-dvh place-items-center">
     <div class="flex items-center gap-3 text-muted">
       <span class="h-2 w-2 animate-ping rounded-full bg-accent"></span>
-      {t('Loading…')}
+      Loading…
     </div>
   </div>
 {:else if user}
-  <Shell {user} {theme} {mode} {setTheme} {logout} onlangchange={langChanged} />
+  <Shell {user} {theme} {mode} {setTheme} {logout} />
 {:else}
-  <Login onauthenticated={authenticated} {theme} {mode} {setTheme} onlangchange={langChanged} />
+  <Login onauthenticated={authenticated} {theme} {mode} {setTheme} />
 {/if}

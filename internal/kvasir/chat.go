@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kristianwind/mimir/internal/i18n"
 	"github.com/kristianwind/mimir/internal/llm"
 )
 
@@ -45,7 +44,6 @@ type ChatRequest struct {
 	// referent without the model having to fetch anything.
 	Brief   *Brief
 	History []Turn
-	Lang    i18n.Lang
 	Runner  Runner
 }
 
@@ -121,7 +119,7 @@ func (a *Advisor) Chat(ctx context.Context, req ChatRequest) (ChatResult, error)
 	}
 
 	sourced := Collect()
-	messages := []llm.Message{{Role: llm.RoleSystem, Content: chatPrompt(req.Lang)}}
+	messages := []llm.Message{{Role: llm.RoleSystem, Content: chatPrompt()}}
 	if req.Brief != nil && req.Brief.Facts() {
 		facts := req.Brief.Text()
 		sourced.Add(facts)
@@ -203,11 +201,7 @@ func (a *Advisor) runTool(ctx context.Context, runner Runner, call llm.ToolCall)
 	return result
 }
 
-func chatPrompt(lang i18n.Lang) string {
-	language := "in English"
-	if lang == i18n.DA {
-		language = "in Danish"
-	}
+func chatPrompt() string {
 	return `You are Kvasir, the advisor inside Mimir — a Genshin Impact account optimiser.
 
 Mimir's damage engine does the arithmetic. You do not. When you need a number,
@@ -224,5 +218,5 @@ Hard rules:
 3. If the tools cannot settle the question, say plainly what is missing and
    what the player would have to do — import an inventory, declare a
    condition, set up a goal.
-4. Answer ` + language + `, in a few short paragraphs. No preamble.`
+4. Answer in English, in a few short paragraphs. No preamble.`
 }

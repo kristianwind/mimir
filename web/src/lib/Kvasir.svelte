@@ -21,7 +21,6 @@
 </script>
 
 <script>
-  import { t, lang } from './lang.svelte.js'
 
   let { account, surface, subject = '', compact = false } = $props()
 
@@ -46,12 +45,10 @@
     }
   }
 
-  // Re-asks when the page's subject changes, and when the language does: the
-  // fact sheet is written in the reader's language, so a Danish page must not
-  // be left with the English answer it was given a moment ago.
+  // Re-asks when the page's subject changes.
   $effect(() => {
     const id = account?.id
-    const key = `${surface}:${subject}:${lang()}`
+    const key = `${surface}:${subject}`
     if (!enabled || !id || !key) return
     data = null
     error = null
@@ -64,25 +61,25 @@
     <header class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2">
         <span class="grid h-7 w-7 place-items-center rounded-lg bg-accent/15 text-sm" aria-hidden="true">🜛</span>
-        <h2 class="text-sm font-medium">{t('Kvasir’s opinion')}</h2>
+        <h2 class="text-sm font-medium">Kvasir’s opinion</h2>
         {#if data?.cached}
-          <span class="chip">{t('unchanged since last time')}</span>
+          <span class="chip">unchanged since last time</span>
         {/if}
       </div>
       <div class="flex items-center gap-2">
         {#if data}
           <button type="button" class="btn-ghost px-2.5 py-1 text-xs" onclick={() => (showBrief = !showBrief)}>
-            {showBrief ? t('Hide the facts') : t('What was Kvasir told?')}
+            {showBrief ? 'Hide the facts' : 'What was Kvasir told?'}
           </button>
         {/if}
         <button type="button" class="btn-ghost px-2.5 py-1 text-xs" disabled={loading} onclick={() => ask(true)}>
-          {t('Ask again')}
+          Ask again
         </button>
       </div>
     </header>
 
     {#if loading}
-      <p class="mt-3 text-sm text-muted">{t('Kvasir is reading the numbers…')}</p>
+      <p class="mt-3 text-sm text-muted">Kvasir is reading the numbers…</p>
     {:else if error}
       <p class="mt-3 text-sm text-muted">{error.message}</p>
       {#if error.hint}<p class="mt-1 text-xs text-muted">{error.hint}</p>{/if}
@@ -108,7 +105,7 @@
       {#if data.opinion.questions?.length && !compact}
         <div class="mt-4">
           <h3 class="text-xs font-medium uppercase tracking-wide text-muted">
-            {t('What Kvasir would need to know')}
+            What Kvasir would need to know
           </h3>
           <ul class="mt-1.5 space-y-1 text-xs text-muted">
             {#each data.opinion.questions as question}
@@ -126,10 +123,8 @@
       {#if data.dropped?.length}
         <div class="mt-4 rounded-xl border border-warn/40 bg-warn/10 p-3">
           <p class="text-xs text-warn">
-            {t(
-              '{n} things Kvasir said were removed: they contained figures that are nowhere in the calculation.',
-              { n: data.dropped.length },
-            )}
+            {data.dropped.length} things Kvasir said were removed: they contained figures that
+            are nowhere in the calculation.
           </p>
           <ul class="mt-1.5 space-y-1 text-xs text-muted">
             {#each data.dropped as cut}
@@ -142,16 +137,15 @@
       {#if showBrief}
         <div class="mt-4">
           <p class="text-xs text-muted">
-            {t(
-              'This is everything Kvasir was given. It is the engine’s own output, and every figure in the answer had to appear in it.',
-            )}
+            This is everything Kvasir was given. It is the engine’s own output, and every figure in
+            the answer had to appear in it.
           </p>
           <pre class="mt-2 max-h-96 overflow-auto rounded-xl bg-raised p-3 text-[11px] leading-relaxed text-muted whitespace-pre-wrap">{data.brief}</pre>
         </div>
       {/if}
 
       {#if data.model}
-        <p class="mt-3 text-[11px] text-muted">{t('Answered by {model}', { model: data.model })}</p>
+        <p class="mt-3 text-[11px] text-muted">Answered by {data.model}</p>
       {/if}
     {/if}
   </section>

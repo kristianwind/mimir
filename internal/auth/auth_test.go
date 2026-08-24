@@ -9,7 +9,7 @@ import (
 )
 
 func TestPasswordRoundTrip(t *testing.T) {
-	hash, err := HashPassword("korrekt hestebatteri hæfteklamme")
+	hash, err := HashPassword("correct horse battery staple")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -17,11 +17,11 @@ func TestPasswordRoundTrip(t *testing.T) {
 		t.Fatalf("hash = %q, want an argon2id encoding", hash)
 	}
 
-	ok, err := VerifyPassword("korrekt hestebatteri hæfteklamme", hash)
+	ok, err := VerifyPassword("correct horse battery staple", hash)
 	if err != nil || !ok {
 		t.Errorf("correct password did not verify: ok=%v err=%v", ok, err)
 	}
-	ok, err = VerifyPassword("forkert", hash)
+	ok, err = VerifyPassword("wrong", hash)
 	if err != nil {
 		t.Fatal(err)
 	}

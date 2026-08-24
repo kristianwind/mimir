@@ -5,8 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
-
-	"github.com/kristianwind/mimir/internal/i18n"
 )
 
 // A brief is everything Kvasir is allowed to know.
@@ -120,16 +118,4 @@ func (b *Brief) Facts() bool {
 func (b *Brief) Hash() string {
 	sum := sha256.Sum256([]byte(b.Surface + "\x00" + b.Subject + "\x00" + b.Text()))
 	return hex.EncodeToString(sum[:16])
-}
-
-// T appends a fact in the reader's language.
-//
-// The brief is not only the model's input: it is shown to the player behind
-// "what was Kvasir told?", which is the only way to check an answer against
-// its evidence. So it is written in their language, like every other sentence
-// the server produces. The figures in it are language-independent — that is
-// the point of them — and the number check reads both a Danish decimal comma
-// and an English decimal point.
-func (s *Section) T(lang i18n.Lang, format string, args ...any) {
-	s.Line(i18n.T(lang, format, args...))
 }

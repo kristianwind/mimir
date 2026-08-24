@@ -31,7 +31,6 @@ gameskill:
       echo "Open Mimir in the browser:"
       echo "  - the login page creates the first administrator"
       echo "  - the System page fetches the game data"
-      echo "  - the header switches between English and Danish"
 
   startup:
     # Raw argv rather than a shell string: no /bin/sh, no quoting, no

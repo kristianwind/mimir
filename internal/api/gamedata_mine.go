@@ -107,11 +107,11 @@ func (s *Server) handleStartMine(w http.ResponseWriter, r *http.Request) {
 		Version string `json:"version"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&body); err != nil {
-		writeError(w, r, http.StatusBadRequest, "malformed request", "")
+		writeError(w, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 	if body.Version == "" {
-		writeError(w, r, http.StatusBadRequest, "specify a game version",
+		writeError(w, http.StatusBadRequest, "specify a game version",
 			"For example 7.0.0. It labels the snapshot so you can roll back to it.")
 		return
 	}
@@ -120,7 +120,7 @@ func (s *Server) handleStartMine(w http.ResponseWriter, r *http.Request) {
 	j.mu.Lock()
 	if j.running {
 		j.mu.Unlock()
-		writeError(w, r, http.StatusConflict, "a sync is already running", "")
+		writeError(w, http.StatusConflict, "a sync is already running", "")
 		return
 	}
 	j.running = true

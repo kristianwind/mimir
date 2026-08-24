@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/kristianwind/mimir/internal/db"
-	"github.com/kristianwind/mimir/internal/i18n"
 )
 
 // Settings keys for the updater's bookkeeping.
@@ -142,32 +141,11 @@ type Status struct {
 	AppliedTo string `json:"appliedTo,omitempty"`
 	// Error carries a failed release check without failing the whole page.
 	Error string `json:"error,omitempty"`
-
-	// reasonFormat and reasonArgs keep Reason translatable. Reason itself is
-	// rendered in English — the source — because a Status is cached and
-	// shared between users who may not read the same language; Localise
-	// re-renders it per request instead.
-	reasonFormat string
-	reasonArgs   []any
-	// err keeps the original failure so Error can be re-rendered per request.
-	err error
 }
 
-// setReason records an explanation in a form that can still be translated.
+// setReason records why an update cannot be applied.
 func (s *Status) setReason(format string, args ...any) {
-	s.reasonFormat, s.reasonArgs = format, args
-	s.Reason = i18n.T(i18n.EN, format, args...)
-}
-
-// Localise returns a copy of the status with Reason in the given language.
-func (s Status) Localise(lang i18n.Lang) Status {
-	if s.reasonFormat != "" {
-		s.Reason = i18n.T(lang, s.reasonFormat, s.reasonArgs...)
-	}
-	if s.err != nil {
-		s.Error = localise(s.err, lang)
-	}
-	return s
+	s.Reason = fmt.Sprintf(format, args...)
 }
 
 // Check returns the current update state.
@@ -182,7 +160,6 @@ func (u *Updater) Check(ctx context.Context, force bool) Status {
 
 	rel, err := u.release(ctx, force)
 	if err != nil {
-		st.err = err
 		st.Error = err.Error()
 		return st
 	}

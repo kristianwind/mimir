@@ -45,7 +45,7 @@ func TestBootstrapCreatesTheFirstAdminAndLogsThemIn(t *testing.T) {
 	}
 
 	w := post(s, "/api/auth/bootstrap",
-		`{"username":"sabrina","password":"korrekt-hestebatteri"}`)
+		`{"username":"sabrina","password":"correct-horse-battery"}`)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("bootstrap gave %d: %s", w.Code, w.Body)
 	}
@@ -60,12 +60,14 @@ func TestBootstrapCreatesTheFirstAdminAndLogsThemIn(t *testing.T) {
 
 func TestBootstrapClosesItselfImmediately(t *testing.T) {
 	s := emptyServer(t)
-	post(s, "/api/auth/bootstrap", `{"username":"først","password":"korrekt-hestebatteri"}`)
+	// A non-ASCII username on purpose: it has to survive the round trip
+	// through SQLite and back out of the session lookup.
+	post(s, "/api/auth/bootstrap", `{"username":"zoë","password":"correct-horse-battery"}`)
 
 	if w := get(s, "/api/auth/bootstrap"); !strings.Contains(w.Body.String(), "false") {
 		t.Errorf("bootstrap still offered after a user exists: %s", w.Body)
 	}
-	w := post(s, "/api/auth/bootstrap", `{"username":"snyder","password":"korrekt-hestebatteri"}`)
+	w := post(s, "/api/auth/bootstrap", `{"username":"chancer","password":"correct-horse-battery"}`)
 	if w.Code != http.StatusConflict {
 		t.Fatalf("a second bootstrap gave %d, want 409: %s", w.Code, w.Body)
 	}
@@ -90,7 +92,7 @@ func TestBootstrapIsAtomicUnderConcurrency(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			w := post(s, "/api/auth/bootstrap",
-				`{"username":"kandidat`+string(rune('a'+i))+`","password":"korrekt-hestebatteri"}`)
+				`{"username":"candidate`+string(rune('a'+i))+`","password":"correct-horse-battery"}`)
 			codes[i] = w.Code
 		}(i)
 	}
@@ -128,7 +130,7 @@ func TestBootstrapEnforcesThePasswordFloor(t *testing.T) {
 
 func TestBootstrapNeedsAUsername(t *testing.T) {
 	s := emptyServer(t)
-	if w := post(s, "/api/auth/bootstrap", `{"password":"korrekt-hestebatteri"}`); w.Code != http.StatusBadRequest {
+	if w := post(s, "/api/auth/bootstrap", `{"password":"correct-horse-battery"}`); w.Code != http.StatusBadRequest {
 		t.Errorf("an empty username gave %d, want 400", w.Code)
 	}
 }

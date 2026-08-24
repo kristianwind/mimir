@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -20,7 +21,6 @@ import (
 	"github.com/kristianwind/mimir/internal/config"
 	"github.com/kristianwind/mimir/internal/enka"
 	"github.com/kristianwind/mimir/internal/gamedata"
-	"github.com/kristianwind/mimir/internal/i18n"
 	"github.com/kristianwind/mimir/internal/kvasir"
 	"github.com/kristianwind/mimir/internal/selfupdate"
 )
@@ -207,39 +207,34 @@ type apiError struct {
 	Hint string `json:"hint,omitempty"`
 }
 
-// writeError sends an error in the language the request asked for.
-//
-// The request is a parameter rather than the language, so translation is not
-// something a call site has to remember: every error written through here is
-// localised, and the call sites keep their English source strings.
-func writeError(w http.ResponseWriter, r *http.Request, status int, msg, hint string) {
-	lang := i18n.FromRequest(r)
-	writeJSON(w, status, apiError{Error: i18n.T(lang, msg), Hint: i18n.T(lang, hint)})
+// writeError sends the one error shape the frontend understands.
+func writeError(w http.ResponseWriter, status int, msg, hint string) {
+	writeJSON(w, status, apiError{Error: msg, Hint: hint})
 }
 
 // writeDomainError maps known domain errors onto status codes and hints.
-func writeDomainError(w http.ResponseWriter, r *http.Request, err error) {
+func writeDomainError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, enka.ErrNoShowcase):
-		writeError(w, r, http.StatusUnprocessableEntity,
+		writeError(w, http.StatusUnprocessableEntity,
 			"Enka has no characters for that UID",
 			"Switch on Show Character Details in the game under Profile → Edit Profile, wait a couple of minutes, and try again.")
 	case errors.Is(err, enka.ErrNotFound):
-		writeError(w, r, http.StatusNotFound, "that UID does not exist", "Check the nine digits in the game's Paimon menu.")
+		writeError(w, http.StatusNotFound, "that UID does not exist", "Check the nine digits in the game's Paimon menu.")
 	case errors.Is(err, enka.ErrRateLimited):
-		writeError(w, r, http.StatusTooManyRequests, "Enka has rate-limited us", "Try again in a couple of minutes.")
+		writeError(w, http.StatusTooManyRequests, "Enka has rate-limited us", "Try again in a couple of minutes.")
 	case errors.Is(err, gamedata.ErrNoSnapshot):
-		writeError(w, r, http.StatusServiceUnavailable,
+		writeError(w, http.StatusServiceUnavailable,
 			"the game data has not been loaded yet",
 			"Run a sync on the System page. Without it nothing can be calculated.")
 	case errors.Is(err, gamedata.ErrMissing):
 		// The underlying message names exactly what is missing — a character
 		// id, a stat table — which is the only useful thing to show here.
-		writeError(w, r, http.StatusServiceUnavailable,
+		writeError(w, http.StatusServiceUnavailable,
 			"the game data is out of date",
-			i18n.T(i18n.FromRequest(r),
+			fmt.Sprintf(
 				"Something is missing from the active snapshot: %s. Sync a newer version.", err.Error()))
 	default:
-		writeError(w, r, http.StatusInternalServerError, err.Error(), "")
+		writeError(w, http.StatusInternalServerError, err.Error(), "")
 	}
 }

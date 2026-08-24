@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kristianwind/mimir/internal/i18n"
 	"github.com/kristianwind/mimir/internal/llm"
 )
 
@@ -69,7 +68,7 @@ func TestAdviseReturnsAParsedOpinion(t *testing.T) {
 	}}
 	a := &Advisor{Client: s.start()}
 
-	got, err := a.Advise(context.Background(), testBrief(), i18n.EN)
+	got, err := a.Advise(context.Background(), testBrief())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +92,7 @@ func TestAdviseReadsFencedJSON(t *testing.T) {
 	}}
 	a := &Advisor{Client: s.start()}
 
-	got, err := a.Advise(context.Background(), testBrief(), i18n.EN)
+	got, err := a.Advise(context.Background(), testBrief())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +110,7 @@ func TestAFabricatedNumberIsRetriedThenCut(t *testing.T) {
 	s := &stub{t: t, replies: []string{bad, bad}}
 	a := &Advisor{Client: s.start()}
 
-	got, err := a.Advise(context.Background(), testBrief(), i18n.EN)
+	got, err := a.Advise(context.Background(), testBrief())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +140,7 @@ func TestAnAnswerThatIsAllInventionIsRefused(t *testing.T) {
 	s := &stub{t: t, replies: []string{bad, bad}}
 	a := &Advisor{Client: s.start()}
 
-	if _, err := a.Advise(context.Background(), testBrief(), i18n.EN); !errors.Is(err, ErrUnsourced) {
+	if _, err := a.Advise(context.Background(), testBrief()); !errors.Is(err, ErrUnsourced) {
 		t.Fatalf("err = %v, want ErrUnsourced", err)
 	}
 }
@@ -151,7 +150,7 @@ func TestAdviseRefusesAnEmptyFactSheet(t *testing.T) {
 	a := &Advisor{Client: s.start()}
 
 	empty := NewBrief("plan", "", "Nothing", "?")
-	if _, err := a.Advise(context.Background(), empty, i18n.EN); !errors.Is(err, ErrNoFacts) {
+	if _, err := a.Advise(context.Background(), empty); !errors.Is(err, ErrNoFacts) {
 		t.Fatalf("err = %v, want ErrNoFacts", err)
 	}
 	if s.calls != 0 {
@@ -164,22 +163,23 @@ func TestWithoutAnEndpointTheLayerIsSimplyOff(t *testing.T) {
 	if a.Available() {
 		t.Fatal("an unconfigured advisor reports itself available")
 	}
-	if _, err := a.Advise(context.Background(), testBrief(), i18n.EN); !errors.Is(err, ErrNotConfigured) {
+	if _, err := a.Advise(context.Background(), testBrief()); !errors.Is(err, ErrNotConfigured) {
 		t.Fatalf("err = %v, want ErrNotConfigured", err)
 	}
 }
 
-// The language is not decoration: the fact sheet is written in it, so an
-// answer in the wrong one cannot quote the page the player is looking at.
-func TestTheAnswerLanguageIsInThePrompt(t *testing.T) {
-	s := &stub{t: t, replies: []string{`{"verdict":"Byt Emblem.","points":[]}`}}
+// The product has one language, and the prompt has to say so: a model given a
+// fact sheet full of proper nouns will otherwise answer in whatever language
+// the question arrived in.
+func TestThePromptAsksForEnglish(t *testing.T) {
+	s := &stub{t: t, replies: []string{`{"verdict":"Swap the sands.","points":[]}`}}
 	a := &Advisor{Client: s.start()}
 
-	if _, err := a.Advise(context.Background(), testBrief(), i18n.DA); err != nil {
+	if _, err := a.Advise(context.Background(), testBrief()); err != nil {
 		t.Fatal(err)
 	}
 	system := s.requests[0]["messages"].([]any)[0].(map[string]any)["content"].(string)
-	if !strings.Contains(system, "in Danish") {
-		t.Fatalf("the prompt does not ask for Danish: %q", system)
+	if !strings.Contains(system, "in English") {
+		t.Fatalf("the prompt does not ask for English: %q", system)
 	}
 }

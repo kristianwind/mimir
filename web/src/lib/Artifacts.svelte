@@ -1,6 +1,5 @@
 <script>
   import { api } from './api.js'
-  import { t } from './lang.svelte.js'
   import Kvasir from './Kvasir.svelte'
 
   let { account } = $props()
@@ -55,26 +54,25 @@
 
 <div class="mb-4 flex flex-wrap items-center gap-2">
   <button type="button" class="chip {slot === '' ? 'border-accent text-ink' : ''}" onclick={() => (slot = '')}>
-    {t('All ({n})', { n: artifacts.length })}
+    All ({artifacts.length})
   </button>
   {#each SLOTS as s (s)}
     <button type="button" class="chip {slot === s ? 'border-accent text-ink' : ''}" onclick={() => (slot = s)}>
-      {t(SLOT_LABELS[s])}
+      {SLOT_LABELS[s]}
     </button>
   {/each}
 </div>
 
 {#if loading}
-  <p class="text-sm text-muted">{t('Fetching artifacts…')}</p>
+  <p class="text-sm text-muted">Fetching artifacts…</p>
 {:else if error}
   <p class="rounded-xl border border-bad/40 bg-bad/10 px-4 py-3 text-sm text-bad">{error}</p>
 {:else if artifacts.length === 0}
   <div class="card p-8 text-center">
-    <p class="text-muted">{t('No inventory yet.')}</p>
+    <p class="text-muted">No inventory yet.</p>
     <p class="mt-2 text-sm text-muted">
-      {t(
-        'Enka only gives the equipped pieces. Upload a .good file from Inventory Kamera for the whole inventory.',
-      )}
+      Enka only gives the equipped pieces. Upload a .good file from Inventory Kamera for the whole
+      inventory.
     </p>
   </div>
 {:else}
@@ -103,9 +101,7 @@
   </div>
   {#if shown.length > 120}
     <p class="mt-4 text-center text-xs text-muted">
-      {t('Showing 120 of {n}. Filtering and sorting arrive with the optimizer view.', {
-        n: shown.length,
-      })}
+      Showing 120 of {shown.length}. Filtering and sorting arrive with the optimizer view.
     </p>
   {/if}
 {/if}

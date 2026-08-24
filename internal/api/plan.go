@@ -14,7 +14,6 @@ import (
 	"github.com/kristianwind/mimir/internal/calc"
 	"github.com/kristianwind/mimir/internal/db"
 	"github.com/kristianwind/mimir/internal/gamedata"
-	"github.com/kristianwind/mimir/internal/i18n"
 	"github.com/kristianwind/mimir/internal/model"
 	"github.com/kristianwind/mimir/internal/optimizer"
 )
@@ -57,7 +56,7 @@ func (s *Server) handleListGoals(w http.ResponseWriter, r *http.Request) {
 		`SELECT char_key, priority, team, rotation, target, conditions, notes FROM goals
 		 WHERE account_id = ? ORDER BY priority DESC, char_key`, a.ID)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	defer rows.Close()
@@ -70,7 +69,7 @@ func (s *Server) handleListGoals(w http.ResponseWriter, r *http.Request) {
 		)
 		if err := rows.Scan(&g.CharacterKey, &g.Priority, &team, &rotation, &target,
 			&conditions, &g.Notes); err != nil {
-			writeDomainError(w, r, err)
+			writeDomainError(w, err)
 			return
 		}
 		_ = json.Unmarshal([]byte(team), &g.Team)
@@ -87,22 +86,22 @@ func (s *Server) handleSaveGoal(w http.ResponseWriter, r *http.Request) {
 
 	var g goalPayload
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&g); err != nil {
-		writeError(w, r, http.StatusBadRequest, "malformed request", "")
+		writeError(w, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 	if g.CharacterKey == "" {
-		writeError(w, r, http.StatusBadRequest, "the goal is missing a character", "")
+		writeError(w, http.StatusBadRequest, "the goal is missing a character", "")
 		return
 	}
 	if len(g.Spec.Steps) == 0 {
-		writeError(w, r, http.StatusBadRequest, "the goal is missing a rotation",
+		writeError(w, http.StatusBadRequest, "the goal is missing a rotation",
 			"A ranking without a rotation is meaningless: a gain on a burst you never press is no gain.")
 		return
 	}
 
 	snap, err := s.GameData.Current()
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	// Validate the rotation against the character's real talent tables now,
@@ -111,7 +110,7 @@ func (s *Server) handleSaveGoal(w http.ResponseWriter, r *http.Request) {
 	if _, err := advisor.BuildRotation(snap, model.Character{
 		Key: g.CharacterKey, Level: 90, TalentAuto: 1, TalentSkill: 1, TalentBurst: 1,
 	}, g.Spec); err != nil {
-		writeError(w, r, http.StatusBadRequest, err.Error(),
+		writeError(w, http.StatusBadRequest, err.Error(),
 			"Use one of the labels from the character's talent table.")
 		return
 	}
@@ -140,7 +139,7 @@ func (s *Server) handleSaveGoal(w http.ResponseWriter, r *http.Request) {
 		a.ID, g.CharacterKey, g.Priority, string(team), string(rotation),
 		string(target), string(conditions), g.Notes,
 	); err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, g)
@@ -151,7 +150,7 @@ func (s *Server) handleDeleteGoal(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "characterKey")
 	if _, err := s.DB.ExecContext(r.Context(),
 		`DELETE FROM goals WHERE account_id = ? AND char_key = ?`, a.ID, key); err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusNoContent, nil)
@@ -164,36 +163,36 @@ func (s *Server) handlePlanForGoal(w http.ResponseWriter, r *http.Request) {
 
 	snap, err := s.GameData.Current()
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	inventory, err := db.LoadArtifacts(s.DB, a.ID)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	weapons, err := s.loadWeapons(r.Context(), a.ID)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 
-	req, err := s.planRequest(r.Context(), a.ID, key, snap, inventory, weapons, farmSim(snap, inventory), i18n.FromRequest(r))
+	req, err := s.planRequest(r.Context(), a.ID, key, snap, inventory, weapons, farmSim(snap, inventory))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			writeError(w, r, http.StatusNotFound,
-				i18n.T(i18n.FromRequest(r), "no goal has been set up for %s", key),
+			writeError(w, http.StatusNotFound,
+				fmt.Sprintf("no goal has been set up for %s", key),
 				"Create a goal with a rotation, and the plan can be calculated.")
 			return
 		}
-		writeError(w, r, http.StatusUnprocessableEntity, key+": "+err.Error(),
+		writeError(w, http.StatusUnprocessableEntity, key+": "+err.Error(),
 			"Import from Enka or upload a .good file, and equip the character in the game.")
 		return
 	}
 
 	plan, err := advisor.BuildPlan(r.Context(), req)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 
@@ -213,29 +212,29 @@ func (s *Server) handleAccountPlan(w http.ResponseWriter, r *http.Request) {
 
 	snap, err := s.GameData.Current()
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 
 	keys, err := s.goalKeys(r.Context(), a.ID)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	if len(keys) == 0 {
-		writeError(w, r, http.StatusNotFound, "no goals have been set up",
+		writeError(w, http.StatusNotFound, "no goals have been set up",
 			"Create at least one goal with a rotation, and the plan can be calculated.")
 		return
 	}
 
 	inventory, err := db.LoadArtifacts(s.DB, a.ID)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	weapons, err := s.loadWeapons(r.Context(), a.ID)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	sim := farmSim(snap, inventory)
@@ -243,7 +242,7 @@ func (s *Server) handleAccountPlan(w http.ResponseWriter, r *http.Request) {
 	var reqs []advisor.Request
 	skipped := []string{}
 	for _, key := range keys {
-		req, err := s.planRequest(r.Context(), a.ID, key, snap, inventory, weapons, sim, i18n.FromRequest(r))
+		req, err := s.planRequest(r.Context(), a.ID, key, snap, inventory, weapons, sim)
 		if err != nil {
 			skipped = append(skipped, fmt.Sprintf("%s: %v", key, err))
 			continue
@@ -251,14 +250,14 @@ func (s *Server) handleAccountPlan(w http.ResponseWriter, r *http.Request) {
 		reqs = append(reqs, req)
 	}
 	if len(reqs) == 0 {
-		writeError(w, r, http.StatusUnprocessableEntity,
+		writeError(w, http.StatusUnprocessableEntity,
 			"none of the goals could be calculated", joinLines(skipped))
 		return
 	}
 
 	plan, err := advisor.BuildAccountPlan(r.Context(), reqs)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -306,7 +305,6 @@ func (s *Server) planRequest(
 	inventory []model.Artifact,
 	weapons []model.Weapon,
 	sim *advisor.FarmSim,
-	lang i18n.Lang,
 ) (advisor.Request, error) {
 	goal, buffs, constraints, err := s.loadGoal(ctx, accountID, key)
 	if err != nil {
@@ -343,7 +341,6 @@ func (s *Server) planRequest(
 		Inventory:     inventory,
 		Weapons:       weapons,
 		Constraints:   constraints,
-		Lang:          lang,
 		MaxSetConfigs: 8,
 		FarmDays:      7,
 		ResinPerDay:   180,
@@ -359,23 +356,23 @@ func (s *Server) handleBuildSheet(w http.ResponseWriter, r *http.Request) {
 
 	snap, err := s.GameData.Current()
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	character, err := s.loadCharacter(r.Context(), a.ID, key)
 	if err != nil {
-		writeError(w, r, http.StatusNotFound,
-			i18n.T(i18n.FromRequest(r), "%s is not on the account", key), "")
+		writeError(w, http.StatusNotFound,
+			fmt.Sprintf("%s is not on the account", key), "")
 		return
 	}
 	weapon, err := s.loadEquippedWeapon(r.Context(), a.ID, key)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	inventory, err := db.LoadArtifacts(s.DB, a.ID)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	var equipped []model.Artifact
@@ -394,12 +391,12 @@ func (s *Server) handleBuildSheet(w http.ResponseWriter, r *http.Request) {
 		Character: character, Weapon: weapon, Artifacts: equipped,
 	})
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	sheet, err := advisor.BuildSheet(snap, state, conditions)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 
@@ -418,7 +415,7 @@ func (s *Server) handleListWeapons(w http.ResponseWriter, r *http.Request) {
 	a := accountFrom(r.Context())
 	weapons, err := s.loadWeapons(r.Context(), a.ID)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	if weapons == nil {
@@ -438,12 +435,12 @@ func (s *Server) handleTalentTable(w http.ResponseWriter, r *http.Request) {
 
 	snap, err := s.GameData.Current()
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	def, err := snap.Char(key)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 
@@ -529,12 +526,12 @@ func (s *Server) handleDropModel(w http.ResponseWriter, r *http.Request) {
 	a := accountFrom(r.Context())
 	inventory, err := db.LoadArtifacts(s.DB, a.ID)
 	if err != nil {
-		writeDomainError(w, r, err)
+		writeDomainError(w, err)
 		return
 	}
 	est, err := advisor.EstimateDropModel(inventory)
 	if err != nil {
-		writeError(w, r, http.StatusUnprocessableEntity, err.Error(),
+		writeError(w, http.StatusUnprocessableEntity, err.Error(),
 			"Upload a .good file from Inventory Kamera, and the model is measured on your whole inventory.")
 		return
 	}

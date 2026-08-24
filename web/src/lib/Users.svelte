@@ -1,6 +1,5 @@
 <script>
   import { api } from './api.js'
-  import { t } from './lang.svelte.js'
 
   let { me } = $props()
 
@@ -53,7 +52,7 @@
         name = ''
         password = ''
         role = 'user'
-        return t('Created {name}.', { name: created })
+        return `Created ${created}.`
       },
     )
   }
@@ -78,28 +77,25 @@
 
 <div class="space-y-4">
   <section class="card p-5">
-    <h2 class="mb-4 font-medium">{t('Users')}</h2>
+    <h2 class="mb-4 font-medium">Users</h2>
     <div class="space-y-2">
       {#each users as user (user.id)}
         <div class="flex flex-wrap items-center gap-3 rounded-xl bg-raised px-3 py-2.5">
           <div class="min-w-40 flex-1">
             <p class="text-sm font-medium">
               {user.username}
-              {#if user.id === me?.id}<span class="text-xs text-muted">{t('· you')}</span>{/if}
+              {#if user.id === me?.id}<span class="text-xs text-muted">· you</span>{/if}
             </p>
             <p class="text-xs text-muted">
-              {user.role === 'admin' ? t('administrator') : t('user')}
-              {#if user.disabled}· <span class="text-warn">{t('disabled')}</span>{/if}
-              {t('· {accounts} accounts · {sessions} active logins', {
-                accounts: user.accounts,
-                sessions: user.sessions,
-              })}
+              {user.role === 'admin' ? 'administrator' : 'user'}
+              {#if user.disabled}· <span class="text-warn">disabled</span>{/if}
+              · {user.accounts} accounts · {user.sessions} active logins
             </p>
           </div>
 
           <div class="flex flex-wrap gap-1.5">
             {#if lastAdmin(user)}
-              <span class="chip text-xs">{t('last administrator')}</span>
+              <span class="chip text-xs">last administrator</span>
             {:else}
               <button
                 class="btn-ghost text-xs"
@@ -109,7 +105,7 @@
                     api.updateUser(user.id, { role: user.role === 'admin' ? 'user' : 'admin' }),
                   )}
               >
-                {user.role === 'admin' ? t('Make user') : t('Make admin')}
+                {user.role === 'admin' ? 'Make user' : 'Make admin'}
               </button>
               <button
                 class="btn-ghost text-xs"
@@ -117,7 +113,7 @@
                 onclick={() =>
                   run(`dis-${user.id}`, () => api.updateUser(user.id, { disabled: !user.disabled }))}
               >
-                {user.disabled ? t('Enable') : t('Disable')}
+                {user.disabled ? 'Enable' : 'Disable'}
               </button>
               <button
                 class="btn-ghost text-xs text-bad"
@@ -125,69 +121,65 @@
                 onclick={() => {
                   const what =
                     user.accounts > 0
-                      ? t('Delete {name}? That takes {accounts} game accounts and all their inventory with it.', {
-                          name: user.username,
-                          accounts: user.accounts,
-                        })
-                      : t('Delete {name}?', { name: user.username })
+                      ? `Delete ${user.username}? That takes ${user.accounts} game accounts ` +
+                        'and all their inventory with it.'
+                      : `Delete ${user.username}?`
                   if (confirm(what)) run(`del-${user.id}`, () => api.deleteUser(user.id))
                 }}
               >
-                {t('Delete')}
+                Delete
               </button>
             {/if}
           </div>
         </div>
       {:else}
-        <p class="text-sm text-muted">{t('No users.')}</p>
+        <p class="text-sm text-muted">No users.</p>
       {/each}
     </div>
   </section>
 
   <section class="card p-5">
-    <h2 class="mb-1 font-medium">{t('Add a user')}</h2>
+    <h2 class="mb-1 font-medium">Add a user</h2>
     <p class="mb-4 text-xs text-muted">
-      {t(
-        'Every user has their own game accounts and goals. An administrator can also update Mimir and manage users.',
-      )}
+      Every user has their own game accounts and goals. An administrator can also update Mimir and
+      manage users.
     </p>
     <div class="flex flex-wrap items-end gap-3">
       <div class="min-w-40 flex-1">
-        <label class="label" for="new-name">{t('Username')}</label>
+        <label class="label" for="new-name">Username</label>
         <input id="new-name" class="field" bind:value={name} autocomplete="off" />
       </div>
       <div class="min-w-40 flex-1">
-        <label class="label" for="new-pass">{t('Password')}</label>
+        <label class="label" for="new-pass">Password</label>
         <input id="new-pass" class="field" type="password" bind:value={password} autocomplete="new-password" />
       </div>
       <div>
-        <label class="label" for="new-role">{t('Role')}</label>
+        <label class="label" for="new-role">Role</label>
         <select id="new-role" class="field w-36" bind:value={role}>
-          <option value="user">{t('user')}</option>
-          <option value="admin">{t('administrator')}</option>
+          <option value="user">user</option>
+          <option value="admin">administrator</option>
         </select>
       </div>
       <button class="btn-primary" disabled={busy === 'create' || !name || !password} onclick={create}>
-        {busy === 'create' ? t('Creating…') : t('Create')}
+        {busy === 'create' ? 'Creating…' : 'Create'}
       </button>
-      <p class="w-full text-xs text-muted">{t('At least 12 characters.')}</p>
+      <p class="w-full text-xs text-muted">At least 12 characters.</p>
     </div>
   </section>
 
   <section class="card p-5">
-    <h2 class="mb-1 font-medium">{t('Change your own password')}</h2>
+    <h2 class="mb-1 font-medium">Change your own password</h2>
     <p class="mb-4 text-xs text-muted">
-      {t(
-        'The current password is required — otherwise a borrowed session could be made permanent. Your other logins are signed out.',
-      )}
+      The current password is required — otherwise a borrowed session could be made permanent. Your
+      other logins are signed out.
     </p>
     <div class="flex flex-wrap items-end gap-3">
       <div class="min-w-40 flex-1">
-        <label class="label" for="cur-pass">{t('Current')}</label>
+        <label class="label" for="cur-pass">Current</label>
         <input id="cur-pass" class="field" type="password" bind:value={current} autocomplete="current-password" />
       </div>
       <div class="min-w-40 flex-1">
-        <label class="label" for="next-pass">{t('New')}</label>
+        <label class="label" for="next-pass">New</label>
         <input id="next-pass" class="field" type="password" bind:value={next} autocomplete="new-password" />
       </div>
       <button
@@ -197,10 +189,10 @@
           run('pw', () => api.changePassword(current, next), () => {
             current = ''
             next = ''
-            return t('The password has been changed.')
+            return 'The password has been changed.'
           })}
       >
-        {busy === 'pw' ? t('Changing…') : t('Change')}
+        {busy === 'pw' ? 'Changing…' : 'Change'}
       </button>
     </div>
   </section>

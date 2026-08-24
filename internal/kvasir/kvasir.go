@@ -33,7 +33,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kristianwind/mimir/internal/i18n"
 	"github.com/kristianwind/mimir/internal/llm"
 )
 
@@ -104,7 +103,7 @@ type Advisor struct {
 func (a *Advisor) Available() bool { return a != nil && a.Client.Configured() }
 
 // Advise asks for an opinion on one brief.
-func (a *Advisor) Advise(ctx context.Context, brief *Brief, lang i18n.Lang) (Result, error) {
+func (a *Advisor) Advise(ctx context.Context, brief *Brief) (Result, error) {
 	if !a.Available() {
 		return Result{}, ErrNotConfigured
 	}
@@ -116,7 +115,7 @@ func (a *Advisor) Advise(ctx context.Context, brief *Brief, lang i18n.Lang) (Res
 	sourced := Collect(facts)
 
 	messages := []llm.Message{
-		{Role: llm.RoleSystem, Content: systemPrompt(lang)},
+		{Role: llm.RoleSystem, Content: systemPrompt()},
 		{Role: llm.RoleUser, Content: userPrompt(brief)},
 	}
 
@@ -222,11 +221,7 @@ func correction(dropped []Dropped) string {
 }
 
 // systemPrompt is the whole contract with the model.
-func systemPrompt(lang i18n.Lang) string {
-	language := "in English"
-	if lang == i18n.DA {
-		language = "in Danish"
-	}
+func systemPrompt() string {
 	return `You are Kvasir, the advisor inside Mimir — a Genshin Impact account optimiser.
 
 Mimir's damage engine has already done every calculation. What you are given is
@@ -249,8 +244,8 @@ Hard rules:
    need into "questions". Do not fill the gap with what is usually true.
 4. Do not restate the ranking. The player is looking at it. Say what it does
    not say.
-5. Write ` + language + `. Be direct. No greeting, no preamble, no summary of
-   what you are about to say.
+5. Write in English. Be direct: no greeting, no preamble, no summary of what
+   you are about to say.
 
 Answer with one JSON object and nothing else:
 

@@ -1,91 +1,93 @@
 # Mimir
 
-En Genshin Impact-rådgiver: importér din konto, få den optimeret, og få at vide
-hvad du skal bruge morgendagens resin på.
+A Genshin Impact adviser: import your account, have it optimised, and be told
+what to spend tomorrow's resin on.
 
-Navnet er rådgiveren ved brønden, der ved besked.
+The name is the adviser at the well, who knows.
 
-## Hvad den kan, som andre værktøjer ikke kan
+## What it does that other tools do not
 
-De eksisterende værktøjer svarer på *hvad din bedste build ville være*. Det er
-et statisk svar på et dynamisk spørgsmål. Du har 180 resin om dagen, en
-domæne-rotation der skifter med ugedagen, en halvfærdig roster og et banner der
-lukker på torsdag.
+The existing tools answer *what your best build would be*. That is a static
+answer to a dynamic question. You have 180 resin a day, a domain rotation that
+changes with the weekday, a half-finished roster and a banner closing on
+Thursday.
 
-Mimir rangerer i stedet **hver mulig opgradering på hele kontoen efter forventet
-skadesgevinst pr. resin**. Rigtigt output fra en rigtig konto med to mål sat op:
+Mimir instead ranks **every possible upgrade on the whole account by expected
+damage gained per resin**. Real output from a real account with two goals set
+up:
 
 ```
-1. [RaidenShogun] Skift til 4pc EmblemOfSeveredFate     +34,53 %   gratis
-                  tager stykker fra Xiangling
-2. [Xiangling]    Giv Xiangling "The Catch" (R5)        +12,49 %   gratis
-                  blokeret: RaidenShogun bruger det, og har højere prioritet
-3. [Xiangling]    Skift til 4pc EmblemOfSeveredFate     +12,42 %   gratis
-                  blokeret: RaidenShogun bruger det, og har højere prioritet
-4. [Xiangling]    Elemental skill 9 → 10                 +1,09 %   20 resin
-                  blokeret: kræver en Crown of Insight
+1. [RaidenShogun] Switch to 4pc EmblemOfSeveredFate    +34.53 %   free
+                  takes pieces from Xiangling
+2. [Xiangling]    Give Xiangling the weapon The Catch  +12.49 %   free
+                  blocked: RaidenShogun is using it, and has at least as high a priority
+3. [Xiangling]    Switch to 4pc EmblemOfSeveredFate    +12.42 %   free
+                  blocked: RaidenShogun is using it, and has at least as high a priority
+4. [Xiangling]    elemental skill 9 → 10                +1.09 %   20 resin
+                  blocked: requires a Crown of Insight
 ```
 
-Gratis omrokeringer først, blokerede handlinger sidst, og artifact-farming
-besvaret med en simulation af domænets drop-fordeling frem for en
-tommelfingerregel.
+Free rearrangements first, blocked actions last, and artifact farming answered
+with a simulation of the domain's drop distribution rather than a rule of
+thumb.
 
-Bemærk hvad den *ikke* gør: den påstår ikke at nummer 2 og 3 er gratis
-gevinster. De koster Raiden hendes sæt, og det står der.
+Note what it does *not* do: it does not claim that numbers 2 and 3 are free
+wins. They cost Raiden her set, and it says so.
 
-## Datakilder
+## Data sources
 
-Ingen taster 1.400 artifacts ind. Alle tre etablerede kilder understøttes:
+Nobody types in 1,400 artifacts. All three established sources are supported:
 
-| Kilde | Hvad den giver | Hvad den kræver |
+| Source | What it gives | What it needs |
 |---|---|---|
-| **Enka.Network** | Showcase: op til otte karakterer med level, constellation, talenter, våben og udstyrede artifacts | Kun et UID. *Vis karakterdetaljer* skal være slået til |
-| **GOOD-format** | Hele inventaret — hver eneste artifact, våben og materiale | En `.good`-fil fra Inventory Kamera eller Genshin Optimizer |
-| **HoYoLAB** | Resin, dagens commissions, ekspeditioner, Abyss | `ltoken`/`ltuid`-cookies, krypteret i databasen |
+| **Enka.Network** | Showcase: up to eight characters with level, constellation, talents, weapon and equipped artifacts | A UID, nothing else. *Show Character Details* has to be switched on |
+| **GOOD format** | The whole inventory — every artifact, weapon and material | A `.good` file from Inventory Kamera or Genshin Optimizer |
+| **HoYoLAB** | Resin, the day's commissions, expeditions, Abyss | `ltoken`/`ltuid` cookies, encrypted in the database |
 
-Statiske spildata mines fra tre kilder, alle nøglet på numeriske id'er:
-tallene fra `DimbreathBot/AnimeGameData`, navnene fra Enkas eget store og
-genshin-db. Den oplagte vej — TextMap — virker ikke: hashene i det aktuelle
-mirror resolver nul ud af 165 karakternavne. [docs/GAMEDATA.md](docs/GAMEDATA.md)
-forklarer hvorfor, og hvad der gøres i stedet.
+Static game data is mined from three sources, all keyed on numeric ids: the
+numbers from `DimbreathBot/AnimeGameData`, the names from Enka's own store and
+from genshin-db. The obvious route — TextMap — does not work: the hashes in the
+current mirror resolve zero out of 165 character names.
+[docs/GAMEDATA.md](docs/GAMEDATA.md) explains why, and what is done instead.
 
-## Kvasirs mening
+## Kvasir's opinion
 
-Planen er rangeret, men den er tavs. Den siger at Emblem er +34,53 % og at
-det koster Xiangling hendes sæt; den siger ikke om du skal gøre det, hvad der
-egentlig holder kontoen tilbage, eller hvad du har glemt at fortælle Mimir.
+The plan is ranked, but it is silent. It says Emblem is +34.53 % and that it
+costs Xiangling her set; it does not say whether you should do it, what is
+actually holding the account back, or what you forgot to tell Mimir.
 
-Det gør Kvasir. Han sidder på hver side — planen, målene, karaktererne,
-artifacts — og svarer på ét spørgsmål: hvordan bliver du bedre. Og der er en
-samtale til spørgsmålet efter det.
+Kvasir does. He sits on every page — the plan, the goals, the characters, the
+artifacts — and answers one question: how do you get better. And there is a
+conversation for the question after that.
 
-Det svære er ikke at få en model til at skrive råd. Det er at gøre rådet
-værd at stole på, når det står ved siden af tal, der er regnet ud. Så reglen
-— **sprogmodellen regner aldrig selv** — er ikke en bøn i en prompt. Den er
-håndhævet to steder:
+The hard part is not getting a model to write advice. It is making the advice
+worth trusting when it stands next to figures that were calculated. So the rule
+— **the model never calculates** — is not a plea in a prompt. It is enforced in
+two places:
 
-1. **Kvasir får et faktaark, ikke en database.** Hver side har én funktion der
-   kører beregningskernen og skriver ned hvad der kom tilbage. Det ark er alt,
-   hvad modellen ved om kontoen. Der er ingen vej fra en prompt til et tal.
-2. **Hvert tal i svaret tjekkes mod arket.** Præcis som en effekt-regel kun
-   loader, hvis dens tal står i den spiltekst den citerer. Et punkt med et tal,
-   ingen har regnet ud, bliver slettet før du ser det — og du får at vide, at
-   det blev slettet, og hvilket tal der var tale om.
+1. **Kvasir is handed a fact sheet, not a database.** Each page has one
+   function that runs the calculation core and writes down what came back. That
+   sheet is everything the model knows about the account. There is no path from
+   a prompt to a number.
+2. **Every figure in the answer is checked against the sheet.** Exactly as an
+   effect rule only loads if its numbers appear in the game text it cites. A
+   point containing a figure nobody calculated is deleted before you see it —
+   and you are told that it was deleted, and which figure it was.
 
-Hver side har et *Hvad fik Kvasir at vide?* — hele faktaarket, ordret. Et svar
-hvis grundlag er smidt væk, kan ikke efterprøves.
+Every page has a *What was Kvasir told?* — the whole fact sheet, verbatim. An
+answer whose evidence has been thrown away cannot be checked.
 
-Samtalen er det ene sted, modellen selv vælger hvad den kigger på: den kan
-kalde beregningskernen — planen, en build, en talenttabel, inventaret — og
-svaret siger hvad den slog op. Alle otte kald er læse-kald. Kvasir rådgiver;
-at udstyre et stykke eller ændre et mål er dit.
+The conversation is the one place the model picks what to look at: it can call
+the calculation core — the plan, a build, a talent table, the inventory — and
+the answer says what it looked up. All eight calls are read-only. Kvasir
+advises; equipping a piece or changing a goal is yours.
 
-Alt det her er valgfrit. `MIMIR_LLM_BASE_URL` peger på et OpenAI-kompatibelt
-endepunkt — LM Studio, Ollama, vLLM eller en hostet API — så du bestemmer,
-hvor husstandens spilkonto må havne. Står den tom, findes laget ikke: intet
-kort, ingen side, ingen forespørgsel, og alt andet virker som før.
+All of it is optional. `MIMIR_LLM_BASE_URL` points at an OpenAI-compatible
+endpoint — LM Studio, Ollama, vLLM or a hosted API — so you decide where the
+household's game account is allowed to go. Leave it blank and the layer does
+not exist: no card, no page, no request.
 
-## Kom i gang
+## Getting started
 
 ```bash
 npm --prefix web install && npm --prefix web run build
@@ -100,48 +102,49 @@ go build -o mimir ./cmd/mimir && go build -o mimir-mine ./cmd/mimir-mine
 ./mimir serve
 ```
 
-Mineren henter spildata fra de offentlige datamines. Den tager ti-tyve
-sekunder koldt, under to varmt, og afviser at skrive et snapshot der ville
-gøre beregningerne stille forkerte. Se [docs/GAMEDATA.md](docs/GAMEDATA.md) —
-især afsnittet om hvorfor navnene ikke kommer fra TextMap.
+The miner fetches game data from the public datamines. It takes ten to twenty
+seconds cold, under two warm, and refuses to write a snapshot that would make
+the calculations quietly wrong. See [docs/GAMEDATA.md](docs/GAMEDATA.md) — in
+particular the part about why the names do not come from TextMap.
 
-Serveren lytter på `:8080`. I udvikling kører frontend'en separat med hot
-reload og proxyer `/api` videre:
+The server listens on `:8080`. In development the frontend runs separately with
+hot reload and proxies `/api` through:
 
 ```bash
 npm --prefix web run dev
 ```
 
-## Som Yggdrasil-rune
+## As a Yggdrasil rune
 
-`deploy/mimir.yaml` er rune-definitionen og `deploy/Dockerfile` bygger imaget.
-Frontend'en er `go:embed`'et ind i binæren, så containeren er én statisk fil og
-et datakatalog — ingen node, ingen CGO, ingen ekstern database.
+`deploy/mimir.yaml` is the rune definition and `deploy/Dockerfile` builds the
+image. The frontend is `go:embed`ed into the binary, so the container is one
+static file and a data directory — no node, no CGO, no external database.
 
-## Arkitektur
+## Architecture
 
-Se [ARCHITECTURE.md](ARCHITECTURE.md). De tre regler der styrer alt andet:
+See [ARCHITECTURE.md](ARCHITECTURE.md). The three rules that govern everything
+else:
 
-1. **Beregningskernen indeholder formler, aldrig spilkonstanter.** Alt der
-   ændrer sig med en patch ligger i `internal/gamedata` og mines. En ny
-   version er en datasynkronisering, ikke en kodeændring.
-2. **Sprogmodellen regner aldrig selv.** Den kalder beregningskernen som
-   værktøj og forklarer resultatet. Ellers hallucinerer den multipliers, og så
-   er hele produktets troværdighed væk. Reglen er håndhævet, ikke lovet: hvert
-   tal Kvasir skriver tjekkes mod det faktaark, beregningskernen gav ham.
-3. **Et tal Mimir ikke kan kilde, findes ikke.** Manglende reaktions-
-   koefficienter giver en fejl der siger hvad der mangler, ikke et
-   sandsynligt gæt. Farming uden en målt drop-rate rangeres i stykker frem
-   for resin. Alt der ikke kan prissættes, står i planen under "forbehold" —
-   for en stille udeladelse læses som "det er ikke værd at gøre".
+1. **The calculation core holds formulas, never game constants.** Everything
+   that changes with a patch lives in `internal/gamedata` and is mined. A new
+   version is a data sync, not a code change.
+2. **The language model never calculates.** It calls the core as a tool and
+   explains the result. Otherwise it hallucinates multipliers, and the whole
+   product's credibility is gone. The rule is enforced, not promised: every
+   figure Kvasir writes is checked against the fact sheet the core gave him.
+3. **A number Mimir cannot source does not exist.** Missing reaction
+   coefficients produce an error naming the gap, not a plausible guess. Farming
+   without a measured drop rate is ranked in pieces rather than in resin.
+   Anything that cannot be priced appears in the plan under "caveats" — because
+   a silent omission reads as "not worth doing".
 
-   Det gælder også de betingede bonusser — sæt, karakterpassiver og
-   våbenpassiver — som er den ene ting Mimir *ikke* kan mine. De står i
-   `deploy/effects.json` som håndskrevne regler, men hver regel citerer
-   spillets egen ordlyd, og loaderen tjekker at tallene står der. En regel der
-   påstår 25 % mod en tekst der siger 20 %, loader ikke. For våben tjekkes
-   hver refinement mod netop sin egen sætning.
+   That covers the conditional bonuses too — sets, character passives and
+   weapon passives — which are the one thing Mimir *cannot* mine. They live in
+   `deploy/effects.json` as hand-written rules, but every rule cites the game's
+   own wording, and the loader checks that the numbers are in it. A rule
+   claiming 25 % against a text that says 20 % does not load. For weapons, each
+   refinement is checked against its own sentence.
 
 ## Status
 
-Se [PROGRESS.md](PROGRESS.md).
+See [PROGRESS.md](PROGRESS.md).

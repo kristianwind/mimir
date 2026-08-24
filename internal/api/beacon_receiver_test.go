@@ -158,7 +158,7 @@ func TestReceiverStatsCountDistinctInstalls(t *testing.T) {
 	}
 	post(s, "/api/beacon", `{"instance_id":"0000000000000001","version":"v1.0.0"}`)
 
-	w := do("chef", "GET", "/api/system/beacon/receiver", "")
+	w := do("boss", "GET", "/api/system/beacon/receiver", "")
 	if w.Code != http.StatusOK {
 		t.Fatalf("stats gave %d: %s", w.Code, w.Body)
 	}
@@ -179,7 +179,7 @@ func TestOnlyAdminsSeeTheCollector(t *testing.T) {
 	for _, c := range []struct{ method, body string }{
 		{"GET", ""}, {"PUT", `{"enabled":true}`},
 	} {
-		w := do("menig", c.method, "/api/system/beacon/receiver", c.body)
+		w := do("member", c.method, "/api/system/beacon/receiver", c.body)
 		if w.Code != http.StatusForbidden {
 			t.Errorf("%s as a plain user gave %d, want 403", c.method, w.Code)
 		}
@@ -192,7 +192,7 @@ func TestEnablingTheReceiverOpensTheEndpoint(t *testing.T) {
 	if w := post(s, "/api/beacon", `{"instance_id":"aabbccddeeff0011","version":"v1"}`); w.Code != http.StatusNotFound {
 		t.Fatalf("closed receiver gave %d", w.Code)
 	}
-	if w := do("chef", "PUT", "/api/system/beacon/receiver", `{"enabled":true}`); w.Code != http.StatusOK {
+	if w := do("boss", "PUT", "/api/system/beacon/receiver", `{"enabled":true}`); w.Code != http.StatusOK {
 		t.Fatalf("enable gave %d: %s", w.Code, w.Body)
 	}
 	if w := post(s, "/api/beacon", `{"instance_id":"aabbccddeeff0011","version":"v1"}`); w.Code != http.StatusOK {
@@ -209,7 +209,7 @@ func TestOnlyOneMineAtATime(t *testing.T) {
 	// exercises the lock without reaching the network.
 	s.Mine = &MineJob{running: true}
 
-	w := do("chef", "POST", "/api/system/gamedata/mine", `{"version":"7.0.0"}`)
+	w := do("boss", "POST", "/api/system/gamedata/mine", `{"version":"7.0.0"}`)
 	if w.Code != http.StatusConflict {
 		t.Errorf("a start while one is running gave %d, want 409: %s", w.Code, w.Body)
 	}
@@ -217,7 +217,7 @@ func TestOnlyOneMineAtATime(t *testing.T) {
 
 func TestMineNeedsAVersion(t *testing.T) {
 	_, do := newServer(t)
-	w := do("chef", "POST", "/api/system/gamedata/mine", `{}`)
+	w := do("boss", "POST", "/api/system/gamedata/mine", `{}`)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("a mine with no version gave %d, want 400", w.Code)
 	}
@@ -228,7 +228,7 @@ func TestOnlyAdminsMine(t *testing.T) {
 	for _, c := range []struct{ method, body string }{
 		{"GET", ""}, {"POST", `{"version":"7.0.0"}`},
 	} {
-		w := do("menig", c.method, "/api/system/gamedata/mine", c.body)
+		w := do("member", c.method, "/api/system/gamedata/mine", c.body)
 		if w.Code != http.StatusForbidden {
 			t.Errorf("%s as a plain user gave %d, want 403", c.method, w.Code)
 		}

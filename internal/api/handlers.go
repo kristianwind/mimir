@@ -306,8 +306,16 @@ func (s *Server) handleImportGOOD(w http.ResponseWriter, r *http.Request) {
 
 	f, err := good.Parse(http.MaxBytesReader(w, r.Body, maxGOODUpload))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error(),
-			"Export a .good file from Inventory Kamera or Genshin Optimizer.")
+		// The remedy differs by cause, and "export a .good file" is unhelpful
+		// advice to somebody who just did.
+		hint := "Export a .good file from Inventory Kamera or Genshin Optimizer."
+		switch {
+		case errors.Is(err, good.ErrTooNew):
+			hint = "Your exporter is ahead of Mimir. Nothing is wrong with the file — Mimir will not import a format it has not been checked against, because a renamed stat key would arrive as a silently wrong inventory. Update Mimir, or say so and it gets checked."
+		case errors.Is(err, good.ErrTooOld):
+			hint = "That file predates the current slot and stat names. Re-export it from a current Inventory Kamera or Genshin Optimizer."
+		}
+		writeError(w, http.StatusBadRequest, err.Error(), hint)
 		return
 	}
 	chars, weapons, arts := f.Import(a.ID)

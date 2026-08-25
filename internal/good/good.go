@@ -10,6 +10,7 @@ package good
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -93,6 +94,30 @@ func Denormalize(s model.Stat, v float64) float64 {
 	return v
 }
 
+// maxGOODVersion is the newest format version this parser has been read
+// against, rather than the newest it can technically decode.
+//
+// Versions 2 and 3 carry the same records. Genshin Optimizer's own schema
+// accepts 1, 2 and 3 through one definition and its importer branches on none
+// of them; what 3 added is optional fields on an artifact — initialValue on a
+// substat, totalRolls, astralMark, elixirCrafted, unactivatedSubstats — none
+// of which change the ones Mimir reads. Go ignores unknown fields, so a v3
+// file decodes into the structs below unchanged.
+//
+// The check stays an equality-with-a-ceiling rather than becoming "anything
+// recent enough", because the next version may be the one that renames a stat
+// key, and finding that out from a silently wrong inventory is the failure this
+// whole file is arranged to avoid.
+const maxGOODVersion = 3
+
+// The two ways a version can be wrong. They are separate errors because the
+// remedies are opposite: one is "re-export that file", the other is "the file
+// is fine, Mimir is behind".
+var (
+	ErrTooOld = errors.New("good: this file is older than the format in use")
+	ErrTooNew = errors.New("good: this file is newer than Mimir knows")
+)
+
 // Parse reads a GOOD document and validates the envelope.
 func Parse(r io.Reader) (*File, error) {
 	var f File
@@ -103,10 +128,20 @@ func Parse(r io.Reader) (*File, error) {
 	if f.Format != "GOOD" {
 		return nil, fmt.Errorf("good: not a GOOD file (format = %q)", f.Format)
 	}
-	if f.Version != 2 {
-		// Version 1 predates the current slot/stat keys. Refusing is kinder
-		// than importing an inventory with silently wrong stat names.
-		return nil, fmt.Errorf("good: unsupported version %d (expected 2)", f.Version)
+	switch {
+	case f.Version < 2:
+		// Version 1 predates the current slot and stat keys. Refusing is
+		// kinder than importing an inventory with silently wrong stat names.
+		return nil, fmt.Errorf(
+			"%w: version %d — its slot and stat keys are not the ones in use today",
+			ErrTooOld, f.Version)
+	case f.Version > maxGOODVersion:
+		// Newer than anything checked. The envelope has been stable, so this
+		// is likely to work — but "likely" is not something to decide on the
+		// player's behalf about their whole inventory.
+		return nil, fmt.Errorf(
+			"%w: version %d, and Mimir has been checked against %d",
+			ErrTooNew, f.Version, maxGOODVersion)
 	}
 	return &f, nil
 }

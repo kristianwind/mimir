@@ -1,6 +1,9 @@
 package good
 
 import (
+	"errors"
+	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -127,5 +130,85 @@ func TestImportHandlesEmptySections(t *testing.T) {
 	chars, weapons, arts := f.Import(1)
 	if len(chars) != 0 || len(weapons) != 0 || len(arts) != 0 {
 		t.Error("an empty file produced records")
+	}
+}
+
+// A current Genshin Optimizer export says version 3, and carries fields that
+// did not exist in 2. None of them change what Mimir reads, so the same
+// inventory has to arrive whichever number is on the envelope.
+func TestVersionThreeImportsLikeTwo(t *testing.T) {
+	const body = `{
+	  "format": "GOOD",
+	  "source": "Genshin Optimizer",
+	  "version": %d,
+	  "characters": [
+	    {"key": "Nahida", "level": 90, "constellation": 1, "ascension": 6,
+	     "talent": {"auto": 9, "skill": 10, "burst": 9}}
+	  ],
+	  "artifacts": [
+	    {"setKey": "DeepwoodMemories", "slotKey": "sands", "level": 20, "rarity": 5,
+	     "mainStatKey": "atk_", "location": "Nahida", "lock": true,
+	     "substats": [
+	       {"key": "critRate_", "value": 7.8, "initialValue": 3.9},
+	       {"key": "eleMas", "value": 40}
+	     ],
+	     "totalRolls": 9, "astralMark": false, "elixirCrafted": true,
+	     "unactivatedSubstats": [{"key": "critDMG_", "value": 0}]}
+	  ],
+	  "weapons": [
+	    {"key": "SacrificialFragments", "level": 90, "ascension": 6,
+	     "refinement": 1, "location": "Nahida", "lock": true}
+	  ]
+	}`
+
+	parse := func(version int) *File {
+		t.Helper()
+		f, err := Parse(strings.NewReader(fmt.Sprintf(body, version)))
+		if err != nil {
+			t.Fatalf("version %d: %v", version, err)
+		}
+		return f
+	}
+
+	two, three := parse(2), parse(3)
+	c2, w2, a2 := two.Import(1)
+	c3, w3, a3 := three.Import(1)
+
+	if !reflect.DeepEqual(c2, c3) {
+		t.Errorf("characters differ between versions:\n 2: %+v\n 3: %+v", c2, c3)
+	}
+	if !reflect.DeepEqual(w2, w3) {
+		t.Errorf("weapons differ between versions:\n 2: %+v\n 3: %+v", w2, w3)
+	}
+	if !reflect.DeepEqual(a2, a3) {
+		t.Errorf("artifacts differ between versions:\n 2: %+v\n 3: %+v", a2, a3)
+	}
+
+	// And the fields version 3 added are not mistaken for substats.
+	if got := len(a3[0].Substats); got != 2 {
+		t.Errorf("artifact has %d substats, want the 2 that are on it — "+
+			"unactivatedSubstats are rolls it has not got yet", got)
+	}
+}
+
+// The old format really is different, and the newest one is unknown. Both are
+// refused, and the two messages say different things because the answers are
+// different: one is "re-export", the other is "Mimir needs updating".
+func TestVersionsOutsideTheCheckedRangeAreRefused(t *testing.T) {
+	envelope := `{"format":"GOOD","source":"t","version":%d}`
+
+	_, err := Parse(strings.NewReader(fmt.Sprintf(envelope, 1)))
+	if !errors.Is(err, ErrTooOld) {
+		t.Errorf("version 1: %v, want ErrTooOld", err)
+	}
+
+	_, err = Parse(strings.NewReader(fmt.Sprintf(envelope, maxGOODVersion+1)))
+	if !errors.Is(err, ErrTooNew) {
+		t.Errorf("a future version: %v, want ErrTooNew", err)
+	}
+	// The two must stay distinguishable, or the handler cannot tell somebody
+	// whether to re-export or to update.
+	if errors.Is(err, ErrTooOld) {
+		t.Error("a future version also matched ErrTooOld")
 	}
 }

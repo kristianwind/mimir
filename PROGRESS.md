@@ -76,7 +76,11 @@ accurate, not what makes it work.
 ### Data in
 - [x] **Enka.Network** — client, TTL cache with labelled stale fallback,
       setId as the primary bridge, Traveler variants via the skill depot
-- [x] **GOOD format** — parser, version validation, unit normalisation
+- [x] **GOOD format** — parser, version validation, unit normalisation.
+      Versions 2 and 3 both import: 3 only adds optional fields to an artifact,
+      and Genshin Optimizer's own schema reads all of them through one
+      definition. A version above what has been checked is still refused, with
+      a message that says the file is fine and Mimir is behind
 - [x] **Artifact matching** — fingerprint + identity, so a re-import becomes
       `{new, upgraded, unchanged}`
 - [x] **HoYoLAB** — DS signature, Real-Time Notes, retcodes translated

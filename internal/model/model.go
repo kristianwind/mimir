@@ -6,6 +6,8 @@
 // AnimeGameData — see docs/DATAMODEL.md, "Where the numbers live".
 package model
 
+import "strings"
+
 // Element is a Genshin damage type. Physical is included because it shares
 // the RES/DMG-bonus machinery even though it is not a reactable element.
 type Element string
@@ -207,9 +209,15 @@ func ElementFromDatamine(name string) (Element, bool) {
 		return Cryo, true
 	case "Rock":
 		return Geo, true
-	default:
-		return "", false
 	}
+	// The second name source writes the element the way the game shows it to
+	// a player. Accepting both spellings here rather than translating at the
+	// call site keeps one place that knows what an element is called.
+	switch Element(strings.ToLower(name)) {
+	case Pyro, Hydro, Anemo, Electro, Dendro, Cryo, Geo:
+		return Element(strings.ToLower(name)), true
+	}
+	return "", false
 }
 
 // ReactionBonus returns the stat key holding the additive reaction-damage

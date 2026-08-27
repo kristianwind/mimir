@@ -106,6 +106,28 @@ accurate, not what makes it work.
       materials without quantities — so the resin total is reported as missing,
       with the reason, rather than filled in with a plausible average
 
+### Who counts as a character
+- [x] **The datamine is the roster** — it used to be Enka's store, on the
+      reasoning that a character you cannot showcase is not one you can build.
+      Sound reasoning, wrong consequence: that store is community-maintained
+      and runs months behind the game, so a character released in April was
+      still absent in August. Not absent from a dropdown — absent from the
+      engine, so an account that had her showed her level and then could say
+      nothing at all about her
+- [x] **Two name sources, asked in turn** — Enka first, because it alone
+      orders the three talents; then genshin-db, keyed by the same avatar id.
+      Both are consulted only for what the datamine cannot be read for
+- [x] **Trial copies are not characters** — the old roster let in
+      "PyroArchonTest" and "HuTaoTrial" while dropping real ones. A trial
+      reuses the character's portrait and is added to the game later, so one
+      icon is one character and the lowest id is the real one. No list of
+      names to exclude, no id range treated as magic
+- [x] **Talent groups come from the datamine too**, so a character the name
+      sources are behind on still gets talent tables and a material bill
+- [x] Net effect on a 7.0.0 sync: 117 characters became 124 — ten real
+      characters recovered, three test rows removed, and every one of them has
+      an element, a portrait and a bill
+
 ### Data in
 - [x] **Enka.Network** — client, TTL cache with labelled stale fallback,
       setId as the primary bridge, Traveler variants via the skill depot

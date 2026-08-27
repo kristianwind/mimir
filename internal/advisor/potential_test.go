@@ -7,6 +7,7 @@ import (
 
 	"github.com/kristianwind/mimir/internal/gamedata"
 	"github.com/kristianwind/mimir/internal/model"
+	"github.com/kristianwind/mimir/internal/optimizer"
 )
 
 // The same miniature game the plan tests use, minus the goal — which is the
@@ -308,5 +309,42 @@ func TestADerivedSpecMatchesTheYardstick(t *testing.T) {
 			t.Errorf("instance %d: derived %v, yardstick %v",
 				i, rot.Instances[i].Multiplier, yard.Instances[i].Multiplier)
 		}
+	}
+}
+
+// The artifact search has to be optimising against something.
+//
+// It used to be handed a goal with no rotation. An empty rotation has no
+// damage instances, so the objective summed over nothing and returned zero
+// for every build it was offered — the search kept whichever arrangement it
+// saw first and called it best. The gain reported afterwards was measured
+// honestly with the yardstick, which is exactly what made it hard to see: a
+// real number attached to an arbitrary build.
+func TestTheArtifactSearchHasSomethingToOptimise(t *testing.T) {
+	req := potentialRequest(t)
+	base, err := Assemble(req.Snapshot, req.Loadout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec, err := DeriveSpec(req.Snapshot, base.Character)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	obj := statObjective(Request{
+		Snapshot: req.Snapshot,
+		Goal:     Goal{CharacterKey: base.Character.Key, Spec: spec},
+		Loadout:  req.Loadout,
+	}, base, optimizer.SetConfig{})
+
+	// Two different stat blocks must not score the same, and neither may be
+	// zero: a flat objective is indistinguishable from no objective at all.
+	poor := obj(model.StatBlock{})
+	rich := obj(model.StatBlock{model.ATKPercent: 1.0, model.CritRate: 0.5, model.CritDMG: 1.0})
+	if poor <= 0 {
+		t.Fatalf("the objective scores a build at %v; it is measuring nothing", poor)
+	}
+	if rich <= poor {
+		t.Errorf("more attack and crit scored %v against %v; the objective is flat", rich, poor)
 	}
 }

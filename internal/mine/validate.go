@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 
 	"github.com/kristianwind/mimir/internal/gamedata"
 	"github.com/kristianwind/mimir/internal/model"
@@ -144,6 +146,54 @@ func Validate(snap *gamedata.Snapshot) Report {
 	}
 	if len(snap.ResinCosts) == 0 {
 		r.warnf("no resin costs; upgrades cannot be ranked per resin")
+	}
+	if len(snap.Materials) == 0 {
+		r.warnf("no material catalogue; upgrade bills cannot be read and " +
+			"every ascension and talent level is a cost with no description")
+	} else {
+		// A bill is only useful if every material in it can be placed. One
+		// that cannot is reported by name, because it is a gap in a second
+		// source rather than a mistake in the numbers.
+		unplaced := map[string]bool{}
+		for _, c := range snap.Characters {
+			bills := append([]gamedata.Bill{}, c.AscensionBills...)
+			for _, perSlot := range c.TalentBills {
+				bills = append(bills, perSlot...)
+			}
+			for _, b := range bills {
+				for _, item := range b.Items {
+					mat, ok := snap.Materials[item.ID]
+					if !ok {
+						unplaced[fmt.Sprintf("item %d", item.ID)] = true
+					} else if mat.Source == gamedata.SourceUnknown {
+						unplaced[mat.Name] = true
+					}
+				}
+			}
+		}
+		if len(unplaced) > 0 {
+			names := make([]string, 0, len(unplaced))
+			for n := range unplaced {
+				names = append(names, n)
+			}
+			sort.Strings(names)
+			if len(names) > 6 {
+				names = append(names[:6], fmt.Sprintf("and %d more", len(unplaced)-6))
+			}
+			r.warnf("%d materials in the upgrade bills have no known source (%s); "+
+				"those upgrades cannot say where to go",
+				len(unplaced), strings.Join(names, ", "))
+		}
+	}
+	withBills := 0
+	for _, c := range snap.Characters {
+		if len(c.TalentBills) > 0 {
+			withBills++
+		}
+	}
+	if withBills < len(snap.Characters) {
+		r.warnf("%d of %d characters have no talent bill; their talent levels "+
+			"cannot be costed", len(snap.Characters)-withBills, len(snap.Characters))
 	}
 
 	return r

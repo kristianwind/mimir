@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"math/rand/v2"
+	"runtime"
 	"sort"
+	"sync"
+	"sync/atomic"
 
 	"github.com/kristianwind/mimir/internal/gamedata"
 	"github.com/kristianwind/mimir/internal/model"
@@ -109,7 +112,7 @@ func (f FarmSim) EstimatePieces(
 	}
 	trials := f.Trials
 	if trials <= 0 {
-		trials = 300
+		trials = defaultFarmTrials
 	}
 	dm := f.dropModel()
 	if len(dm.SlotWeights) == 0 || len(dm.MainStatWeights) == 0 {
@@ -124,42 +127,80 @@ func (f FarmSim) EstimatePieces(
 		return FarmEstimate{}, fmt.Errorf("advisor: baseline score is %v; the rotation produces no damage", baseline)
 	}
 
-	gains := make([]float64, 0, trials)
-	var noImprovement int
+	// The trials are independent and each carries its own seeded generator,
+	// so running them at the same time cannot change the answer — trial 7
+	// rolls the same artifacts whichever core it lands on. That is what makes
+	// this safe to parallelise where the account plan, which hands gear from
+	// one goal to the next, is not.
+	gains := make([]float64, trials)
+	errs := make([]error, trials)
 
-	for t := 0; t < trials; t++ {
-		if err := ctx.Err(); err != nil {
+	workers := runtime.NumCPU() - 1
+	if workers < 1 {
+		workers = 1
+	}
+	if workers > trials {
+		workers = trials
+	}
+
+	var (
+		wg   sync.WaitGroup
+		next atomic.Int64
+	)
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				t := int(next.Add(1)) - 1
+				if t >= trials {
+					return
+				}
+				if err := ctx.Err(); err != nil {
+					errs[t] = err
+					continue
+				}
+				rng := rand.New(rand.NewPCG(f.Seed, uint64(t)))
+
+				trialState := cloneState(state)
+				best := baseline
+				var synthetic int64 = -1
+
+				for p := 0; p < pieces; p++ {
+					art, stats, ok := f.roll(rng, domain, synthetic)
+					if !ok {
+						continue
+					}
+					synthetic--
+
+					candidate := swap(trialState, art, stats)
+					score, err := eval.Score(ctx, g, candidate)
+					if err != nil {
+						errs[t] = err
+						break
+					}
+					if score > best {
+						best = score
+						trialState = candidate
+					}
+				}
+				gains[t] = Gain(baseline, best)
+			}
+		}()
+	}
+	wg.Wait()
+
+	for _, err := range errs {
+		if err != nil {
 			return FarmEstimate{}, err
 		}
-		rng := rand.New(rand.NewPCG(f.Seed, uint64(t)))
+	}
 
-		trialState := cloneState(state)
-		best := baseline
-		var synthetic int64 = -1
-
-		for p := 0; p < pieces; p++ {
-			art, stats, ok := f.roll(rng, domain, synthetic)
-			if !ok {
-				continue
-			}
-			synthetic--
-
-			candidate := swap(trialState, art, stats)
-			score, err := eval.Score(ctx, g, candidate)
-			if err != nil {
-				return FarmEstimate{}, err
-			}
-			if score > best {
-				best = score
-				trialState = candidate
-			}
-		}
-
-		gain := Gain(baseline, best)
-		if gain <= 0 {
+	var noImprovement int
+	for _, g := range gains {
+		if g <= 0 {
 			noImprovement++
 		}
-		gains = append(gains, gain)
 	}
 
 	sort.Float64s(gains)
@@ -348,3 +389,8 @@ func (f FarmSim) dropModel() gamedata.DropModel {
 	}
 	return f.Snapshot.DropModel
 }
+
+// defaultFarmTrials is how many futures to sample when nobody says otherwise.
+// A few hundred is enough for the ranking to be stable, and the spread is
+// reported so the answer never implies more precision than it has.
+const defaultFarmTrials = 300

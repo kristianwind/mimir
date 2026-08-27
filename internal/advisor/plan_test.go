@@ -58,10 +58,47 @@ func planSnapshot() *gamedata.Snapshot {
 	}
 	snap.Domains = map[string]gamedata.Domain{
 		"testdomain": {Key: "testdomain", Name: "Test Domain", Kind: "artifact", Sets: []string{"A", "B"}, ResinCost: 20},
+		"bookdomain": {
+			Key: "bookdomain", Name: "Book Domain", Kind: "talent", Entrance: "Test Hall",
+			Rewards: []int{bookID}, Days: []int{1, 4, 0}, ResinCost: 20,
+		},
 	}
-	snap.ResinCosts = map[string]float64{"talent_domain": 20, "artifact_domain": 20}
+	snap.ResinCosts = map[string]float64{"talent_domain": 20, "artifact_domain": 20, "world_boss": 40, "weekly_boss": 30}
+	snap.Materials = map[int]gamedata.Material{
+		bookID:   {ID: bookID, Name: "Test Book", Rarity: 3, Source: gamedata.SourceDomain, Domain: "bookdomain", Days: []int{1, 4, 0}},
+		mobID:    {ID: mobID, Name: "Test Scrap", Rarity: 1, Source: gamedata.SourceOverworld},
+		weeklyID: {ID: weeklyID, Name: "Test Sigil", Rarity: 5, Source: gamedata.SourceWeekly},
+		crownID:  {ID: crownID, Name: "Crown of Insight", Rarity: 5, Source: gamedata.SourceEvent},
+		gemID:    {ID: gemID, Name: "Test Gem", Rarity: 4, Source: gamedata.SourceGem},
+	}
+
+	tester := snap.Characters["Tester"]
+	levels := []gamedata.Bill{
+		{Level: 7, Mora: 120_000, Items: []gamedata.ItemCost{{ID: bookID, Count: 9}, {ID: mobID, Count: 4}}},
+		{Level: 9, Mora: 450_000, Items: []gamedata.ItemCost{{ID: bookID, Count: 12}, {ID: weeklyID, Count: 2}}},
+		{Level: 10, Mora: 700_000, Items: []gamedata.ItemCost{{ID: bookID, Count: 16}, {ID: crownID, Count: 1}}},
+	}
+	tester.TalentBills = map[string][]gamedata.Bill{
+		gamedata.TalentAuto:  levels,
+		gamedata.TalentSkill: levels,
+		gamedata.TalentBurst: levels,
+	}
+	tester.AscensionBills = []gamedata.Bill{
+		{Level: 6, Mora: 120_000, Items: []gamedata.ItemCost{{ID: gemID, Count: 6}, {ID: mobID, Count: 24}}},
+	}
+	snap.Characters["Tester"] = tester
 	return snap
 }
+
+// The fixture's material ids. They are arbitrary, but they are ids rather
+// than names because that is what a real bill is written in.
+const (
+	bookID   = 104301
+	mobID    = 112001
+	weeklyID = 113001
+	crownID  = 104319
+	gemID    = 104101
+)
 
 func flatCurve(n int) []float64 {
 	out := make([]float64, n)
@@ -242,22 +279,110 @@ func TestBuildPlanTalentGainMatchesTheRotation(t *testing.T) {
 	}
 }
 
-func TestBuildPlanPricesTalentsInResin(t *testing.T) {
+// A talent level costs its bill, and the bill is exact.
+//
+// It used to be priced at one domain run, flat, for every level. That is
+// roughly right for level 2 and wrong by more than an order of magnitude for
+// level 9, which needs twelve four-star books — over a hundred of the base
+// rarity — and a weekly boss drop. A number that wrong is worse than no
+// number, because the plan sorted on it.
+func TestATalentLevelCarriesItsBill(t *testing.T) {
+	plan, err := BuildPlan(context.Background(), planRequest(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var seen bool
+	for _, a := range plan.Actions {
+		if a.Kind != KindTalent {
+			continue
+		}
+		seen = true
+		cost, ok := a.Detail["cost"].(Cost)
+		if !ok {
+			t.Fatalf("no bill on %q: %v", a.Headline, a.Detail)
+		}
+		if cost.Mora != 120_000 {
+			t.Errorf("mora = %d, want the mined 120,000", cost.Mora)
+		}
+		if len(cost.Lines) != 2 {
+			t.Fatalf("bill has %d lines, want the two materials", len(cost.Lines))
+		}
+		book := cost.Lines[0]
+		if book.Material != "Test Book" || book.Count != 9 {
+			t.Errorf("first line = %+v", book)
+		}
+		if book.Where != "Book Domain (Test Hall)" {
+			t.Errorf("the bill does not say where to go: %q", book.Where)
+		}
+		if book.ResinPerRun != 20 {
+			t.Errorf("a run of the domain is priced at %v, want 20", book.ResinPerRun)
+		}
+	}
+	if !seen {
+		t.Fatal("no talent upgrade in the plan")
+	}
+}
+
+// Unpriced is not free. A talent level whose resin total is unknown must not
+// sort above a rearrangement that genuinely costs nothing.
+func TestAnUnpricedUpgradeIsNotFree(t *testing.T) {
 	plan, err := BuildPlan(context.Background(), planRequest(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, a := range plan.Actions {
-		if a.Kind != KindTalent {
+		if a.Kind != KindTalent && a.Kind != KindAscend {
 			continue
 		}
-		if a.ResinCost != 20 {
-			t.Errorf("talent upgrade priced at %v resin, want 20", a.ResinCost)
+		if a.Free {
+			t.Errorf("%q is marked free, but nobody priced it: %+v", a.Headline, a)
 		}
-		if a.Efficiency <= 0 {
-			t.Errorf("talent upgrade has no efficiency: %+v", a)
+		if !a.Unpriced {
+			t.Errorf("%q claims a price: resin %v", a.Headline, a.ResinCost)
 		}
 	}
+}
+
+// The bill is what makes an ascension actionable, and it used to say only
+// that a table had not been synced.
+func TestAnAscensionCarriesItsBill(t *testing.T) {
+	req := planRequest(t)
+	req.Loadout.Character.Level = 80
+	req.Loadout.Character.Ascension = 5
+
+	plan, err := BuildPlan(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range plan.Actions {
+		if a.Kind != KindAscend {
+			continue
+		}
+		if strings.Contains(a.BlockedBy, "not synced") {
+			t.Fatalf("the ascension still blames a missing table: %q", a.BlockedBy)
+		}
+		cost, ok := a.Detail["cost"].(Cost)
+		if !ok {
+			t.Fatalf("no bill on the ascension: %v", a.Detail)
+		}
+		if len(cost.Lines) != 2 || cost.Mora != 120_000 {
+			t.Fatalf("bill = %+v", cost)
+		}
+		var gem Line
+		for _, l := range cost.Lines {
+			if l.Source == string(gamedata.SourceGem) {
+				gem = l
+			}
+		}
+		if gem.Material != "Test Gem" {
+			t.Fatalf("the gem is not in the bill: %+v", cost.Lines)
+		}
+		if gem.ResinPerRun != 40 {
+			t.Errorf("a gem is priced at %v a run, want the world boss price", gem.ResinPerRun)
+		}
+		return
+	}
+	t.Fatal("no ascension in the plan")
 }
 
 func TestBuildPlanPicksTheRightWeapon(t *testing.T) {

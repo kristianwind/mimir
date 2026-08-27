@@ -1,6 +1,6 @@
 {
   "_README": [
-    "Bonusser der ikke er stat-blokke: konverteringer og betingede effekter.",
+    "Bonuses that are not stat blocks: conversions and conditional effects.",
     "",
     "These cannot be mined - they live in ability configs under BinOutput,",
     "not in a table. So every rule cites the in-game wording it came from,",
@@ -334,7 +334,7 @@
             "scaling": "atk",
             "element": "geo"
           },
-          "note": "Antal gange skjoldet udløber eller brydes i rotationen."
+          "note": "How many times the shield expires or is broken during the rotation."
         }
       ]
     },
@@ -355,7 +355,7 @@
             "scaling": "atk",
             "element": "pyro"
           },
-          "note": "Antal gange du afslutter en normal-angrebskombo i rotationen."
+          "note": "How many times you finish a normal attack combo during the rotation."
         }
       ]
     },
@@ -375,7 +375,7 @@
           "grants": "burst_critRate_",
           "phase": "pre",
           "byRefinement": [0.06, 0.075, 0.09, 0.105, 0.12],
-          "note": "Crit rate — kun på burst, ikke på resten af rotationen."
+          "note": "Crit rate — on the burst only, not on the rest of the rotation."
         }
       ]
     },

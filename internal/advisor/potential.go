@@ -3,8 +3,11 @@ package advisor
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/kristianwind/mimir/internal/calc"
 	"github.com/kristianwind/mimir/internal/effect"
@@ -210,6 +213,9 @@ type PotentialRequest struct {
 	// is reported, not guessed.
 	Conditions    map[string]float64
 	MaxSetConfigs int
+	// SearchBudget caps how many complete builds each set configuration's
+	// search examines. Zero takes DefaultSearchBudget; negative means no cap.
+	SearchBudget int
 }
 
 // Assess measures one character and lists everything that would raise the
@@ -252,16 +258,30 @@ func Assess(ctx context.Context, req PotentialRequest) (Potential, error) {
 		out.Skipped = append(out.Skipped, fmt.Sprintf(format, args...))
 	}
 
-	// The goal-shaped generators want a Goal; the yardstick evaluator ignores
-	// it, so an empty one is honest here rather than a placeholder that could
-	// be mistaken for a rotation.
+	// The goal-shaped generators want a Goal, and it has to carry the
+	// yardstick as a rotation rather than be left empty.
+	//
+	// An empty spec builds an empty rotation, and the artifact objective sums
+	// damage over its instances — so it returns zero for every build ever
+	// offered to it. The search then "optimises" against a flat function and
+	// keeps whichever arrangement it happened to look at first. The gain
+	// reported afterwards is real, because it is measured with the yardstick;
+	// the build it is measured on is arbitrary. That is the worst kind of
+	// wrong number: a true measurement of a meaningless thing.
+	spec, err := DeriveSpec(req.Snapshot, base.Character)
+	if err != nil {
+		return Potential{}, fmt.Errorf("advisor: %s has nothing to measure: %w",
+			req.Loadout.Character.Key, err)
+	}
+
 	greq := Request{
 		Snapshot:      req.Snapshot,
-		Goal:          Goal{CharacterKey: req.Loadout.Character.Key, Conditions: req.Conditions},
+		Goal:          Goal{CharacterKey: req.Loadout.Character.Key, Spec: spec, Conditions: req.Conditions},
 		Loadout:       req.Loadout,
 		Inventory:     req.Inventory,
 		Weapons:       req.Weapons,
 		MaxSetConfigs: req.MaxSetConfigs,
+		SearchBudget:  req.SearchBudget,
 	}
 	if greq.MaxSetConfigs <= 0 {
 		greq.MaxSetConfigs = 8
@@ -487,25 +507,76 @@ func AccountPotential(ctx context.Context, reqs []PotentialRequest) (Ranking, er
 		},
 	}
 
-	for _, req := range reqs {
-		p, err := Assess(ctx, req)
-		if err != nil {
+	// Each character is measured independently — the yardstick is the whole
+	// point — so they are measured at the same time. The results are written
+	// into a slice by index rather than appended, because a ranking that
+	// came out in a different order on every request would be a different
+	// answer to the same question.
+	type outcome struct {
+		ranked Ranked
+		err    error
+	}
+	results := make([]outcome, len(reqs))
+
+	// The whole roster shares one budget. Measuring forty characters must
+	// not cost forty times what measuring one costs, or the feature stops
+	// working on exactly the accounts it was built for.
+	each := shareBudget(AccountSearchBudget, len(reqs))
+	for i := range reqs {
+		if reqs[i].SearchBudget == 0 {
+			reqs[i].SearchBudget = each
+		}
+	}
+
+	workers := runtime.NumCPU() - 1
+	if workers < 1 {
+		workers = 1
+	}
+	if workers > len(reqs) {
+		workers = len(reqs)
+	}
+
+	var (
+		wg   sync.WaitGroup
+		next atomic.Int64
+	)
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				i := int(next.Add(1)) - 1
+				if i >= len(reqs) {
+					return
+				}
+				p, err := Assess(ctx, reqs[i])
+				if err != nil {
+					results[i] = outcome{err: err}
+					continue
+				}
+				r := Ranked{Potential: p, FreeGain: p.Best - p.Current}
+				for j := range p.Actions {
+					if p.Actions[j].BlockedBy != "" {
+						continue
+					}
+					if gain := p.Current * p.Actions[j].GainPct; gain > r.TopGain {
+						r.TopGain = gain
+						r.TopAction = &p.Actions[j]
+					}
+				}
+				results[i] = outcome{ranked: r}
+			}
+		}()
+	}
+	wg.Wait()
+
+	for i, res := range results {
+		if res.err != nil {
 			out.Skipped = append(out.Skipped,
-				fmt.Sprintf("%s: %v", req.Loadout.Character.Key, err))
+				fmt.Sprintf("%s: %v", reqs[i].Loadout.Character.Key, res.err))
 			continue
 		}
-
-		r := Ranked{Potential: p, FreeGain: p.Best - p.Current}
-		for i := range p.Actions {
-			if p.Actions[i].BlockedBy != "" {
-				continue
-			}
-			if gain := p.Current * p.Actions[i].GainPct; gain > r.TopGain {
-				r.TopGain = gain
-				r.TopAction = &p.Actions[i]
-			}
-		}
-		out.Characters = append(out.Characters, r)
+		out.Characters = append(out.Characters, res.ranked)
 	}
 
 	if len(out.Characters) == 0 {
@@ -572,4 +643,44 @@ func splitYardstickLabel(s string) (slot, label string, ok bool) {
 		}
 	}
 	return "", "", false
+}
+
+// The search budgets.
+//
+// These are wall-clock decisions, not quality ones, and they are stated in
+// the only unit that predicts wall clock: how many complete builds the
+// objective is asked to score. One evaluation runs the whole damage pipeline
+// and costs a few microseconds, so a budget translates directly into seconds.
+//
+// They exist because the optimiser's upper bound barely prunes. A four-piece
+// set on a full inventory offers something like 600 million arrangements, and
+// an exhaustive search of a forty-character roster would run for hours —
+// which reaches the player as a page that hangs and then dies in a proxy,
+// with nothing to read. The pool is ordered best-piece-first, so a capped
+// search spends what it has on the arrangements most likely to win; what it
+// gives up is the proof that nothing better exists, and that is reported
+// rather than absorbed.
+const (
+	// DefaultSearchBudget is for one character, where a few seconds of
+	// searching is time well spent.
+	DefaultSearchBudget = 400_000
+	// AccountSearchBudget is shared across every character in a roster-wide
+	// request. It is divided, not applied each time: a forty-character
+	// account must not cost forty times as long as a one-character one.
+	AccountSearchBudget = 3_000_000
+	// MinSearchBudget is the floor each character keeps however large the
+	// roster grows. Below this the search stops being a search.
+	MinSearchBudget = 20_000
+)
+
+// shareBudget divides a roster-wide budget between the characters in it.
+func shareBudget(total, characters int) int {
+	if characters < 1 {
+		return total
+	}
+	each := total / characters
+	if each < MinSearchBudget {
+		return MinSearchBudget
+	}
+	return each
 }

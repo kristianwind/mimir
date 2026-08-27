@@ -128,6 +128,7 @@ func BestBuild(
 	constraints []Constraint,
 	configs []SetConfig,
 	objectiveFor func(SetConfig) Objective,
+	budget int,
 ) (ConfigResult, error) {
 	stats := make(map[int64]model.StatBlock, len(inventory))
 	for _, a := range inventory {
@@ -140,8 +141,8 @@ func BestBuild(
 
 	var out ConfigResult
 	for _, cfg := range configs {
-		pool, ok := poolFor(inventory, cfg)
-		if !ok {
+		pools := poolsFor(inventory, cfg)
+		if len(pools) == 0 {
 			continue
 		}
 		// The objective is built per configuration because a set's
@@ -154,27 +155,73 @@ func BestBuild(
 			return ConfigResult{}, err
 		}
 
-		res, err := Search(ctx, Problem{
-			Fixed:       fixed,
-			Pool:        pool,
-			Stats:       stats,
-			SetBonus:    setBonus,
-			Constraints: constraints,
-			// The pool is filtered per slot, so it can still assemble a
-			// build that misses part of its configuration. Enforcing the
-			// requirement inside the search means the winner is the best
-			// *valid* build, not the best build that then gets rejected.
-			Valid: func(pieces []model.Artifact) bool { return cfg.Allows(SetCounts(pieces)) },
-			TopN:  1,
-		}, obj)
-		if err != nil {
-			return out, err
+		// The budget is the configuration's, not each sub-search's, so
+		// splitting a four-piece set into five problems does not quietly
+		// buy it five times the work.
+		// Each piece scores the same in every sub-search of this
+		// configuration, so it is scored once here rather than five times
+		// inside them.
+		order := make(map[int64]float64, len(inventory))
+		for _, pool := range pools {
+			for _, slot := range model.Slots {
+				for _, a := range pool[slot] {
+					if _, seen := order[a.ID]; !seen {
+						order[a.ID] = obj(stats[a.ID])
+					}
+				}
+			}
 		}
-		if len(res.Builds) == 0 {
+
+		share := budget
+		if share > 0 && len(pools) > 1 {
+			share = share / len(pools)
+			if share < 1 {
+				share = 1
+			}
+		}
+
+		var (
+			best   Build
+			found  bool
+			capped bool
+		)
+		for _, pool := range pools {
+			res, err := Search(ctx, Problem{
+				Fixed:       fixed,
+				Pool:        pool,
+				Stats:       stats,
+				SetBonus:    setBonus,
+				Constraints: constraints,
+				// Even a pool split by free slot can assemble a build that
+				// misses the count — the free slot may hold a set piece
+				// while another slot is short. Enforcing the requirement
+				// inside the search means the winner is the best *valid*
+				// build, not the best build that then gets rejected.
+				Valid:     func(pieces []model.Artifact) bool { return cfg.Allows(SetCounts(pieces)) },
+				TopN:      1,
+				MaxVisits: share,
+				Order:     order,
+			}, obj)
+			if err != nil {
+				return out, err
+			}
+			if !res.Complete {
+				capped = true
+			}
+			if len(res.Builds) == 0 {
+				continue
+			}
+			if !found || res.Builds[0].Score > best.Score {
+				best, found = res.Builds[0], true
+			}
+		}
+		if !found {
 			continue
 		}
 
-		best := res.Builds[0]
+		if capped {
+			out.Capped = append(out.Capped, cfg)
+		}
 		out.PerConfig = append(out.PerConfig, ConfigBuild{Config: cfg, Build: best})
 		if out.Best.Score == 0 || best.Score > out.Best.Score {
 			out.Best = best
@@ -202,43 +249,69 @@ type ConfigResult struct {
 	Best       Build         `json:"best"`
 	BestConfig SetConfig     `json:"bestConfig"`
 	PerConfig  []ConfigBuild `json:"perConfig"`
+	// Capped names the configurations whose search ran out of budget. Their
+	// builds are the best found rather than the best there are, and anything
+	// that reports them has to pass that on.
+	Capped []SetConfig `json:"capped,omitempty"`
 }
 
-// poolFor restricts the inventory to the pieces a configuration can use.
+// poolsFor restricts the inventory to the pieces a configuration can use.
 //
-// A 4pc leaves one slot free for anything, so that slot keeps the whole
-// inventory; the other four are restricted to the set. A 2+2 restricts every
-// slot to the two sets and lets the search work out which slots go where.
-func poolFor(inventory []model.Artifact, cfg SetConfig) (map[model.Slot][]model.Artifact, bool) {
-	pool := map[model.Slot][]model.Artifact{}
-	for _, a := range inventory {
-		var allowed bool
-		switch {
-		case cfg.Four != "":
-			// Four of the five slots carry the set and the fifth is free,
-			// so every piece stays a candidate; the search's Valid
-			// predicate is what enforces the count.
-			allowed = true
-		case cfg.TwoA != "":
-			// For a 2+2 the fifth piece comes from one of the two sets. A
-			// 2+2+1 with a third set is a different configuration, and
-			// enumerating it here would multiply the search space to buy a
-			// build almost nobody assembles on purpose.
-			allowed = a.SetKey == cfg.TwoA || a.SetKey == cfg.TwoB
-		default:
-			allowed = true
+// A four-piece set is searched as five separate problems, one for each choice
+// of which slot is *not* wearing the set. That is exact — a build with four
+// or more pieces of a set has at most one slot outside it, and a build
+// wearing all five turns up in every branch — and it is the difference
+// between a search that answers and one that does not.
+//
+// The alternative, letting every piece into every slot and leaving the set
+// requirement to the Valid predicate on finished builds, is what this used to
+// do. On a small inventory it is indistinguishable. On a real one it is
+// close to useless: with a dozen sets in the bag, roughly two builds in ten
+// thousand actually contain four of the wanted set, so virtually the entire
+// search — and virtually the entire budget — is spent assembling builds that
+// are thrown away at the last step.
+//
+// A 2+2 needs no such split. Every slot is already restricted to the two
+// sets, so almost everything the search assembles is valid. A 2+2+1 with a
+// third set is a different configuration, and enumerating it here would
+// multiply the work to buy a build almost nobody assembles on purpose.
+func poolsFor(inventory []model.Artifact, cfg SetConfig) []map[model.Slot][]model.Artifact {
+	if cfg.Four != "" {
+		var out []map[model.Slot][]model.Artifact
+		for _, free := range model.Slots {
+			pool := map[model.Slot][]model.Artifact{}
+			for _, a := range inventory {
+				if a.SlotKey == free || a.SetKey == cfg.Four {
+					pool[a.SlotKey] = append(pool[a.SlotKey], a)
+				}
+			}
+			if complete(pool) {
+				out = append(out, pool)
+			}
 		}
-		if allowed {
-			pool[a.SlotKey] = append(pool[a.SlotKey], a)
-		}
+		return out
 	}
 
+	pool := map[model.Slot][]model.Artifact{}
+	for _, a := range inventory {
+		if cfg.TwoA != "" && a.SetKey != cfg.TwoA && a.SetKey != cfg.TwoB {
+			continue
+		}
+		pool[a.SlotKey] = append(pool[a.SlotKey], a)
+	}
+	if !complete(pool) {
+		return nil
+	}
+	return []map[model.Slot][]model.Artifact{pool}
+}
+
+func complete(pool map[model.Slot][]model.Artifact) bool {
 	for _, slot := range model.Slots {
 		if len(pool[slot]) == 0 {
-			return nil, false
+			return false
 		}
 	}
-	return pool, true
+	return true
 }
 
 // Counts returns the set counts a configuration guarantees.

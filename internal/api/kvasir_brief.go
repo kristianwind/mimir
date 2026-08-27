@@ -175,6 +175,19 @@ func actionFacts(act advisor.Action) string {
 	if act.BlockedBy != "" {
 		parts = append(parts, fmt.Sprintf("blocked: %s", act.BlockedBy))
 	}
+	// The bill is a fact the model may repeat but must never compute: the
+	// counts are exact, so an answer that changes one is checkably wrong.
+	if cost, ok := act.Detail["cost"].(advisor.Cost); ok {
+		if bill := cost.Summary(); bill != "" {
+			parts = append(parts, "costs "+bill)
+		}
+		for _, run := range cost.Runs() {
+			parts = append(parts, "from "+run)
+		}
+		if len(cost.Capped) > 0 {
+			parts = append(parts, "weekly-capped: "+strings.Join(cost.Capped, ", "))
+		}
+	}
 	if act.Kind == advisor.KindFarm && act.Detail != nil {
 		if median, ok := act.Detail["medianGain"].(float64); ok {
 			parts = append(parts, fmt.Sprintf(

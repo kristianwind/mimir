@@ -15,6 +15,35 @@ export class ApiError extends Error {
   }
 }
 
+// gatewayError explains a reply that never reached Mimir, or never came back
+// from it. These come from whatever sits in front of the server, so the body
+// is somebody else's error page and only the status is ours to read.
+function gatewayError(res) {
+  switch (res.status) {
+    case 502:
+    case 503:
+      return new ApiError(
+        res.status,
+        'Mimir did not answer',
+        'The server may be restarting. Give it a moment and try again.',
+      )
+    case 504:
+    case 524:
+      return new ApiError(
+        res.status,
+        'the answer took too long and the connection was cut',
+        'This is the proxy in front of Mimir giving up, not Mimir failing. ' +
+          'A large account takes longer to measure — try one character at a time, ' +
+          'or ask again in a moment.',
+      )
+    default:
+      return new ApiError(
+        res.status,
+        res.ok ? 'unexpected response from the server' : `the server answered ${res.status}`,
+      )
+  }
+}
+
 async function request(method, path, body, opts = {}) {
   const init = {
     method,
@@ -39,13 +68,18 @@ async function request(method, path, body, opts = {}) {
   // A non-JSON body is possible — a proxy error page, a panic recovered
   // upstream — and parsing it blind turns a plain 502 into a syntax error
   // that says nothing about what went wrong.
+  //
+  // What it must not do is show that body. A gateway timeout arrives as a
+  // full HTML page, and the first 200 characters of one are a doctype and a
+  // pile of conditional comments: the reader learns nothing and cannot even
+  // tell it is a timeout. The status is the only part that carries meaning,
+  // so the status is what gets explained.
   let data = null
   if (text) {
     try {
       data = JSON.parse(text)
     } catch {
-      if (res.ok) throw new ApiError(res.status, 'unexpected response from the server')
-      throw new ApiError(res.status, text.slice(0, 200) || res.statusText)
+      throw gatewayError(res)
     }
   }
 

@@ -88,6 +88,7 @@ func (m *Miner) Run(ctx context.Context) (*gamedata.Snapshot, error) {
 		SetNameHashes:    map[string]string{},
 		TravelerDepots:   map[int]string{},
 		Curves:           map[string][]float64{},
+		Materials:        map[int]gamedata.Material{},
 	}
 
 	m.Log("mining curves")
@@ -106,8 +107,16 @@ func (m *Miner) Run(ctx context.Context) (*gamedata.Snapshot, error) {
 	if err := m.mineArtifacts(ctx, snap); err != nil {
 		return nil, err
 	}
-	m.Log("mining artifact domains")
+	m.Log("mining domains")
 	if err := m.mineDomains(ctx, snap); err != nil {
+		return nil, err
+	}
+	m.Log("mining materials")
+	if err := m.mineMaterials(ctx, snap); err != nil {
+		return nil, err
+	}
+	m.Log("mining talent bills")
+	if err := m.mineTalentBills(ctx, snap); err != nil {
 		return nil, err
 	}
 	m.Log("mining talent tables")
@@ -201,7 +210,7 @@ func (m *Miner) mineCharacters(ctx context.Context, snap *gamedata.Snapshot) err
 			continue
 		}
 		travelers[avatarID] = append(travelers[avatarID], travelerVariant{
-			depotID: depotID, element: element, order: ec.SkillOrder,
+			depotID: depotID, element: element, order: ec.SkillOrder, proud: ec.ProudMap,
 		})
 	}
 
@@ -252,6 +261,7 @@ func (m *Miner) mineCharacters(ctx context.Context, snap *gamedata.Snapshot) err
 		}
 
 		applyPromotes(&c, promoteByID[av.AvatarPromoteID])
+		applyAscensionBills(&c, promoteByID[av.AvatarPromoteID])
 
 		if d, ok := depotByID[av.SkillDepotID]; ok {
 			c.SkillIDs = skillIDs(d)
@@ -684,6 +694,9 @@ type travelerVariant struct {
 	depotID int
 	element model.Element
 	order   []int
+	// proud maps a skill id to its proud-skill group. Each element has its
+	// own, because each is a separate talent tree with its own materials.
+	proud map[string]int
 }
 
 // splitTravelerKey parses Enka's "<avatarId>-<skillDepotId>" roster key.
@@ -742,6 +755,7 @@ func (m *Miner) addTraveler(
 		}
 	}
 	applyPromotes(&proto, promotes)
+	applyAscensionBills(&proto, promotes)
 
 	for _, v := range variants {
 		c := proto
@@ -751,6 +765,14 @@ func (m *Miner) addTraveler(
 		c.Talents = map[string]gamedata.Talent{}
 		if len(v.order) == 3 {
 			c.SkillIDs = gamedata.SkillIDs{Auto: v.order[0], Skill: v.order[1], Burst: v.order[2]}
+			// Each element is its own talent tree with its own materials,
+			// so the proud-skill groups are read per variant rather than
+			// once for the Traveler.
+			c.ProudSkillGroupIDs = gamedata.SkillIDs{
+				Auto:  v.proud[strconv.Itoa(v.order[0])],
+				Skill: v.proud[strconv.Itoa(v.order[1])],
+				Burst: v.proud[strconv.Itoa(v.order[2])],
+			}
 		}
 
 		snap.Characters[c.Key] = c

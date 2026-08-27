@@ -105,7 +105,7 @@ func (s *Server) potentialRequests(ctx context.Context, accountID int64) ([]advi
 			Inventory:     inventory,
 			Weapons:       weapons,
 			Conditions:    conditions,
-			MaxSetConfigs: 8,
+			MaxSetConfigs: setConfigsFor(len(characters)),
 		})
 	}
 	return out, nil
@@ -289,4 +289,19 @@ func (s *Server) saveDerivedGoal(
 		accountID, key, priority, string(rotation), string(target),
 		"Derived by Mimir from the potential ranking. Replace the rotation with how you actually play.")
 	return err
+}
+
+// setConfigsFor decides how many artifact set arrangements to search per
+// character.
+//
+// This endpoint measures the whole roster in one request, so a configuration
+// is paid for once per character: eight of them on a forty-character account
+// is eight times the work of eight on a five-character one. A small roster
+// keeps the plan's full breadth; a large one trades the configurations almost
+// nobody owns the pieces for against answering at all.
+func setConfigsFor(characters int) int {
+	if characters <= 10 {
+		return 8
+	}
+	return 4
 }

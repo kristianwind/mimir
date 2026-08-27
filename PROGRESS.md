@@ -73,6 +73,39 @@ accurate, not what makes it work.
       Checked against all 117 mined characters: 44 rows are modifiers, 1,300
       are hits, and none of the real ones are excluded
 
+### Material accounting: what an upgrade actually costs
+- [x] **Every ascension phase and every talent level carries its exact bill** —
+      mined from the datamine's own cost tables, keyed by item id, with mora
+      kept separate because mora is the one cost resin never buys
+- [x] **A catalogue of 919 materials** joined to those bills by id: what each
+      one is, and where it comes from. Names cannot come from the datamine —
+      its TextMap does not resolve — so they come from genshin-db, keyed by
+      the same ids the quantities are keyed by. A stale name source can
+      mislabel a material; it cannot change how many of them an ascension costs
+- [x] **Every material in every bill is placed**: domain, world boss, weekly
+      boss, elemental gem, overworld, quest or event. Checked across all 117
+      characters — no material in any bill is left unclassified. The one
+      family the prose could not place, the 32 elemental gems, is identified
+      by a type text verified to cover exactly those 32 and nothing else
+- [x] **Talent and weapon domains, with their weekdays** — the datamine's own
+      rotation table has obfuscated keys, so the days come from genshin-db and
+      are *checked* against the datamine's grouping of which materials share a
+      rotation slot. The labels cannot be read there; the partition can, and a
+      disagreement fails the sync rather than sending somebody to a shut door
+- [x] **Bills are per talent, not per character** — on the strength of one
+      character in 117. The Geo Traveler's normal attack takes Resistance
+      books and Dvalin's Sigh where the skill and burst take Diligence and
+      Tail of Boreas
+- [x] **A talent level is no longer priced at one domain run** — it was, flat,
+      for every level. That is roughly right at level 2 and wrong by more than
+      an order of magnitude at level 9, which needs twelve four-star books and
+      a weekly boss drop. The plan sorted on that number
+- [x] **What is known is separated from what is not**: the bill is exact and
+      so is the price of one run at each place it comes from. How many runs it
+      takes is not published anywhere — the in-game preview lists a domain's
+      materials without quantities — so the resin total is reported as missing,
+      with the reason, rather than filled in with a plausible average
+
 ### Data in
 - [x] **Enka.Network** — client, TTL cache with labelled stale fallback,
       setId as the primary bridge, Traveler variants via the skill depot
@@ -217,34 +250,49 @@ They live in ability configs under `BinOutput`, not in a table. Until they are
 mined, transformative reactions return an error naming what is missing. So
 overload, hyperbloom and swirl cannot be calculated yet.
 
-### 3. Material accounting
-Talent and ascension materials are mined per character, but not connected to
-domains, weekdays and bosses. That is what makes `KindAscend` priced in resin
-instead of blocked, and it is the prerequisite for the farming plan.
+### 3. A per-run yield, so bills become resin
+The bills are exact and each material's source is known, but turning "twelve
+Philosophies of Light" into a number of resin needs the expected drops per
+run, and nothing publishes it. The datamine has no drop table for domains and
+the in-game reward preview lists the materials without quantities. Everything
+downstream of that number is built and waiting: supply a measured yield and
+the ascension and talent rows price themselves.
 
-### 4. Talent and weapon domains
-`DailyDungeonConfigData` has the weekdays, but the field names are obfuscated
-and rotate between versions. Artifact domains are mined (they are open daily).
+### 4. The optimiser's upper bound
+The branch-and-bound's bound is admissible but weak — it adds the best value
+of each stat across the remaining slots, describing a piece nobody owns — so
+on a large inventory almost nothing is pruned. Restricting a four-piece search
+by which slot is free cut the work enormously and is exact, but the bound
+itself is untouched. Two things would fix it properly: a tighter bound, and a
+stat block that is an array rather than a string-keyed map. A profile of a
+roster-wide request spends about 45% of its time in map hashing alone.
 
-### 5. ER calculator
+### 5. The account plan needs to be a background job
+It is sequential by construction: each goal claims gear and the next has to
+see the claim. On an account with dozens of goals that is minutes, so it plans
+the top few and says which ones it left out. The right answer is the pattern
+the game data sync already uses — a job with progress — not a request that
+has to finish before a proxy gives up.
+
+### 6. ER calculator
 Given a rotation and particle generation: how much Energy Recharge your Raiden
 actually needs. The talent tables already carry the particle counts.
 
-### 6. The proactive layer
+### 7. The proactive layer
 A resin budget over 14 days with the domain rotation and weekly bosses. Push
 via PWA + ntfy. A weekly report. Banner awareness. The HoYoLAB client and
 `resin_snapshots` are there; the planner is not.
 
-### 7. RAG over character guides
+### 8. RAG over character guides
 The `guides` table and its chunk table are empty: there is no ingestion yet, so
 Kvasir answers purely from the calculation core's own numbers. That is the
 honest order — a guide corpus is one more source to cite, not a prerequisite
 for having an opinion about your own figures.
 
-### 8. The training module
+### 9. The training module
 Quizzes on reaction formulas, rotation timing, ER requirements.
 
-### 9. Joint optimisation across goals
+### 10. Joint optimisation across goals
 The account plan runs goals by priority and lets the highest win the gear. That
 beats showing both sides of a tug-of-war, but it is not a joint optimisation: a
 goal is still measured against the gear the character has now, not against what

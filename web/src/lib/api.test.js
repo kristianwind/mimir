@@ -46,13 +46,31 @@ describe('request', () => {
   })
 
   // A proxy answering with HTML must not reach the user as "Unexpected token
-  // <". The status is the useful part, and the body is worth a glimpse.
+  // <" — and must not reach them as the HTML either. The first two hundred
+  // characters of a real error page are a doctype and a stack of conditional
+  // comments: unreadable, and they do not even reveal that it was a proxy.
   it('does not turn a non-JSON failure into a parse error', async () => {
-    respond({ status: 502, body: '<html>502 Bad Gateway</html>', type: 'text/html' })
+    respond({
+      status: 502,
+      body: '<!DOCTYPE html> <!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US">',
+      type: 'text/html',
+    })
     const err = await api.kvasirStatus().catch((e) => e)
     expect(err).toBeInstanceOf(ApiError)
     expect(err.status).toBe(502)
-    expect(err.message).toContain('502 Bad Gateway')
+    expect(err.message).not.toContain('DOCTYPE')
+    expect(err.message).toBe('Mimir did not answer')
+  })
+
+  // A timeout is the one a big account actually hits, and it needs saying
+  // plainly: the request was cut by what sits in front of Mimir, and the
+  // remedy is not to reload harder.
+  it('explains a gateway timeout instead of showing the proxy page', async () => {
+    respond({ status: 504, body: '<!DOCTYPE html><html>gateway timeout</html>', type: 'text/html' })
+    const err = await api.potential(1).catch((e) => e)
+    expect(err.status).toBe(504)
+    expect(err.message).toContain('took too long')
+    expect(err.hint).toContain('large account')
   })
 
   it('reports a non-JSON success as an unexpected response', async () => {

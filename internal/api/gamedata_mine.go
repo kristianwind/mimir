@@ -199,10 +199,10 @@ func (s *Server) runMine(ctx context.Context, version string) {
 				return
 			}
 			snap.Effects = rules
-			j.logf("%d effekt-regler verificeret mod deres egen spiltekst", len(rules))
+			j.logf("%d effect rules verified against their own game text", len(rules))
 		} else {
 			j.warnings = append(j.warnings,
-				"fandt ikke "+s.Config.EffectsPath+"; betingede bonusser mangler")
+				"could not find "+s.Config.EffectsPath+"; conditional bonuses are missing")
 		}
 	}
 
@@ -211,7 +211,7 @@ func (s *Server) runMine(ctx context.Context, version string) {
 	j.warnings = append(j.warnings, report.Warnings...)
 	j.mu.Unlock()
 	if len(report.Errors) > 0 {
-		finish(fmt.Errorf("snapshottet bestod ikke valideringen: %v", report.Errors))
+		finish(fmt.Errorf("the snapshot did not pass validation: %v", report.Errors))
 		return
 	}
 

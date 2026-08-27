@@ -42,6 +42,25 @@ type promoteRow struct {
 	PromoteLevel    int       `json:"promoteLevel"`
 	AddProps        []addProp `json:"addProps"`
 	UnlockMaxLevel  int       `json:"unlockMaxLevel"`
+	// CostItems and ScoinCost are the ascension bill. The list is padded
+	// with empty objects upstream, so an entry with no id is a hole rather
+	// than a material that costs nothing.
+	CostItems []costItem `json:"costItems"`
+	ScoinCost int        `json:"scoinCost"`
+}
+
+// costItem is one line of a material bill as the datamine writes it.
+type costItem struct {
+	ID    int `json:"id"`
+	Count int `json:"count"`
+}
+
+// proudSkillRow is one talent level: what it costs to reach it.
+type proudSkillRow struct {
+	ProudSkillGroupID int        `json:"proudSkillGroupId"`
+	Level             int        `json:"level"`
+	CoinCost          int        `json:"coinCost"`
+	CostItems         []costItem `json:"costItems"`
 }
 
 type skillDepotRow struct {
@@ -137,4 +156,13 @@ type genshinDBEntity struct {
 	Rarity     any    `json:"rarity"`
 	Effect2Pc  string `json:"effect2Pc"`
 	Effect4Pc  string `json:"effect4Pc"`
+}
+
+// dungeonEntryRow is one entry in the Adventurer Handbook's domain list. Only
+// the rotation grouping is read: descriptionCycleRewardList holds, per talent
+// or weapon domain, the material ids that share each rotation slot.
+type dungeonEntryRow struct {
+	ID                         int     `json:"id"`
+	Type                       string  `json:"type"`
+	DescriptionCycleRewardList [][]int `json:"descriptionCycleRewardList"`
 }

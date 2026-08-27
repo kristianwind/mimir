@@ -110,11 +110,77 @@ func BuildAccountPlan(ctx context.Context, reqs []Request) (AccountPlan, error) 
 	// offered the same flower a second time.
 	inventory := workingInventory(ordered)
 
+	// One budget for the whole account, divided between its goals, for the
+	// same reason the ranking does it: an account with thirty goals must not
+	// take thirty times as long as one with a single goal.
+	//
+	// Farming gets the same treatment, and then some. Simulating a domain is
+	// the most expensive thing the plan does — hundreds of sampled futures,
+	// each scoring a hundred artifacts — and it is also the part that gains
+	// least from being repeated for a twentieth-priority goal. So the trials
+	// are shared out, and below the goals that will actually get farmed for,
+	// farming is not simulated at all. Both facts are stated in the plan
+	// rather than left as an unexplained absence.
+	each := shareBudget(AccountSearchBudget, len(ordered))
+	trials := shareBudget(AccountFarmTrials, len(ordered))
+	if trials > defaultFarmTrials {
+		trials = defaultFarmTrials
+	}
+	// Goals past the cap are not planned at all.
+	//
+	// The account plan is sequential by construction — each goal claims gear
+	// and the next one has to see the claim — so its cost grows with every
+	// goal and cannot be parallelised away. Past a few dozen goals it stops
+	// returning at all, and a plan that times out is worth less than a
+	// shorter one that says where it stopped.
+	var unplanned []string
+	if len(ordered) > accountPlanGoals {
+		for _, r := range ordered[accountPlanGoals:] {
+			unplanned = append(unplanned, r.Goal.CharacterKey)
+		}
+		ordered = ordered[:accountPlanGoals]
+	}
+
+	var unfarmed []string
+	for i := range ordered {
+		if ordered[i].SearchBudget == 0 {
+			ordered[i].SearchBudget = each
+		}
+		if i >= farmedGoals && ordered[i].Sim != nil {
+			unfarmed = append(unfarmed, ordered[i].Goal.CharacterKey)
+			ordered[i].Sim = nil
+			continue
+		}
+		if ordered[i].Sim != nil {
+			sim := *ordered[i].Sim
+			sim.Trials = trials
+			ordered[i].Sim = &sim
+		}
+	}
+
 	var out AccountPlan
 	out.Caveats = []string{
 		"Each goal is measured against the gear the character has now — not against " +
 			"what a higher-priority goal just claimed. Run the plan again once you have " +
 			"moved things around in the game.",
+	}
+	if len(unplanned) > 0 {
+		out.Caveats = append(out.Caveats, fmt.Sprintf(
+			"Only the top %d goals by priority were planned. %s were left out — "+
+				"raise their priority, or open their own plan.",
+			accountPlanGoals, joinNames(unplanned)))
+	}
+	if len(unfarmed) > 0 {
+		out.Caveats = append(out.Caveats, fmt.Sprintf(
+			"Artifact farming was simulated for the top %d goals only. %s were planned "+
+				"without it — open their own plan to have their domains simulated.",
+			farmedGoals, joinNames(unfarmed)))
+	}
+	if trials < defaultFarmTrials {
+		out.Caveats = append(out.Caveats, fmt.Sprintf(
+			"Farming was sampled %d times per domain instead of %d, so the spread on "+
+				"those rows is rougher than on a single goal's plan.",
+			trials, defaultFarmTrials))
 	}
 
 	for _, req := range ordered {
@@ -214,3 +280,15 @@ func takenFromDetail(a Action) []string {
 		return nil
 	}
 }
+
+const (
+	// AccountFarmTrials is the sampling budget shared across an account's
+	// goals, in Monte Carlo trials.
+	AccountFarmTrials = 2_000
+	// farmedGoals is how many goals, in priority order, have their domains
+	// simulated at all. Farming is a decision about where to spend a week,
+	// and it is made for the characters at the top of the list.
+	farmedGoals = 3
+	// accountPlanGoals is how many goals one account plan will work through.
+	accountPlanGoals = 6
+)

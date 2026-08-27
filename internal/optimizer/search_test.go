@@ -2,6 +2,7 @@ package optimizer
 
 import (
 	"context"
+	"math/rand"
 	"testing"
 
 	"github.com/kristianwind/mimir/internal/model"
@@ -224,5 +225,136 @@ func TestSearchValidPredicateIsEnforced(t *testing.T) {
 	want := exhaustive(p, objective)
 	if got.Builds[0].Score != want {
 		t.Errorf("best valid score = %v, brute force says %v", got.Builds[0].Score, want)
+	}
+}
+
+// The four-piece search is split by which slot is free. That is a large
+// saving and it would be worthless if it changed the answer, so it is checked
+// against the thing it replaced: every five-piece combination of the whole
+// inventory, filtered to the ones that actually wear four of the set.
+func TestFourPieceSplitFindsTheSameBuildAsBruteForce(t *testing.T) {
+	r := rand.New(rand.NewSource(3))
+	sets := []string{"Wanted", "Other", "Third"}
+	var inv []model.Artifact
+	stats := map[int64]model.StatBlock{}
+	for i := 0; i < 45; i++ {
+		a := model.Artifact{
+			ID: int64(i + 1), SetKey: sets[r.Intn(len(sets))],
+			SlotKey: model.Slots[i%5], Rarity: 5, Level: 20,
+		}
+		inv = append(inv, a)
+		stats[a.ID] = model.StatBlock{
+			model.ATKPercent: r.Float64(),
+			model.CritRate:   r.Float64(),
+			model.CritDMG:    r.Float64(),
+		}
+	}
+
+	cfg := SetConfig{Four: "Wanted"}
+	obj := func(s model.StatBlock) float64 {
+		return (1 + s[model.ATKPercent]) * (1 + s[model.CritRate]*s[model.CritDMG])
+	}
+
+	// What the split finds.
+	var best float64
+	for _, pool := range poolsFor(inv, cfg) {
+		res, err := Search(context.Background(), Problem{
+			Pool: pool, Stats: stats, TopN: 1,
+			Valid: func(p []model.Artifact) bool { return cfg.Allows(SetCounts(p)) },
+		}, obj)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(res.Builds) > 0 && res.Builds[0].Score > best {
+			best = res.Builds[0].Score
+		}
+	}
+
+	// What every combination says.
+	bySlot := map[model.Slot][]model.Artifact{}
+	for _, a := range inv {
+		bySlot[a.SlotKey] = append(bySlot[a.SlotKey], a)
+	}
+	var want float64
+	var walk func(depth int, acc model.StatBlock, picked []model.Artifact)
+	walk = func(depth int, acc model.StatBlock, picked []model.Artifact) {
+		if depth == len(model.Slots) {
+			if !cfg.Allows(SetCounts(picked)) {
+				return
+			}
+			if s := obj(acc); s > want {
+				want = s
+			}
+			return
+		}
+		for _, a := range bySlot[model.Slots[depth]] {
+			walk(depth+1, acc.Add(stats[a.ID]), append(picked, a))
+		}
+	}
+	walk(0, model.StatBlock{}, nil)
+
+	if want == 0 {
+		t.Fatal("the fixture produced no valid four-piece build")
+	}
+	if best != want {
+		t.Errorf("the split found %v, every combination says %v", best, want)
+	}
+}
+
+// A pool split by free slot must still let the set requirement be met by the
+// free slot itself — a build wearing all five of the set is legal, and each
+// branch has to be able to find it.
+func TestTheFreeSlotMayAlsoWearTheSet(t *testing.T) {
+	var inv []model.Artifact
+	for i, slot := range model.Slots {
+		inv = append(inv, model.Artifact{ID: int64(i + 1), SetKey: "Wanted", SlotKey: slot})
+	}
+	pools := poolsFor(inv, SetConfig{Four: "Wanted"})
+	if len(pools) != len(model.Slots) {
+		t.Fatalf("got %d pools, want one per slot", len(pools))
+	}
+	for _, pool := range pools {
+		for _, slot := range model.Slots {
+			if len(pool[slot]) != 1 {
+				t.Fatalf("slot %s has %d candidates", slot, len(pool[slot]))
+			}
+		}
+	}
+}
+
+// A budget stops the search and says so. The builds it found are still
+// returned, because best-so-far is worth more than nothing — but Complete
+// has to be false or the caller will report a guess as a proof.
+func TestABudgetStopsTheSearchAndAdmitsIt(t *testing.T) {
+	p := synthetic(10)
+	p.MaxVisits = 50
+
+	got, err := Search(context.Background(), p, objective)
+	if err != nil {
+		t.Fatalf("a budgeted search returned an error: %v", err)
+	}
+	if got.Complete {
+		t.Error("the search ran out of budget and still claims to be complete")
+	}
+	if got.Visited > 50 {
+		t.Errorf("visited %d, over the budget of 50", got.Visited)
+	}
+	if len(got.Builds) == 0 {
+		t.Error("nothing came back; a capped search should still report its best")
+	}
+	if got.Combinations != 100000 {
+		t.Errorf("combinations = %v, want 10^5", got.Combinations)
+	}
+}
+
+// No budget means no cap: the small searches the tests and a small account do
+// must still be exhaustive and provable.
+func TestNoBudgetMeansAnExhaustiveSearch(t *testing.T) {
+	got, err := Search(context.Background(), synthetic(6), objective)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Complete {
+		t.Error("an unbudgeted search reported itself incomplete")
 	}
 }

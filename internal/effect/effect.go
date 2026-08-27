@@ -183,8 +183,15 @@ type Grant struct {
 //
 // stats is what the effects read: the bonus block during the pre phase, the
 // resolved totals during the post phase.
+//
+// It does not build the trace. That matters more than it looks: this runs
+// once per candidate build inside the artifact search, hundreds of thousands
+// of times for a single character, and assembling a provenance record — a
+// concatenated source name and the rule's whole description, per grant, per
+// call — was one of the largest costs in the entire program. Nobody was
+// reading any of it.
 func Apply(rules []gamedata.EffectRule, ctx Context, phase gamedata.EffectPhase, stats model.StatBlock) (model.StatBlock, error) {
-	out, _, err := ApplyTraced(rules, ctx, phase, stats)
+	out, _, err := apply(rules, ctx, phase, stats, false)
 	return out, err
 }
 
@@ -199,6 +206,16 @@ func ApplyTraced(
 	ctx Context,
 	phase gamedata.EffectPhase,
 	stats model.StatBlock,
+) (model.StatBlock, []Grant, error) {
+	return apply(rules, ctx, phase, stats, true)
+}
+
+func apply(
+	rules []gamedata.EffectRule,
+	ctx Context,
+	phase gamedata.EffectPhase,
+	stats model.StatBlock,
+	wantTrace bool,
 ) (model.StatBlock, []Grant, error) {
 	out := model.StatBlock{}
 	var trace []Grant
@@ -222,13 +239,15 @@ func ApplyTraced(
 				continue
 			}
 			out[e.Grants] += v
-			trace = append(trace, Grant{
-				Source: rule.Key + " " + rule.Trigger,
-				Stat:   e.Grants,
-				Value:  v,
-				Note:   e.Note,
-				Cite:   rule.Description,
-			})
+			if wantTrace {
+				trace = append(trace, Grant{
+					Source: rule.Key + " " + rule.Trigger,
+					Stat:   e.Grants,
+					Value:  v,
+					Note:   e.Note,
+					Cite:   rule.Description,
+				})
+			}
 		}
 	}
 	return out, trace, nil

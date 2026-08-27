@@ -68,8 +68,8 @@ func (s *Server) handleApplyUpdate(w http.ResponseWriter, r *http.Request) {
 		"status": "updated",
 		"from":   s.Version,
 		"to":     target,
-		"note": "Mimir genstarter nu. Kommer den ikke op inden for halvandet minut, " +
-			"ruller vagthunden automatisk tilbage til " + s.Version + ".",
+		"note": "Mimir is restarting. If it is not back within ninety seconds, " +
+			"the watchdog rolls back to " + s.Version + " on its own.",
 	})
 
 	// Exit after the response has been written, so the browser sees the

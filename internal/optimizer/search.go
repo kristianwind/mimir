@@ -2,6 +2,7 @@ package optimizer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 
@@ -53,6 +54,28 @@ type Problem struct {
 	Valid func(pieces []model.Artifact) bool
 	// TopN is how many builds to keep. Zero means one.
 	TopN int
+	// Order scores each artifact on its own, for sorting the pools so that
+	// strong pieces are tried first. It is optional: with no Order the
+	// search computes it from the objective.
+	//
+	// It exists because the objective is expensive and the same piece is
+	// scored identically in every sub-search of a configuration. Passing the
+	// scores in lets the caller pay once for a piece instead of once per
+	// sub-search, which on a full inventory was the single largest fixed
+	// cost in a roster-wide request — larger than the searching.
+	Order map[int64]float64
+	// MaxVisits caps how many complete builds the search will look at.
+	//
+	// The cap exists because the upper bound below is admissible but weak:
+	// it adds the best value of each stat across the remaining slots, which
+	// describes an artifact nobody owns, so on a large inventory almost
+	// nothing is pruned and an exhaustive search would take hours. Rather
+	// than run for hours or quietly return a guess, the search stops at the
+	// cap and says so through Complete.
+	//
+	// Zero means no cap, which is right for a small pool and for the tests
+	// that check the answer against brute force.
+	MaxVisits int
 }
 
 // Build is one complete five-piece result.
@@ -66,10 +89,18 @@ type Build struct {
 // the pruning trustworthy: if Pruned is zero on a large pool, the bound is
 // broken and the run was an expensive brute force.
 type Result struct {
-	Builds   []Build `json:"builds"`
-	Visited  int     `json:"visited"`
-	Pruned   int     `json:"pruned"`
-	Complete bool    `json:"complete"`
+	Builds  []Build `json:"builds"`
+	Visited int     `json:"visited"`
+	Pruned  int     `json:"pruned"`
+	// Complete is false when the search stopped early — cancelled, or out of
+	// budget. The builds are still the best ones seen, but they are no
+	// longer provably the best that exist, and anything reporting them has
+	// to say so.
+	Complete bool `json:"complete"`
+	// Combinations is how many complete builds the pool could produce. It is
+	// what makes Visited legible: 400,000 of 12 million is a different claim
+	// from 400,000 of 400,000.
+	Combinations float64 `json:"combinations"`
 }
 
 // Search runs the branch-and-bound.
@@ -112,34 +143,89 @@ func Search(ctx context.Context, p Problem, obj Objective) (Result, error) {
 
 	// Sort each slot's candidates by their standalone objective value. Good
 	// incumbents early make the bound bite harder for the rest of the run.
+	order := p.Order
+	if order == nil {
+		order = make(map[int64]float64)
+		for _, slot := range slots {
+			for _, a := range p.Pool[slot] {
+				if _, seen := order[a.ID]; !seen {
+					order[a.ID] = obj(p.Stats[a.ID])
+				}
+			}
+		}
+	}
 	for _, slot := range slots {
 		pool := p.Pool[slot]
 		sort.SliceStable(pool, func(i, j int) bool {
-			return obj(p.Stats[pool[i].ID]) > obj(p.Stats[pool[j].ID])
+			return order[pool[i].ID] > order[pool[j].ID]
 		})
 	}
 
-	res := Result{Complete: true}
+	res := Result{Complete: true, Combinations: 1}
+	for _, slot := range slots {
+		res.Combinations *= float64(len(p.Pool[slot]))
+	}
 	keeper := newTopN(topN)
 	current := make([]model.Artifact, len(slots))
 
-	var walk func(depth int, acc model.StatBlock) error
-	walk = func(depth int, acc model.StatBlock) error {
+	// Everything below reuses buffers instead of allocating.
+	//
+	// A stat block is a map, and the obvious way to write this walk —
+	// acc.Add(piece) at every step — allocates one per node. On a real
+	// inventory that is tens of millions of maps, and the cost does not show
+	// up as slow arithmetic: it shows up as a garbage collector that pins
+	// every core the search is running on, so adding workers stops helping.
+	// Measured on a forty-character account, the allocating version got no
+	// speedup at all from five workers.
+	//
+	// So each depth owns one accumulator, refilled from its parent rather
+	// than derived by a fresh allocation, and the leaf and bound totals share
+	// two more. Refilling copies the same numbers an addition would produce,
+	// so nothing about the result changes — only how much rubbish is left
+	// behind on the way to it.
+	base := p.Fixed.Add(p.SetBonus)
+	accs := make([]model.StatBlock, len(slots)+1)
+	for i := range accs {
+		accs[i] = make(model.StatBlock, len(base)+8)
+	}
+	leaf := make(model.StatBlock, len(base)+8)
+	optimistic := make(model.StatBlock, len(base)+8)
+
+	// fill writes a + b into dst without allocating.
+	fill := func(dst, a, b model.StatBlock) {
+		clear(dst)
+		for k, v := range a {
+			dst[k] = v
+		}
+		for k, v := range b {
+			dst[k] += v
+		}
+	}
+
+	var walk func(depth int) error
+	walk = func(depth int) error {
 		if err := ctx.Err(); err != nil {
 			res.Complete = false
 			return err
 		}
+		if p.MaxVisits > 0 && res.Visited >= p.MaxVisits {
+			res.Complete = false
+			return errBudget
+		}
+		acc := accs[depth]
 		if depth == len(slots) {
 			res.Visited++
-			stats := p.Fixed.Add(p.SetBonus).Add(acc)
-			if !satisfies(stats, p.Constraints) {
+			fill(leaf, base, acc)
+			if !satisfies(leaf, p.Constraints) {
 				return nil
 			}
 			pieces := append([]model.Artifact(nil), current...)
 			if p.Valid != nil && !p.Valid(pieces) {
 				return nil
 			}
-			keeper.offer(Build{Pieces: pieces, Stats: stats, Score: obj(stats)})
+			// The kept build owns its stats: the buffer is about to be
+			// overwritten by the next leaf.
+			keeper.offer(Build{Pieces: pieces, Stats: leaf.Clone(), Score: obj(leaf)})
 			return nil
 		}
 
@@ -147,25 +233,35 @@ func Search(ctx context.Context, p Problem, obj Objective) (Result, error) {
 		// completion. If that cannot beat the worst kept build, no descendant
 		// can either.
 		if keeper.full() {
-			optimistic := p.Fixed.Add(p.SetBonus).Add(acc).Add(suffixMax[depth])
+			fill(optimistic, base, acc)
+			for k, v := range suffixMax[depth] {
+				optimistic[k] += v
+			}
 			if obj(optimistic) <= keeper.worst() {
 				res.Pruned++
 				return nil
 			}
 		}
 
+		next := accs[depth+1]
 		for _, a := range p.Pool[slots[depth]] {
 			current[depth] = a
-			next := acc.Add(p.Stats[a.ID])
-			if err := walk(depth+1, next); err != nil {
+			fill(next, acc, p.Stats[a.ID])
+			if err := walk(depth + 1); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
 
-	err := walk(0, model.StatBlock{})
+	err := walk(0)
 	res.Builds = keeper.sorted()
+	// Running out of budget is not a failure. The pool is ordered best-first,
+	// so the builds found are the ones most likely to win; what is lost is
+	// the proof that nothing better exists, and Complete carries that.
+	if errors.Is(err, errBudget) {
+		return res, nil
+	}
 	if err != nil {
 		// Partial results still travel with the error: a cancelled search
 		// has usually found something worth showing, and the caller decides
@@ -174,6 +270,9 @@ func Search(ctx context.Context, p Problem, obj Objective) (Result, error) {
 	}
 	return res, nil
 }
+
+// errBudget stops the walk when MaxVisits is reached. It never leaves Search.
+var errBudget = errors.New("optimizer: visit budget exhausted")
 
 func satisfies(stats model.StatBlock, cs []Constraint) bool {
 	for _, c := range cs {

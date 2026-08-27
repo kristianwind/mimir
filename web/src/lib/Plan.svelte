@@ -43,6 +43,26 @@
     if (a.unpriced) return 'not priced'
     return `${Math.round(a.resinCost)} resin`
   }
+
+  // The bill is shown on demand rather than always: it is four or five lines
+  // per action, and a plan that opens as a wall of material counts buries the
+  // one thing it is for — the order.
+  let openBill = $state(null)
+
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+  // The week reads Monday to Sunday, the way the game shows a rotation, even
+  // though the stored numbering starts on Sunday.
+  function days(list) {
+    return [...list]
+      .sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))
+      .map((d) => DAYS[d])
+      .join(', ')
+  }
+
+  function billKey(a, i) {
+    return `${a.goal}:${a.kind}:${a.subject}:${i}`
+  }
 </script>
 
 {#if loading}
@@ -111,6 +131,38 @@
               </p>
               {#if action.blockedBy}
                 <p class="mt-1 text-xs text-warn">Blocked: {action.blockedBy}</p>
+              {/if}
+              {#if action.detail?.cost?.lines?.length}
+                <button
+                  type="button"
+                  class="btn-ghost mt-2 text-xs"
+                  onclick={() =>
+                    (openBill = openBill === billKey(action, index) ? null : billKey(action, index))}
+                >
+                  {openBill === billKey(action, index) ? 'Hide what it costs' : 'What it costs'}
+                </button>
+              {/if}
+              {#if openBill === billKey(action, index)}
+                <ul class="mt-2 space-y-1 text-xs">
+                  {#each action.detail.cost.lines as line}
+                    <li>
+                      <span class="font-medium">{line.count}×</span>
+                      {line.material}
+                      {#if line.where}
+                        · <span class="text-accent">{line.where}</span>
+                      {/if}
+                      {#if line.days?.length}· {days(line.days)}{/if}
+                      {#if line.resinPerRun}· {line.resinPerRun} resin a run{/if}
+                      {#if !line.resinPerRun && line.source === 'overworld'}· gathered, no resin{/if}
+                    </li>
+                  {/each}
+                  {#if action.detail.cost.mora}
+                    <li class="text-muted">{action.detail.cost.mora.toLocaleString('en')} mora</li>
+                  {/if}
+                </ul>
+                {#if action.detail.cost.unpriced}
+                  <p class="mt-2 text-xs text-muted">{action.detail.cost.unpriced}.</p>
+                {/if}
               {/if}
               {#if action.kind === 'farm' && action.detail}
                 <p class="mt-1 text-xs text-muted">

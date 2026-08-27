@@ -80,6 +80,9 @@ type Snapshot struct {
 	// Domains describes what each domain drops and when it is open, which is
 	// what turns a ranked upgrade list into a weekday-aware farm plan.
 	Domains map[string]Domain `json:"domains"`
+	// Materials is the catalogue every upgrade bill is written in, keyed by
+	// the datamine's item id.
+	Materials map[int]Material `json:"materials,omitempty"`
 	// DropModel holds the artifact drop distributions the farm simulator
 	// samples from.
 	DropModel DropModel `json:"dropModel"`
@@ -139,10 +142,39 @@ type Character struct {
 	// C3 raises her burst and Diluc's raises his skill — so it is mined per
 	// character rather than assumed.
 	ConstellationTalentBonus map[int]TalentBoost `json:"constellationTalentBonus,omitempty"`
-	// AscensionMaterials and TalentMaterials drive the resin planner: which
-	// domain, which boss, which day of the week.
-	AscensionMaterials []MaterialCost `json:"ascensionMaterials"`
-	TalentMaterials    []MaterialCost `json:"talentMaterials"`
+	// AscensionBills is the material cost of each ascension phase, and
+	// TalentBills the cost of each talent level, keyed by talent slot. Both
+	// drive the resin planner: which domain, which boss, which day.
+	//
+	// The talent bills are per slot rather than per character because of
+	// exactly one character in the roster: the Geo Traveler, whose normal
+	// attack is paid for in Resistance and Dvalin's Sigh while the skill and
+	// the burst take Diligence and Tail of Boreas. Every one of the other
+	// 116 charges the same for all three, which is what makes reading one
+	// table and reusing it so tempting — and it would be wrong in the one
+	// place nobody would think to check.
+	AscensionBills []Bill            `json:"ascensionBills,omitempty"`
+	TalentBills    map[string][]Bill `json:"talentBills,omitempty"`
+}
+
+// AscensionBill returns the bill for reaching an ascension phase (1..6).
+func (c Character) AscensionBill(phase int) (Bill, bool) {
+	for _, b := range c.AscensionBills {
+		if b.Level == phase {
+			return b, true
+		}
+	}
+	return Bill{}, false
+}
+
+// TalentBill returns the bill for taking one talent to a level (2..10).
+func (c Character) TalentBill(slot string, level int) (Bill, bool) {
+	for _, b := range c.TalentBills[slot] {
+		if b.Level == level {
+			return b, true
+		}
+	}
+	return Bill{}, false
 }
 
 // The three talent slots.
@@ -300,10 +332,17 @@ type Domain struct {
 	Name string `json:"name"`
 	// Kind is "artifact", "talent", "weapon" or "boss".
 	Kind string `json:"kind"`
+	// Entrance is the door on the map. For a talent or weapon domain it is
+	// not the same as the name: one entrance holds three named domains on
+	// three rotations, and the player needs both — the name to know which
+	// day, the entrance to know where to walk.
+	Entrance string `json:"entrance,omitempty"`
 	// Sets are the artifact sets an artifact domain drops (always two).
 	Sets []string `json:"sets"`
-	// Rewards are the material keys a talent or weapon domain drops.
-	Rewards []string `json:"rewards"`
+	// Rewards are the item ids a talent or weapon domain drops. Ids rather
+	// than names, so a bill written in ids can be matched to the domain it
+	// is paid at without passing through a name source twice.
+	Rewards []int `json:"rewards,omitempty"`
 	// Days are the weekdays the domain is open, 0 = Sunday. An empty list
 	// means every day.
 	Days []int `json:"days"`
@@ -346,14 +385,80 @@ type DropModel struct {
 	RollsToMax int `json:"rollsToMax"`
 }
 
-// MaterialCost is one entry in an upgrade's material bill.
-type MaterialCost struct {
-	Item     string `json:"item"`
-	Count    int    `json:"count"`
-	Source   string `json:"source"`   // "domain" | "boss" | "weekly" | "world"
-	SourceID string `json:"sourceId"` // domain or boss key
-	// Days are the weekdays a talent/weapon domain is open (0 = Sunday).
-	Days []int `json:"days"`
+// ItemCost is a count of one material, keyed by the datamine's item id.
+//
+// The id rather than the name is the key for the same reason it is everywhere
+// else in the snapshot: the numeric tables are keyed by id and only the names
+// come from a second source, so an id can never point at the wrong quantity.
+type ItemCost struct {
+	ID    int `json:"id"`
+	Count int `json:"count"`
+}
+
+// Bill is the material cost of one upgrade step: one ascension phase, or one
+// talent level.
+type Bill struct {
+	// Level is the ascension phase (1..6) or the talent level reached
+	// (2..10) this bill pays for.
+	Level int `json:"level"`
+	// Mora is the mora cost. It is kept apart from Items because mora is
+	// the one cost that is never resin-gated, so a plan that ranks by resin
+	// must not fold it in.
+	Mora  int        `json:"mora"`
+	Items []ItemCost `json:"items"`
+}
+
+// MaterialSource says where a material comes from, which is what decides
+// whether it can be priced in resin at all.
+type MaterialSource string
+
+const (
+	// SourceDomain is a weekday-gated domain: talent books, weapon materials.
+	SourceDomain MaterialSource = "domain"
+	// SourceBoss is a world boss — available daily, priced per run.
+	SourceBoss MaterialSource = "boss"
+	// SourceWeekly is a trounce domain boss, capped per week.
+	SourceWeekly MaterialSource = "weekly"
+	// SourceGem is an elemental gem. Every boss of the matching element
+	// drops them, so unlike the other boss materials there is no single
+	// place to send a player — which is exactly why they are their own
+	// source rather than being filed under one boss.
+	SourceGem MaterialSource = "gem"
+	// SourceOverworld is anything gathered or dropped outside a resin-gated
+	// activity: local specialties and common mob drops. Free, but it costs
+	// real time, so it is named rather than treated as nothing.
+	SourceOverworld MaterialSource = "overworld"
+	// SourceEvent is obtainable only from limited events — the Crown of
+	// Insight. Not farmable at any price.
+	SourceEvent MaterialSource = "event"
+	// SourceQuest is a one-off quest reward. Not farmable either, but for
+	// the opposite reason: there is a fixed amount and playing the story is
+	// how you get it, so it gates an upgrade without ever blocking it.
+	SourceQuest MaterialSource = "quest"
+	// SourceUnknown is a material whose origin could not be established.
+	// It exists so an unclassified material is visibly unclassified rather
+	// than quietly filed under something plausible.
+	SourceUnknown MaterialSource = ""
+)
+
+// Material is one upgrade material, keyed by the datamine's item id.
+type Material struct {
+	ID     int            `json:"id"`
+	Name   string         `json:"name"`
+	Rarity int            `json:"rarity,omitempty"`
+	Source MaterialSource `json:"source,omitempty"`
+	// Domain names the domain this drops in, when Source is SourceDomain.
+	Domain string `json:"domain,omitempty"`
+	// Days are the weekdays the domain is open, 0 = Sunday. Empty means
+	// every day.
+	Days []int `json:"days,omitempty"`
+}
+
+// Material looks up a material by id. The second return says whether the
+// catalogue knows it at all, which is not the same as it having no source.
+func (s *Snapshot) Material(id int) (Material, bool) {
+	m, ok := s.Materials[id]
+	return m, ok
 }
 
 // LevelMultiplier returns the transformative-reaction level multiplier for a

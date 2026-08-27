@@ -412,7 +412,7 @@ func (u *Updater) verify(ctx context.Context, rel Release, path, assetName strin
 		return err
 	}
 	if got != want {
-		return fmt.Errorf("selfupdate: checksum passer ikke (fik %s, ventede %s)", got[:16], want[:16])
+		return fmt.Errorf("selfupdate: checksum does not match (got %s, expected %s)", got[:16], want[:16])
 	}
 	return nil
 }

@@ -31,6 +31,15 @@ type Request struct {
 	Constraints []optimizer.Constraint
 	// MaxSetConfigs caps how many artifact set arrangements to search.
 	MaxSetConfigs int
+	// SearchBudget caps how many complete builds each set configuration's
+	// search will examine. Zero takes DefaultSearchBudget; a negative value
+	// means no cap at all.
+	//
+	// It exists because the optimiser's upper bound is weak enough that a
+	// large inventory turns the search into a brute force over millions of
+	// combinations — a request that never returns. A cap turns that into an
+	// answer that arrives and admits what it did not look at.
+	SearchBudget int
 	// FarmDays is the horizon for domain farming candidates.
 	FarmDays int
 	// ResinPerDay is the player's daily budget. 180 is the standard refresh.
@@ -152,6 +161,17 @@ func reequipCandidate(
 	if maxConfigs <= 0 {
 		maxConfigs = 12
 	}
+	// The cap is applied here rather than left to the caller. Forgetting it
+	// does not produce a slightly slower answer, it produces a request that
+	// never returns — and that failure reaches the player as a dead page
+	// several minutes later, from a proxy, with nothing to read.
+	budget := req.SearchBudget
+	if budget == 0 {
+		budget = DefaultSearchBudget
+	}
+	if budget < 0 {
+		budget = 0 // an explicit "search everything, however long it takes"
+	}
 	configs := optimizer.EnumerateSetConfigs(req.Inventory, maxConfigs)
 	if len(configs) == 0 {
 		return nil, nil
@@ -177,7 +197,7 @@ func reequipCandidate(
 	res, err := optimizer.BestBuild(ctx, req.Snapshot, req.Inventory, base.Fixed,
 		req.Constraints, configs, func(cfg optimizer.SetConfig) optimizer.Objective {
 			return statObjective(req, base, cfg)
-		})
+		}, budget)
 	if err != nil {
 		return nil, err
 	}
@@ -200,6 +220,11 @@ func reequipCandidate(
 			"config": res.BestConfig.String(),
 			"pieces": res.Best.Pieces,
 		},
+	}
+	// A capped search found the best it could reach, not the best that
+	// exists. Saying so is the difference between a result and a claim.
+	if len(res.Capped) > 0 {
+		action.Note = "the search was capped, so a better arrangement may exist"
 	}
 	if taken := takenFrom(res.Best.Pieces, req.Goal.CharacterKey); len(taken) > 0 {
 		action.Note = fmt.Sprintf("Takes pieces from %s", joinNames(taken))
@@ -281,7 +306,10 @@ func weaponRefinement(w *model.Weapon) int {
 func talentCandidates(
 	ctx context.Context, req Request, eval Evaluator, base State, baseline float64,
 ) ([]Action, error) {
-	costs := req.Snapshot.ResinCosts
+	def, err := req.Snapshot.Char(req.Goal.CharacterKey)
+	if err != nil {
+		return nil, err
+	}
 	var out []Action
 
 	for _, slot := range []string{gamedata.TalentAuto, gamedata.TalentSkill, gamedata.TalentBurst} {
@@ -314,15 +342,8 @@ func talentCandidates(
 			GainPct:  gain,
 			Detail:   map[string]any{"slot": slot, "from": level, "to": level + 1},
 		}
-		if cost, ok := costs["talent_domain"]; ok {
-			action.ResinCost = cost
-		} else {
-			action.BlockedBy = "the resin cost of talent domains is not synced"
-		}
-		// Level 10 needs a Crown of Insight, which is not farmable.
-		if level+1 == 10 {
-			action.BlockedBy = "requires a Crown of Insight"
-		}
+		bill, known := def.TalentBill(slot, level+1)
+		applyBill(&action, req.Snapshot, def, bill, known)
 		out = append(out, action)
 	}
 	return out, nil
@@ -404,19 +425,21 @@ func levelCandidate(
 		return nil, nil
 	}
 
-	return &Action{
+	def, err := req.Snapshot.Char(req.Goal.CharacterKey)
+	if err != nil {
+		return nil, err
+	}
+	action := Action{
 		Kind:    KindAscend,
 		Subject: req.Goal.CharacterKey,
 		Headline: fmt.Sprintf("%s: level %d → %d (ascension %d)",
 			req.Goal.CharacterKey, current, next, ascension),
 		GainPct: gain,
-		// Levelling costs no resin directly; the boss materials behind the
-		// ascension do, and those are priced once the material bills are
-		// mined. Reporting zero here would rank it above real work.
-		ResinCost: 0,
-		BlockedBy: "the resin cost of ascension materials is not synced",
-		Detail:    map[string]any{"from": current, "to": next, "ascension": ascension},
-	}, nil
+		Detail:  map[string]any{"from": current, "to": next, "ascension": ascension},
+	}
+	bill, known := def.AscensionBill(ascension)
+	applyBill(&action, req.Snapshot, def, bill, known)
+	return &action, nil
 }
 
 // ---------------------------------------------------------------- weapons
@@ -523,8 +546,19 @@ func farmCandidates(ctx context.Context, req Request, eval Evaluator, base State
 		}
 	}
 
+	// Sorted, because the plan is meant to be reproducible: two domains that
+	// score identically would otherwise swap places between runs on nothing
+	// but map iteration order, and the player would be told to farm a
+	// different place for the same reason as yesterday.
+	keys := make([]string, 0, len(req.Snapshot.Domains))
+	for key := range req.Snapshot.Domains {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
 	var out []Action
-	for key, domain := range req.Snapshot.Domains {
+	for _, key := range keys {
+		domain := req.Snapshot.Domains[key]
 		if domain.Kind != "artifact" {
 			continue
 		}
@@ -612,6 +646,6 @@ func joinNames(names []string) string {
 	case 1:
 		return names[0]
 	default:
-		return strings.Join(names[:len(names)-1], ", ") + " og " + names[len(names)-1]
+		return strings.Join(names[:len(names)-1], ", ") + " and " + names[len(names)-1]
 	}
 }

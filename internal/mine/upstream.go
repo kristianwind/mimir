@@ -17,7 +17,12 @@ type avatarRow struct {
 	WeaponType      string  `json:"weaponType"`
 	SkillDepotID    int     `json:"skillDepotId"`
 	AvatarPromoteID int     `json:"avatarPromoteId"`
-	PropGrowCurves  []struct {
+	// IconName is the portrait, "UI_AvatarIcon_Linnea". It is the one
+	// identity the datamine states in readable text, and it is what tells a
+	// character apart from the game's trial copy of her — the copy reuses
+	// the portrait.
+	IconName       string `json:"iconName"`
+	PropGrowCurves []struct {
 		Type      string `json:"type"`
 		GrowCurve string `json:"growCurve"`
 	} `json:"propGrowCurves"`
@@ -61,6 +66,13 @@ type proudSkillRow struct {
 	Level             int        `json:"level"`
 	CoinCost          int        `json:"coinCost"`
 	CostItems         []costItem `json:"costItems"`
+}
+
+// skillRow maps a skill id to the proud-skill group holding its level table
+// and its level-up costs.
+type skillRow struct {
+	ID                int `json:"id"`
+	ProudSkillGroupID int `json:"proudSkillGroupId"`
 }
 
 type skillDepotRow struct {

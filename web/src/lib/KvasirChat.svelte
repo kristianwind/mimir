@@ -106,10 +106,19 @@
         </p>
         <p class="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
 
+        <!--
+          What was consulted, or that nothing was. An answer that looked
+          nothing up is not necessarily wrong, but "I do not have that
+          information" from something that never asked is a different claim
+          from the same words after it did — and the reader cannot tell the
+          two apart unless the page says so.
+        -->
         {#if message.used?.length}
           <p class="mt-2 text-[11px] text-muted">
             Looked up: {[...new Set(message.used)].join(', ')}
           </p>
+        {:else if message.role === 'assistant'}
+          <p class="mt-2 text-[11px] text-warn">Answered without looking anything up.</p>
         {/if}
 
         <!--

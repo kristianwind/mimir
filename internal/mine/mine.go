@@ -183,6 +183,24 @@ func (m *Miner) mineCharacters(ctx context.Context, snap *gamedata.Snapshot) err
 	if err != nil {
 		return err
 	}
+	gdbChars, err := m.characterNames(ctx)
+	if err != nil {
+		return err
+	}
+	// The proud-skill group holds a talent's level table and its level-up
+	// costs. Enka publishes the mapping, but only for the characters it has
+	// caught up with, so it is read from the datamine instead and Enka is
+	// left to do the one thing it alone can: order the three talents.
+	var skills []skillRow
+	if err := m.Src.GetJSON(ctx, m.excel("AvatarSkillExcelConfigData"), &skills); err != nil {
+		return err
+	}
+	proudGroup := make(map[int]int, len(skills))
+	for _, s := range skills {
+		if s.ID != 0 && s.ProudSkillGroupID != 0 {
+			proudGroup[s.ID] = s.ProudSkillGroupID
+		}
+	}
 
 	depotByID := map[int]skillDepotRow{}
 	for _, d := range depots {
@@ -214,36 +232,39 @@ func (m *Miner) mineCharacters(ctx context.Context, snap *gamedata.Snapshot) err
 		})
 	}
 
-	for _, av := range avatars {
+	sources := map[string]int{}
+	for _, av := range playableAvatars(avatars) {
 		if variants, ok := travelers[av.ID]; ok {
 			m.addTraveler(snap, av, variants, promoteByID[av.AvatarPromoteID], enkaChars, names)
 			continue
 		}
-		ec, ok := enkaChars[strconv.Itoa(av.ID)]
+		id, ok := resolveIdentity(av, enkaChars, names, gdbChars)
 		if !ok {
-			// Not in Enka's store means not a playable, showcaseable
-			// character: test rows, story NPCs, unreleased entries. Skipping
-			// them is the point of using that store as the roster.
+			// No name source knows this avatar. That is the game's own test
+			// rows and story NPCs, and it is the only exclusion left.
 			continue
 		}
-		name := names[strconv.FormatInt(ec.NameTextMapHash, 10)]
-		if name == "" {
-			continue
-		}
-		key := GOODKey(name)
+		key := GOODKey(id.name)
 		if key == "" {
 			continue
 		}
-
-		element, _ := model.ElementFromDatamine(ec.Element)
+		// Every playable character has an element. The ones without are the
+		// game's training mannequins, which carry a name and a portrait and
+		// nothing else — no burst, no talent tables, nothing to build. The
+		// elementless Traveler is not caught by this: the traveler branch
+		// above has already claimed those ids.
+		if id.element == "" {
+			continue
+		}
+		sources[id.source]++
 
 		c := gamedata.Character{
 			Key:        key,
-			Name:       name,
-			Element:    element,
-			Art:        artBase(ec.SideIconName),
+			Name:       id.name,
+			Element:    id.element,
+			Art:        id.art,
 			WeaponType: friendlyWeaponType(av.WeaponType),
-			Rarity:     rarityFromQuality(ec.QualityType),
+			Rarity:     id.rarity,
 			BaseHP:     av.HPBase,
 			BaseATK:    av.AttackBase,
 			BaseDEF:    av.DefenseBase,
@@ -266,20 +287,18 @@ func (m *Miner) mineCharacters(ctx context.Context, snap *gamedata.Snapshot) err
 		if d, ok := depotByID[av.SkillDepotID]; ok {
 			c.SkillIDs = skillIDs(d)
 		}
+		c.ProudSkillGroupIDs = proudSkillGroups(c.SkillIDs, proudGroup)
 		// Enka's SkillOrder is authoritative where the depot is ambiguous —
 		// several characters carry alternate sprints and stance skills in
-		// the same list.
-		if len(ec.SkillOrder) == 3 {
+		// the same list. A character Enka has not got yet keeps the depot's
+		// ordering, which is right for everyone without a stance skill.
+		if len(id.skillOrder) == 3 {
 			c.SkillIDs = gamedata.SkillIDs{
-				Auto:  ec.SkillOrder[0],
-				Skill: ec.SkillOrder[1],
-				Burst: ec.SkillOrder[2],
+				Auto:  id.skillOrder[0],
+				Skill: id.skillOrder[1],
+				Burst: id.skillOrder[2],
 			}
-			c.ProudSkillGroupIDs = gamedata.SkillIDs{
-				Auto:  ec.ProudMap[strconv.Itoa(ec.SkillOrder[0])],
-				Skill: ec.ProudMap[strconv.Itoa(ec.SkillOrder[1])],
-				Burst: ec.ProudMap[strconv.Itoa(ec.SkillOrder[2])],
-			}
+			c.ProudSkillGroupIDs = proudSkillGroups(c.SkillIDs, proudGroup)
 		}
 
 		snap.Characters[key] = c
@@ -289,6 +308,7 @@ func (m *Miner) mineCharacters(ctx context.Context, snap *gamedata.Snapshot) err
 	if len(snap.Characters) == 0 {
 		return fmt.Errorf("mine: no characters resolved; the name source and the datamine disagree")
 	}
+	m.reportRoster(snap, sources)
 	return nil
 }
 

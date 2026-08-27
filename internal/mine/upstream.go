@@ -118,6 +118,10 @@ type reliquaryRow struct {
 	MainPropDepotID   int    `json:"mainPropDepotId"`
 	AppendPropDepotID int    `json:"appendPropDepotId"`
 	MaxLevel          int    `json:"maxLevel"`
+	// Icon is the piece's picture, "UI_RelicIcon_15006_4". Every rarity of
+	// a set shares one, so it identifies the set and slot rather than the
+	// individual artifact.
+	Icon string `json:"icon"`
 }
 
 type reliquaryLevelRow struct {

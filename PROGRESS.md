@@ -128,6 +128,41 @@ accurate, not what makes it work.
       characters recovered, three test rows removed, and every one of them has
       an element, a portrait and a bill
 
+### What to aim for
+- [x] **A target build per character, computed rather than looked up** — which
+      set, which main stat in each slot, which substats to chase. It is the
+      question people take to a wiki, and a wiki gives one answer to every
+      player; this one runs against this character's own constellation, talent
+      levels and rotation, shows its numbers, and can therefore be checked
+- [x] **Only sets a domain actually drops at five stars.** The obvious filter
+      — the rarities recorded on the set — lists every rarity the set has
+      pieces for, so Berserker came back as a five-star set and its 12% crit
+      two-piece outranked half the real ones. Which domain drops what is mined
+- [x] **Main stats only where the slot can roll them**, and no choice offered
+      for the flower and plume, which do not have one
+- [x] **The substat allocation travels with the answer.** A target build has
+      no real artifacts in it, so every candidate is given the same invented
+      rolls — the mined roll values, in the count the game grants by +20. That
+      allocation is the recommendation, not a measurement, and saying so is
+      what makes the ranking between candidates honest
+- [x] **Weapons are deliberately not ranked** — and the answer says so. Most
+      of what makes a weapon good is its passive, and the passives are mined
+      as wording rather than as numbers: four of two hundred and forty-seven
+      are modelled. A ranking on base attack and substat alone puts a
+      four-star above a five-star and looks like advice
+
+### Comparing against another account
+- [x] **Any published showcase, on the same yardstick as yours** — weakest
+      first, because the point is what to work on. Nothing about this account
+      is sent anywhere and nothing about theirs is kept: fetched, measured,
+      dropped, with a test counting the rows before and after
+- [x] **No leaderboard, and the page says why.** The public ones are built
+      from accounts whose owners chose to submit them, so a percentile
+      measures who bothers to publish. The largest also answers 403 to
+      anything that is not a browser
+- [x] **Constellation and refinement sit beside the score, never inside it** —
+      a build that wins on a constellation is not one anybody can copy
+
 ### Data in
 - [x] **Enka.Network** — client, TTL cache with labelled stale fallback,
       setId as the primary bridge, Traveler variants via the skill depot
@@ -242,6 +277,14 @@ accurate, not what makes it work.
 - [x] **Kvasir cards** on the plan, the goals, the characters and the
       artifacts, and a Kvasir page for the conversation. All of it invisible
       when the layer is switched off
+- [x] **Artifact pictures on the inventory cards**, through the same cache as
+      the character art and for the same reason: a page pulling two hundred
+      icons from somebody else's server hands them the household's whole
+      inventory, one request at a time
+- [x] **An outage is no longer remembered as a missing picture.** The negative
+      marker is permanent and was written on any failure, so one bad minute
+      while a page was loading left the roster grey for good. Only a source
+      that answered "no such image" is remembered as one
 - [x] **Character art behind the roster cards** — the game's own namecard
       banner, fetched from Enka once and then served locally. The browser
       never talks to a third party: a page that loads eight pictures from

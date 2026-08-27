@@ -152,6 +152,40 @@ func DMGBonusStat(e Element) Stat {
 	}
 }
 
+// equipTypes maps the datamine's artifact slot names onto Mimir slots.
+//
+// Like the FIGHT_PROP names above these are identifiers rather than balance
+// numbers, so they belong in code: a rename breaks parsing loudly instead of
+// shifting a number quietly. They live here rather than beside either of
+// their two callers because the mapping is a fact about the game, and one
+// copy cannot drift from the other.
+var equipTypes = map[string]Slot{
+	"EQUIP_BRACER":   Flower,
+	"EQUIP_NECKLACE": Plume,
+	"EQUIP_SHOES":    Sands,
+	"EQUIP_RING":     Goblet,
+	"EQUIP_DRESS":    Circlet,
+}
+
+// SlotFromEquipType resolves a datamine EQUIP_* name.
+func SlotFromEquipType(name string) (Slot, bool) {
+	s, ok := equipTypes[name]
+	return s, ok
+}
+
+// IsElementalDMG reports whether a stat is one of the seven elemental damage
+// bonuses. Physical is deliberately not one of them here: a goblet can carry
+// it, but it is not an element and the callers that ask this question are
+// asking about elements.
+func IsElementalDMG(s Stat) bool {
+	for _, e := range Elements {
+		if DMGBonusStat(e) == s {
+			return true
+		}
+	}
+	return false
+}
+
 // fightProps maps the datamine's FIGHT_PROP_* names onto Mimir stats.
 //
 // These are identifier names rather than balance numbers, so they belong in

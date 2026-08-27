@@ -4,11 +4,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
 	"github.com/kristianwind/mimir/internal/config"
 	"github.com/kristianwind/mimir/internal/gamedata"
+	"github.com/kristianwind/mimir/internal/model"
 )
 
 // fakeEnka stands in for the picture host and counts what was asked for.
@@ -239,5 +242,110 @@ func TestANonImageIsNotCached(t *testing.T) {
 
 	if res := do("member", "GET", "/api/art/RaidenShogun", ""); res.Code == http.StatusOK {
 		t.Fatalf("an HTML error page was served as a picture: %q", res.Body.String())
+	}
+}
+
+// The bug this exists to stop: a picture that failed to arrive once was
+// remembered as a picture that does not exist, for good. One bad minute while
+// a page was loading left the whole roster grey, and no amount of reloading
+// brought it back — the negative marker on disk is checked before anything
+// else and never expires.
+func TestAnOutageIsNotRememberedAsAMissingPicture(t *testing.T) {
+	// A source that is up but answering 500, which is not the same claim as
+	// answering 404.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "upstream is having a moment", http.StatusBadGateway)
+	}))
+	t.Cleanup(srv.Close)
+	old := artSource
+	artSource = srv.URL + "/ui/"
+	t.Cleanup(func() { artSource = old })
+
+	s, do := artServer(t, map[string]gamedata.Character{
+		"RaidenShogun": {Key: "RaidenShogun", Art: "Shougun"},
+	})
+
+	if res := do("member", "GET", "/api/art/RaidenShogun", ""); res.Code != http.StatusBadGateway {
+		t.Fatalf("status = %d, want a gateway error rather than a verdict about the character", res.Code)
+	}
+
+	// Nothing may have been written down about it.
+	marker := filepath.Join(s.Config.DataDir, "art", "Shougun.png.none")
+	if _, err := os.Stat(marker); err == nil {
+		t.Fatal("an outage was recorded as the character having no picture")
+	}
+
+	// And when the source comes back, so does the picture.
+	enka := &fakeEnka{serve: map[string][]byte{
+		"/ui/UI_NameCardPic_Shougun_P.png": []byte("\x89PNG namecard"),
+	}}
+	enka.start(t)
+	artFetches = sync.Map{}
+
+	res := do("member", "GET", "/api/art/RaidenShogun", "")
+	if res.Code != http.StatusOK {
+		t.Fatalf("status = %d after the source recovered, body = %s", res.Code, res.Body.String())
+	}
+}
+
+// A source that genuinely has no such image is worth remembering, or every
+// page load asks again for something that will never be there.
+func TestAGenuineMissIsRemembered(t *testing.T) {
+	enka := &fakeEnka{serve: map[string][]byte{}}
+	enka.start(t)
+
+	s, do := artServer(t, map[string]gamedata.Character{
+		"Nobody": {Key: "Nobody", Art: "Nobody"},
+	})
+
+	if res := do("member", "GET", "/api/art/Nobody", ""); res.Code != http.StatusNotFound {
+		t.Fatalf("status = %d", res.Code)
+	}
+	marker := filepath.Join(s.Config.DataDir, "art", "Nobody.png.none")
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("a real miss was not remembered: %v", err)
+	}
+
+	before := len(enka.calls())
+	do("member", "GET", "/api/art/Nobody", "")
+	if len(enka.calls()) != before {
+		t.Error("the source was asked again for something it had already said does not exist")
+	}
+}
+
+// An artifact's picture goes through the same cache, and its name arrives
+// complete rather than as a suffix with prefixes to try.
+func TestArtifactArtIsServedFromTheSameCache(t *testing.T) {
+	enka := &fakeEnka{serve: map[string][]byte{
+		"/ui/UI_RelicIcon_15020_3.png": []byte("\x89PNG circlet"),
+	}}
+	enka.start(t)
+
+	s, do := artServer(t, nil)
+	if err := s.GameData.Save(&gamedata.Snapshot{
+		Version: "test",
+		ArtifactSets: map[string]gamedata.ArtifactSet{
+			"EmblemOfSeveredFate": {Key: "EmblemOfSeveredFate", Icons: map[model.Slot]string{
+				model.Circlet: "UI_RelicIcon_15020_3",
+			}},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.GameData.Load(); err != nil {
+		t.Fatal(err)
+	}
+
+	res := do("member", "GET", "/api/art/set/EmblemOfSeveredFate/circlet", "")
+	if res.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", res.Code, res.Body.String())
+	}
+	if got := enka.calls(); len(got) != 1 || got[0] != "/ui/UI_RelicIcon_15020_3.png" {
+		t.Errorf("asked for %v; a complete icon name must not have prefixes tried against it", got)
+	}
+
+	// A slot the set has no picture for is a fact, not a failure.
+	if res := do("member", "GET", "/api/art/set/EmblemOfSeveredFate/flower", ""); res.Code != http.StatusNotFound {
+		t.Errorf("status = %d for a slot with no picture", res.Code)
 	}
 }

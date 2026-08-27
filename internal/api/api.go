@@ -102,6 +102,7 @@ func (s *Server) Router() http.Handler {
 			// the session like everything else: which characters an instance
 			// asks for is a fact about its household.
 			r.Get("/art/{characterKey}", s.handleCharacterArt)
+			r.Get("/art/set/{setKey}/{slot}", s.handleArtifactArt)
 
 			r.Route("/system", func(r chi.Router) {
 				r.Get("/", s.handleSystemStatus)
@@ -146,6 +147,11 @@ func (s *Server) Router() http.Handler {
 					// directions: nothing about this account is sent
 					// anywhere, and nothing about theirs is kept.
 					r.Get("/compare/{uid}", s.handleCompare)
+
+					// What a character wants, computed rather than looked
+					// up on a wiki: which set, which main stats, which
+					// weapon — none of it filtered by what is in the bag.
+					r.Get("/target/{characterKey}", s.handleTarget)
 
 					r.Get("/dropmodel", s.handleDropModel)
 					r.Get("/plan", s.handleAccountPlan)

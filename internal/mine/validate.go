@@ -147,6 +147,10 @@ func Validate(snap *gamedata.Snapshot) Report {
 	if len(snap.ResinCosts) == 0 {
 		r.warnf("no resin costs; upgrades cannot be ranked per resin")
 	}
+	if len(snap.ArtifactRolls) == 0 {
+		r.warnf("no artifact roll counts; a target build cannot be described, " +
+			"because there would be no consistent substat treatment to compare candidates under")
+	}
 	if len(snap.Materials) == 0 {
 		r.warnf("no material catalogue; upgrade bills cannot be read and " +
 			"every ascension and talent level is a cost with no description")
@@ -209,6 +213,7 @@ func Validate(snap *gamedata.Snapshot) Report {
 type Supplements struct {
 	ReactionCoefficients map[string]float64         `json:"reactionCoefficients"`
 	ResinCosts           map[string]float64         `json:"resinCosts"`
+	ArtifactRolls        map[int]int                `json:"artifactRolls"`
 	Domains              map[string]gamedata.Domain `json:"domains"`
 	DropModel            *gamedata.DropModel        `json:"dropModel"`
 }
@@ -229,6 +234,9 @@ func MergeSupplements(snap *gamedata.Snapshot, path string) error {
 	}
 	if len(s.ResinCosts) > 0 {
 		snap.ResinCosts = s.ResinCosts
+	}
+	if len(s.ArtifactRolls) > 0 {
+		snap.ArtifactRolls = s.ArtifactRolls
 	}
 	if len(s.Domains) > 0 {
 		snap.Domains = s.Domains

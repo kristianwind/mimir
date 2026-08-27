@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/kristianwind/mimir/internal/model"
 )
 
 // Character art.
@@ -47,6 +49,13 @@ import (
 // The splash is the fallback for characters with no namecard (the Travelers),
 // and the plain icon for the handful with neither.
 func artCandidates(base string) []string {
+	// An artifact icon arrives as the whole name because that is how the
+	// datamine writes it. Only a character's portrait is a suffix with three
+	// prefixes worth trying.
+	if strings.HasPrefix(base, "UI_") {
+		return []string{base}
+	}
+
 	return []string{
 		"UI_NameCardPic_" + base + "_P",
 		"UI_Gacha_AvatarImg_" + base,
@@ -63,6 +72,34 @@ var artSource = "https://enka.network/ui/"
 var artFetches sync.Map // base -> *sync.Mutex
 
 // handleCharacterArt serves one character's backdrop.
+// handleArtifactArt serves the picture for one set and slot.
+//
+// The same cache and the same rule as a character's portrait: fetched once,
+// kept, and served from here afterwards. A page that pulled two hundred
+// artifact icons from somebody else's server would hand them a picture of the
+// household's whole inventory, one request at a time.
+func (s *Server) handleArtifactArt(w http.ResponseWriter, r *http.Request) {
+	setKey := chi.URLParam(r, "setKey")
+	slot := model.Slot(chi.URLParam(r, "slot"))
+
+	snap, err := s.GameData.Current()
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	set, ok := snap.ArtifactSets[setKey]
+	if !ok {
+		writeError(w, http.StatusNotFound, "no such artifact set", "")
+		return
+	}
+	icon := set.Icons[slot]
+	if icon == "" {
+		writeError(w, http.StatusNotFound, "that set has no picture for that slot", "")
+		return
+	}
+	s.serveArt(w, r, icon)
+}
+
 func (s *Server) handleCharacterArt(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "characterKey")
 
@@ -83,14 +120,19 @@ func (s *Server) handleCharacterArt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path, err := s.artFile(r.Context(), def.Art)
+	s.serveArt(w, r, def.Art)
+}
+
+// serveArt fetches a picture once and serves it from disk thereafter.
+func (s *Server) serveArt(w http.ResponseWriter, r *http.Request, base string) {
+	path, err := s.artFile(r.Context(), base)
 	if err != nil {
 		if errors.Is(err, errNoArt) {
 			writeError(w, http.StatusNotFound, "that character has no artwork", "")
 			return
 		}
 		if s.Log != nil {
-			s.Log.Warn("could not fetch character art", "character", key, "error", err)
+			s.Log.Warn("could not fetch art", "image", base, "error", err)
 		}
 		writeError(w, http.StatusBadGateway, "the artwork could not be fetched", "")
 		return
@@ -119,6 +161,10 @@ func (s *Server) handleCharacterArt(w http.ResponseWriter, r *http.Request) {
 // re-asking Enka on every page load for something that does not exist is worse
 // than remembering that it does not.
 var errNoArt = errors.New("api: this character has no artwork")
+
+// errNotFound is the source saying the image does not exist, as opposed to
+// the source not answering. Only the first is worth remembering.
+var errNotFound = errors.New("api: no such image")
 
 // artFile returns the path to a cached picture, fetching it the first time.
 func (s *Server) artFile(ctx context.Context, base string) (string, error) {
@@ -153,15 +199,27 @@ func (s *Server) artFile(ctx context.Context, base string) (string, error) {
 		return "", err
 	}
 
+	// A transient failure is not evidence about the character.
+	//
+	// The marker below is permanent, so writing one because a request timed
+	// out or the CDN answered 502 blanks that picture for good — and blanks
+	// the whole roster if it happens while the page is first loading. Only a
+	// source that answered "no such image" gets remembered as one.
+	var reachable bool
 	for _, name := range artCandidates(base) {
 		body, err := s.fetchArt(ctx, name)
-		if err != nil {
-			continue
+		if err == nil {
+			if err := writeFileAtomic(path, body); err != nil {
+				return "", err
+			}
+			return path, nil
 		}
-		if err := writeFileAtomic(path, body); err != nil {
-			return "", err
+		if errors.Is(err, errNotFound) {
+			reachable = true
 		}
-		return path, nil
+	}
+	if !reachable {
+		return "", fmt.Errorf("api: could not reach the art source for %q", base)
 	}
 
 	_ = os.WriteFile(missing, nil, 0o640)
@@ -196,6 +254,9 @@ func (s *Server) fetchArt(ctx context.Context, name string) ([]byte, error) {
 		return nil, err
 	}
 	defer res.Body.Close()
+	if res.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("%w: %s", errNotFound, name)
+	}
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("api: %s answered %s", name, res.Status)
 	}

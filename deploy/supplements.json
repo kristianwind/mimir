@@ -16,9 +16,10 @@
     "  inventory instead - see `mimir dropmodel`. That estimate is measured",
     "  rather than assumed, and it is labelled with the bias it carries.",
     "",
+    "artifactRolls: how many substat rolls a piece has gained by +20, counting the three or four it drops with. A game rule rather than a balance number - a 5-star drops with 3 or 4 substats and gains one every four levels, so +20 means 8 or 9 - and it is only used to give every candidate in a target build the same substat treatment, never to claim what any real artifact has. Read off the upgrade screen.",
+    "",
     "Verified against version 7.0 on 2026-08-20."
   ],
-
   "resinCosts": {
     "artifact_domain": 20,
     "talent_domain": 20,
@@ -26,5 +27,10 @@
     "ley_line": 20,
     "world_boss": 40,
     "weekly_boss": 30
+  },
+  "artifactRolls": {
+    "5": 9,
+    "4": 8,
+    "3": 7
   }
 }

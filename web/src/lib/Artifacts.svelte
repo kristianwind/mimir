@@ -32,6 +32,14 @@
 
   // Crit value: 2×CR% + CD%. A triage number, not a verdict — the optimizer
   // decides what actually goes on a character.
+  // A set whose pictures are not in the snapshot yet — one mined before they
+  // were carried — renders without one instead of showing a broken image.
+  let iconless = $state(new Set())
+
+  function hideIcon(artifact) {
+    iconless = new Set(iconless).add(artifact.setKey + artifact.slotKey)
+  }
+
   function critValue(artifact) {
     let cv = 0
     for (const sub of artifact.substats ?? []) {
@@ -79,14 +87,34 @@
   <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
     {#each shown.slice(0, 120) as artifact (artifact.id)}
       <article class="card p-4">
-        <div class="flex items-baseline justify-between gap-2">
-          <h2 class="truncate text-sm font-medium">{artifact.setKey}</h2>
-          <span class="chip">+{artifact.level}</span>
+        <div class="flex items-start gap-3">
+          <!--
+            The piece's own picture, served from this instance rather than
+            from a CDN. A page that pulled a hundred icons from somebody
+            else's server would hand them the household's whole inventory,
+            one request at a time. A set mined before the pictures were
+            simply renders without one.
+          -->
+          {#if !iconless.has(artifact.setKey + artifact.slotKey)}
+            <img
+              class="h-12 w-12 shrink-0 rounded-lg bg-raised/60 object-contain"
+              src="/api/art/set/{artifact.setKey}/{artifact.slotKey}"
+              alt=""
+              loading="lazy"
+              onerror={() => hideIcon(artifact)}
+            />
+          {/if}
+          <div class="min-w-0 flex-1">
+            <div class="flex items-baseline justify-between gap-2">
+              <h2 class="truncate text-sm font-medium">{artifact.setKey}</h2>
+              <span class="chip">+{artifact.level}</span>
+            </div>
+            <p class="mt-1 text-xs text-muted">
+              {SLOT_LABELS[artifact.slotKey]} · {artifact.mainStatKey}
+              {#if artifact.location}· {artifact.location}{/if}
+            </p>
+          </div>
         </div>
-        <p class="mt-1 text-xs text-muted">
-          {SLOT_LABELS[artifact.slotKey]} · {artifact.mainStatKey}
-          {#if artifact.location}· {artifact.location}{/if}
-        </p>
         <ul class="mt-3 space-y-1 text-xs text-muted">
           {#each artifact.substats ?? [] as sub}
             <li>{display(sub)}</li>

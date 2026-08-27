@@ -22,6 +22,30 @@
     artless = new Set(artless).add(key)
   }
 
+  // What the character should aim for, computed rather than looked up. One at
+  // a time and only when asked: it searches every farmable set against every
+  // main stat, which is cheap once and wasteful sixty times over.
+  let aiming = $state(null)
+  let targets = $state({})
+  let targetError = $state({})
+
+  async function showTarget(key) {
+    if (aiming === key) {
+      aiming = null
+      return
+    }
+    aiming = key
+    if (targets[key] || targetError[key]) return
+    try {
+      targets = { ...targets, [key]: await api.target(account.id, key) }
+    } catch (err) {
+      targetError = { ...targetError, [key]: err }
+    }
+  }
+
+  const SLOT_ORDER = ['sands', 'goblet', 'circlet']
+  const SLOT_LABELS = { sands: 'Sands', goblet: 'Goblet', circlet: 'Circlet' }
+
   $effect(() => {
     const id = account.id
     loading = true
@@ -99,6 +123,59 @@
           <button
             type="button"
             class="btn-ghost mt-3 w-full text-xs backdrop-blur-sm"
+            onclick={() => showTarget(character.key)}
+          >
+            {aiming === character.key ? 'Hide the target' : 'What should this character aim for?'}
+          </button>
+          {#if aiming === character.key}
+            <div class="mt-3 rounded-xl bg-raised/80 p-3 text-xs backdrop-blur-sm">
+              {#if targetError[character.key]}
+                <p>{targetError[character.key].message}</p>
+                {#if targetError[character.key].hint}
+                  <p class="mt-1 text-muted">{targetError[character.key].hint}</p>
+                {/if}
+              {:else if !targets[character.key]}
+                <p class="text-muted">Working it out…</p>
+              {:else}
+                {@const t = targets[character.key]}
+                <p class="font-medium">
+                  {SLOT_ORDER.map((slot) => `${SLOT_LABELS[slot]} ${t.mainStats?.[slot] ?? '—'}`).join(
+                    ' · ',
+                  )}
+                </p>
+                <ul class="mt-2 space-y-1">
+                  {#each (t.sets ?? []).slice(0, 4) as set}
+                    <li class="flex items-baseline justify-between gap-2">
+                      <span class:text-muted={!set.owned}>
+                        4pc {set.config}{#if set.owned}<span class="text-good"> · you have it</span
+                          >{/if}
+                      </span>
+                      <span class="shrink-0 text-muted">
+                        {set.behind ? `−${(set.behind * 100).toFixed(0)} %` : 'best'}
+                      </span>
+                    </li>
+                  {/each}
+                </ul>
+                <p class="mt-2 text-muted">
+                  Substats to chase:
+                  {Object.entries(t.substats ?? {})
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([k, n]) => `${k} ×${n}`)
+                    .join(', ')}
+                </p>
+                <details class="mt-2">
+                  <summary class="cursor-pointer text-muted">What this does not measure</summary>
+                  <ul class="mt-1 space-y-1 text-muted">
+                    {#each t.caveats ?? [] as caveat}<li>· {caveat}</li>{/each}
+                  </ul>
+                </details>
+              {/if}
+            </div>
+          {/if}
+
+          <button
+            type="button"
+            class="btn-ghost mt-2 w-full text-xs backdrop-blur-sm"
             onclick={() => (asking = asking === character.key ? null : character.key)}
           >
             {asking === character.key ? 'Hide Kvasir' : 'What does Kvasir think of this build?'}

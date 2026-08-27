@@ -486,11 +486,24 @@ func (m *Miner) mineArtifacts(ctx context.Context, snap *gamedata.Snapshot) erro
 		affixByID[a.ID] = append(affixByID[a.ID], a)
 	}
 	raritiesBySet := map[int]map[int]bool{}
+	iconsBySet := map[int]map[model.Slot]string{}
 	for _, p := range pieces {
 		if raritiesBySet[p.SetID] == nil {
 			raritiesBySet[p.SetID] = map[int]bool{}
 		}
 		raritiesBySet[p.SetID][p.RankLevel] = true
+
+		// The picture is per set and slot, not per piece: every rarity of a
+		// set's circlet is the same drawing. Taking the five-star row keeps
+		// one name per slot without a rule about which row wins.
+		slot, ok := model.SlotFromEquipType(p.EquipType)
+		if !ok || p.Icon == "" || p.RankLevel != 5 {
+			continue
+		}
+		if iconsBySet[p.SetID] == nil {
+			iconsBySet[p.SetID] = map[model.Slot]string{}
+		}
+		iconsBySet[p.SetID][slot] = p.Icon
 	}
 
 	for _, s := range sets {
@@ -506,6 +519,7 @@ func (m *Miner) mineArtifacts(ctx context.Context, snap *gamedata.Snapshot) erro
 		set := gamedata.ArtifactSet{
 			Key:           key,
 			Name:          name,
+			Icons:         iconsBySet[s.SetID],
 			TwoPieceText:  texts[s.SetID].two,
 			FourPieceText: texts[s.SetID].four,
 		}

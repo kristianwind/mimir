@@ -109,10 +109,14 @@ func resolveIdentity(
 		if name := names[strconv.FormatInt(ec.NameTextMapHash, 10)]; name != "" {
 			element, _ := model.ElementFromDatamine(ec.Element)
 			return identity{
-				name:       name,
-				element:    element,
-				rarity:     rarityFromQuality(ec.QualityType),
-				art:        artBase(ec.SideIconName),
+				name:    name,
+				element: element,
+				rarity:  rarityFromQuality(ec.QualityType),
+				// Enka's side icon when it has one, the datamine's portrait
+				// otherwise. An empty art name is not a cosmetic gap: the
+				// card asks for a picture, the server has no name to ask
+				// for, and the whole roster renders blank.
+				art:        firstNonEmpty(artBase(ec.SideIconName), iconBase(av.IconName)),
 				skillOrder: ec.SkillOrder,
 				proudMap:   ec.ProudMap,
 				source:     "enka",
@@ -129,7 +133,7 @@ func resolveIdentity(
 			// The portrait suffix follows the icon, which the datamine does
 			// carry in readable text: UI_AvatarIcon_Linnea is Linnea's,
 			// whoever gets round to naming her.
-			art:    strings.TrimPrefix(av.IconName, "UI_AvatarIcon_"),
+			art:    iconBase(av.IconName),
 			source: "genshin-db",
 		}, true
 	}
@@ -183,4 +187,22 @@ func proudSkillGroups(skills gamedata.SkillIDs, group map[int]int) gamedata.Skil
 		Skill: group[skills.Skill],
 		Burst: group[skills.Burst],
 	}
+}
+
+// iconBase turns "UI_AvatarIcon_Linnea" into "Linnea".
+func iconBase(icon string) string {
+	const prefix = "UI_AvatarIcon_"
+	if !strings.HasPrefix(icon, prefix) {
+		return ""
+	}
+	return strings.TrimPrefix(icon, prefix)
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }

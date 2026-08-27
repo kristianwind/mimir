@@ -9,15 +9,6 @@ import (
 	"github.com/kristianwind/mimir/internal/model"
 )
 
-// equipTypes maps the datamine's slot names to Mimir slots.
-var equipTypes = map[string]model.Slot{
-	"EQUIP_BRACER":   model.Flower,
-	"EQUIP_NECKLACE": model.Plume,
-	"EQUIP_SHOES":    model.Sands,
-	"EQUIP_RING":     model.Goblet,
-	"EQUIP_DRESS":    model.Circlet,
-}
-
 // Import converts a showcase into domain records.
 //
 // Unmappable entries are skipped and reported in warnings rather than
@@ -115,7 +106,7 @@ func (r *Response) Import(userID int64, snap *gamedata.Snapshot) ImportResult {
 }
 
 func artifact(eq Equip, location string, snap *gamedata.Snapshot) (model.Artifact, error) {
-	slot, ok := equipTypes[eq.Flat.EquipType]
+	slot, ok := model.SlotFromEquipType(eq.Flat.EquipType)
 	if !ok {
 		return model.Artifact{}, fmt.Errorf("unknown equip type %q", eq.Flat.EquipType)
 	}

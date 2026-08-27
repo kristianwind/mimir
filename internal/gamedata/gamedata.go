@@ -83,6 +83,14 @@ type Snapshot struct {
 	// Materials is the catalogue every upgrade bill is written in, keyed by
 	// the datamine's item id.
 	Materials map[int]Material `json:"materials,omitempty"`
+	// ArtifactRolls is how many substat rolls a piece of each rarity has
+	// gained by +20, counting the three or four it drops with.
+	//
+	// It is a rule of the game rather than a balance number, and it is not
+	// in the datamine in any readable form, so it is supplied alongside. Its
+	// only use is to give every candidate in a target build the same substat
+	// treatment; it never claims what a real artifact has.
+	ArtifactRolls map[int]int `json:"artifactRolls,omitempty"`
 	// DropModel holds the artifact drop distributions the farm simulator
 	// samples from.
 	DropModel DropModel `json:"dropModel"`
@@ -313,6 +321,11 @@ type ArtifactSet struct {
 	// Conditional names four-piece bonuses that are not stat blocks, for
 	// the effect layer to pick up.
 	Conditional []string `json:"conditional"`
+	// Icons is the picture name per slot, "UI_RelicIcon_15006_4". Like a
+	// character's art it is a name and not a URL: the server turns it into
+	// one when a page asks, so the snapshot stays a description of the game
+	// rather than of a CDN.
+	Icons map[model.Slot]string `json:"icons,omitempty"`
 	// TwoPieceText and FourPieceText are the in-game descriptions. They are
 	// mined so an effect can cite the exact wording its numbers come from,
 	// and so that citation can be checked mechanically.

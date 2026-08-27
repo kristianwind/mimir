@@ -107,6 +107,9 @@ export const api = {
   kvasirOpinion: (id, body) => request('POST', `/accounts/${id}/kvasir/opinion`, body),
   kvasirChat: (id, body) => request('POST', `/accounts/${id}/kvasir/chat`, body),
 
+  // What a character should aim for, whether or not you own any of it.
+  target: (id, key) => request('GET', `/accounts/${id}/target/${encodeURIComponent(key)}`),
+
   // Somebody else's published showcase, measured the same way as yours.
   compare: (id, uid) => request('GET', `/accounts/${id}/compare/${encodeURIComponent(uid)}`),
 

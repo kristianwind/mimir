@@ -6,6 +6,7 @@
   import Artifacts from './Artifacts.svelte'
   import Plan from './Plan.svelte'
   import Potential from './Potential.svelte'
+  import Compare from './Compare.svelte'
   import Goals from './Goals.svelte'
   import KvasirChat from './KvasirChat.svelte'
   import { kvasirStatus } from './Kvasir.svelte'
@@ -26,6 +27,12 @@
     },
     { key: 'goals', label: 'Goals', icon: '⌖', hint: 'Who are you building, and how do you play them?' },
     { key: 'characters', label: 'Characters', icon: '☗', hint: 'Your roster' },
+    {
+      key: 'compare',
+      label: 'Compare',
+      icon: '⇄',
+      hint: 'Your builds against a published showcase, on the same ruler',
+    },
     { key: 'artifacts', label: 'Artifacts', icon: '✦', hint: 'The whole inventory' },
     { key: 'accounts', label: 'Accounts', icon: '⌂', hint: 'UID and import' },
     { key: 'system', label: 'System', icon: '⚙', hint: 'Version, updates and beacon' },
@@ -142,6 +149,8 @@
       <Characters account={selected} />
     {:else if view === 'artifacts'}
       <Artifacts account={selected} />
+    {:else if view === 'compare'}
+      <Compare account={selected} />
     {:else if view === 'potential'}
       <Potential account={selected} ongotogoals={() => (view = 'goals')} />
     {:else if view === 'goals'}

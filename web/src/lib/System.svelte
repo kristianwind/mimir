@@ -1,5 +1,6 @@
 <script>
   import { api } from './api.js'
+  import BuyMeACoffee from './BuyMeACoffee.svelte'
 
   let status = $state(null)
   let error = $state('')
@@ -380,5 +381,24 @@
         </button>
       </section>
     {/if}
+
+    <!--
+      Last on the settings page, and nowhere else. Not a banner, not a modal,
+      not on first run: a donate prompt standing in front of the thing someone
+      has just installed reads as adware. Asking once, quietly, at the bottom
+      of the page nobody visits by accident is the whole of it.
+    -->
+    <section class="card p-5">
+      <h2 class="font-medium">Support Mimir</h2>
+      <p class="mt-2 max-w-prose text-sm text-muted">
+        Mimir is free, with no paid tier and nothing held back — every calculation, the whole
+        inventory, the AI layer if you point it at a model. If it saved you an afternoon of
+        spreadsheets you can buy the maintainer a coffee. Entirely optional, and nothing in the app
+        changes either way.
+      </p>
+      <div class="mt-4">
+        <BuyMeACoffee variant="quiet" label="Buy me a coffee ↗" />
+      </div>
+    </section>
   </div>
 {/if}

@@ -141,6 +141,12 @@ func (s *Server) Router() http.Handler {
 					r.Get("/potential", s.handlePotential)
 					r.Post("/goals/derive", s.handleDeriveGoals)
 
+					// Somebody else's published showcase, measured on the
+					// same yardstick as this account. Read-only in both
+					// directions: nothing about this account is sent
+					// anywhere, and nothing about theirs is kept.
+					r.Get("/compare/{uid}", s.handleCompare)
+
 					r.Get("/dropmodel", s.handleDropModel)
 					r.Get("/plan", s.handleAccountPlan)
 					r.Get("/plan/{characterKey}", s.handlePlanForGoal)

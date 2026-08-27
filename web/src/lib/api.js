@@ -107,6 +107,9 @@ export const api = {
   kvasirOpinion: (id, body) => request('POST', `/accounts/${id}/kvasir/opinion`, body),
   kvasirChat: (id, body) => request('POST', `/accounts/${id}/kvasir/chat`, body),
 
+  // Somebody else's published showcase, measured the same way as yours.
+  compare: (id, uid) => request('GET', `/accounts/${id}/compare/${encodeURIComponent(uid)}`),
+
   system: () => request('GET', '/system'),
   checkUpdate: () => request('POST', '/system/update/check'),
   applyUpdate: () => request('POST', '/system/update'),

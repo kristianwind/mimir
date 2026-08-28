@@ -106,10 +106,27 @@ type Store struct {
 	// Secure controls the cookie's Secure flag. It is off only for local
 	// http development; the rune deployment always terminates TLS.
 	Secure bool
+	// TwoFactor gates login on a second factor where one is enrolled. Nil
+	// means no account can have one — which is the state every install was
+	// in before this existed, and is why it is a pointer rather than a
+	// value: forgetting to wire it must be visibly nothing, not silently
+	// something that always says "not enrolled".
+	TwoFactor *TwoFactor
 }
 
 // Login verifies credentials and issues a session, returning the raw token.
-func (s *Store) Login(ctx context.Context, username, password, userAgent string) (string, User, error) {
+//
+// This is the only way in from outside. If the account has a confirmed second
+// factor, a correct password alone gets ErrSecondFactorRequired and no
+// session: the caller comes back with a code. That distinction is safe to
+// report — the caller has just proved they know the password, so being told a
+// factor exists tells them nothing they did not already demonstrate.
+//
+// A caller that has authenticated the user some other way must use Issue
+// rather than calling this with a password it already checked. Login exists
+// to be the gate; a second unguarded path through it is how the gate stops
+// meaning anything.
+func (s *Store) Login(ctx context.Context, username, password, code, userAgent string) (string, User, error) {
 	var (
 		u        User
 		hash     string
@@ -140,11 +157,38 @@ func (s *Store) Login(ctx context.Context, username, password, userAgent string)
 		return "", User{}, ErrInvalidCredentials
 	}
 
+	// The factor is checked before any session exists, so a failure here
+	// leaves the caller with nothing.
+	if s.TwoFactor != nil {
+		enrolled, err := s.TwoFactor.Enrolled(ctx, u.ID)
+		if err != nil {
+			return "", User{}, err
+		}
+		if enrolled {
+			if strings.TrimSpace(code) == "" {
+				return "", User{}, ErrSecondFactorRequired
+			}
+			if err := s.TwoFactor.Check(ctx, u.ID, code); err != nil {
+				return "", User{}, err
+			}
+		}
+	}
+
 	token, err := s.issue(ctx, u.ID, userAgent)
 	if err != nil {
 		return "", User{}, err
 	}
 	return token, u, nil
+}
+
+// Issue creates a session for a user who has already been authenticated.
+//
+// For exactly one situation: re-issuing after a password change, where the
+// old password was just verified against a live session. It performs no
+// checks of its own, which is why it says so in its name and why every other
+// caller belongs in Login.
+func (s *Store) Issue(ctx context.Context, userID int64, userAgent string) (string, error) {
+	return s.issue(ctx, userID, userAgent)
 }
 
 func (s *Store) issue(ctx context.Context, userID int64, userAgent string) (string, error) {

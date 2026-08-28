@@ -52,7 +52,7 @@ func newServer(t *testing.T) (*Server, func(as, method, path, body string) *http
 		// A real login and a real cookie: the middleware is part of what
 		// these tests are checking, and injecting a user past it would
 		// leave the actual authorisation path untested.
-		token, _, err := store.Login(context.Background(), as, "correct-horse-battery", "test")
+		token, _, err := store.Login(context.Background(), as, "correct-horse-battery", "", "test")
 		if err != nil {
 			t.Fatalf("could not log in as %q: %v", as, err)
 		}
@@ -149,7 +149,7 @@ func TestCannotRemoveTheLastAdmin(t *testing.T) {
 func TestDisablingRevokesSessions(t *testing.T) {
 	s, do := newServer(t)
 
-	token, _, err := s.Auth.Login(context.Background(), "member", "correct-horse-battery", "test")
+	token, _, err := s.Auth.Login(context.Background(), "member", "correct-horse-battery", "", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +169,7 @@ func TestDisablingRevokesSessions(t *testing.T) {
 func TestAdminPasswordResetRevokesSessions(t *testing.T) {
 	s, do := newServer(t)
 
-	token, _, err := s.Auth.Login(context.Background(), "member", "correct-horse-battery", "test")
+	token, _, err := s.Auth.Login(context.Background(), "member", "correct-horse-battery", "", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +179,7 @@ func TestAdminPasswordResetRevokesSessions(t *testing.T) {
 	if _, err := s.Auth.Resolve(context.Background(), token); err == nil {
 		t.Error("a reset password left the old session alive")
 	}
-	if _, _, err := s.Auth.Login(context.Background(), "member", "et-helt-nyt-kodeord", "test"); err != nil {
+	if _, _, err := s.Auth.Login(context.Background(), "member", "et-helt-nyt-kodeord", "", "test"); err != nil {
 		t.Errorf("the new password does not work: %v", err)
 	}
 }
@@ -198,7 +198,7 @@ func TestChangeOwnPasswordNeedsTheCurrentOne(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("change gave %d: %s", w.Code, w.Body)
 	}
-	if _, _, err := s.Auth.Login(context.Background(), "member", "et-helt-nyt-kodeord", "test"); err != nil {
+	if _, _, err := s.Auth.Login(context.Background(), "member", "et-helt-nyt-kodeord", "", "test"); err != nil {
 		t.Errorf("the new password does not work: %v", err)
 	}
 	// The caller keeps a working session rather than being logged out of

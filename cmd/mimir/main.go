@@ -23,6 +23,7 @@ import (
 	"github.com/kristianwind/mimir/internal/gamedata"
 	"github.com/kristianwind/mimir/internal/kvasir"
 	"github.com/kristianwind/mimir/internal/llm"
+	"github.com/kristianwind/mimir/internal/secrets"
 	"github.com/kristianwind/mimir/internal/selfupdate"
 )
 
@@ -52,6 +53,8 @@ func run(args []string) error {
 		return serve(args)
 	case "useradd":
 		return useradd(args)
+	case "reset-2fa":
+		return reset2FA(args)
 	case "gamedata":
 		return gamedataCmd(args)
 	case "version":
@@ -76,6 +79,7 @@ func usage() {
 usage:
   mimir serve              start the HTTP server (default)
   mimir useradd -u NAME    create a user, reading the password from stdin
+  mimir reset-2fa -u NAME  remove a user's second factor after a lost phone
   mimir gamedata import F  load a game data snapshot and make it active
   mimir gamedata list      list stored snapshots
   mimir gamedata activate V  roll back or forward to a stored snapshot
@@ -121,10 +125,19 @@ func serve(args []string) error {
 		return err
 	}
 
+	// The second factor's secrets are sealed with the machine key, exactly
+	// like a stored account credential: a database taken without secret.key
+	// cannot be used to forge anybody's codes.
+	vault, err := secrets.NewVault(cfg.SecretKey)
+	if err != nil {
+		return err
+	}
+	twoFactor := &auth.TwoFactor{DB: conn, Vault: vault, Issuer: "Mimir"}
+
 	srv := &api.Server{
 		Config:   cfg,
 		DB:       conn,
-		Auth:     &auth.Store{DB: conn, Secure: cfg.Secure},
+		Auth:     &auth.Store{DB: conn, Secure: cfg.Secure, TwoFactor: twoFactor},
 		Enka:     enka.NewCached(cfg.UserAgent),
 		GameData: gd,
 		Log:      log,
@@ -183,6 +196,66 @@ func serve(args []string) error {
 		defer cancel()
 		return httpSrv.Shutdown(shutdownCtx)
 	}
+}
+
+// reset2FA is the way back in when the phone is gone and the recovery codes
+// went with it.
+//
+// It runs on the box, as whoever can read the data directory, which is the
+// point: it is an administrator action taken at the machine, not something
+// reachable over the network. Nothing here is a way to bypass the factor
+// remotely, and nothing here reveals a secret — it deletes one.
+//
+// The factor is removed rather than replaced, so the user enrols again and
+// gets fresh recovery codes. Turning the factor off and leaving it off would
+// be the tempting shortcut and is the wrong shape: recovery is a way back to
+// a protected account, not a way to an unprotected one.
+func reset2FA(args []string) error {
+	fs := flag.NewFlagSet("reset-2fa", flag.ContinueOnError)
+	username := fs.String("u", "", "username")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *username == "" {
+		return errors.New("reset-2fa: -u is required")
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	conn, err := db.Open(cfg.DBPath())
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	ctx := context.Background()
+	var id int64
+	if err := conn.QueryRowContext(ctx,
+		`SELECT id FROM users WHERE username = ?`, *username).Scan(&id); err != nil {
+		return fmt.Errorf("reset-2fa: no user %q: %w", *username, err)
+	}
+
+	vault, err := secrets.NewVault(cfg.SecretKey)
+	if err != nil {
+		return err
+	}
+	tf := &auth.TwoFactor{DB: conn, Vault: vault}
+	status, err := tf.Status(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !status.Enrolled && !status.Pending {
+		fmt.Printf("%s has no second factor; nothing to remove\n", *username)
+		return nil
+	}
+	if err := tf.Disable(ctx, id); err != nil {
+		return err
+	}
+	fmt.Printf("removed the second factor for %s — they can sign in with their "+
+		"password and should enrol again straight away\n", *username)
+	return nil
 }
 
 func useradd(args []string) error {

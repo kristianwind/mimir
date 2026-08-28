@@ -90,6 +90,17 @@ func (s *Server) Router() http.Handler {
 			r.Use(s.Auth.Middleware)
 
 			r.Get("/me", s.handleMe)
+
+			// The second factor. Enrolling is an ordinary action; removing
+			// it and reprinting the recovery codes are not, and those two
+			// ask for the password again inside the handler.
+			r.Route("/2fa", func(r chi.Router) {
+				r.Get("/", s.handleTwoFactorStatus)
+				r.Post("/begin", s.handleTwoFactorBegin)
+				r.Post("/confirm", s.handleTwoFactorConfirm)
+				r.Post("/recovery", s.handleTwoFactorRecovery)
+				r.Post("/disable", s.handleTwoFactorDisable)
+			})
 			r.Put("/me/prefs", s.handleSetPrefs)
 			r.Put("/me/password", s.handleChangeOwnPassword)
 

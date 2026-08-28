@@ -30,18 +30,38 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
+		// Code is a TOTP code or a recovery code. Absent on the first
+		// attempt: the client does not know whether one is wanted until it
+		// is told, because asking every account would say which ones have a
+		// factor to anyone who can type a username.
+		Code string `json:"code"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "malformed request", "")
 		return
 	}
 
-	token, user, err := s.Auth.Login(r.Context(), body.Username, body.Password, r.UserAgent())
-	if err != nil {
-		if errors.Is(err, auth.ErrInvalidCredentials) {
-			writeError(w, http.StatusUnauthorized, "wrong username or password", "")
-			return
-		}
+	token, user, err := s.Auth.Login(r.Context(), body.Username, body.Password, body.Code, r.UserAgent())
+	switch {
+	case err == nil:
+	case errors.Is(err, auth.ErrInvalidCredentials):
+		writeError(w, http.StatusUnauthorized, "wrong username or password", "")
+		return
+	case errors.Is(err, auth.ErrSecondFactorRequired):
+		// Not an error the reader caused. The password was right; the form
+		// grows a field.
+		writeJSON(w, http.StatusUnauthorized, map[string]any{
+			"error":        "a code from your authenticator app is needed",
+			"secondFactor": true,
+		})
+		return
+	case errors.Is(err, auth.ErrSecondFactorInvalid):
+		writeJSON(w, http.StatusUnauthorized, map[string]any{
+			"error":        "that code is not right, or has already been used",
+			"secondFactor": true,
+		})
+		return
+	default:
 		s.Log.Error("login failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "login failed", "")
 		return

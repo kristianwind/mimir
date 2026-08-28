@@ -304,7 +304,7 @@ func (s *Server) handleChangeOwnPassword(w http.ResponseWriter, r *http.Request)
 		writeDomainError(w, err)
 		return
 	}
-	token, _, err := s.Auth.Login(r.Context(), me.Username, body.New, r.UserAgent())
+	token, err := s.Auth.Issue(r.Context(), me.ID, r.UserAgent())
 	if err != nil {
 		writeDomainError(w, err)
 		return

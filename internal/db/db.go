@@ -126,6 +126,38 @@ CREATE TABLE IF NOT EXISTS users (
 	created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- A user's second factor. One row per enrolled user; absence means not
+-- enrolled, which is why this is a table rather than columns on users.
+--
+-- The secret is AES-256-GCM sealed with the machine key, exactly like a
+-- HoYoLAB cookie: a stolen database without secret.key cannot forge anybody's
+-- codes. last_counter is what makes a code single-use — a code seen over a
+-- shoulder is otherwise replayable for the rest of its thirty seconds.
+--
+-- confirmed_at is null between generating a secret and proving a code from
+-- it. An unconfirmed row must never be treated as protection: enrolling
+-- without proving it locks the user out of their own account.
+CREATE TABLE IF NOT EXISTS user_totp (
+	user_id      INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+	nonce        BLOB NOT NULL,
+	secret       BLOB NOT NULL,
+	last_counter INTEGER NOT NULL DEFAULT 0,
+	confirmed_at TEXT,
+	created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Single-use codes for when the phone is lost. Stored as SHA-256 rather than
+-- argon2: they are generated with 80 bits of entropy, so there is no
+-- dictionary to attack and nothing for a slow hash to buy.
+CREATE TABLE IF NOT EXISTS user_recovery_codes (
+	id        INTEGER PRIMARY KEY AUTOINCREMENT,
+	user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	code_hash TEXT NOT NULL,
+	used_at   TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_recovery_user ON user_recovery_codes(user_id);
+
 CREATE TABLE IF NOT EXISTS sessions (
 	id         INTEGER PRIMARY KEY AUTOINCREMENT,
 	user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

@@ -74,7 +74,7 @@ func TestLoginIssuesAResolvableSession(t *testing.T) {
 	s := newStore(t)
 	id := seedUser(t, s, "sabrina", "hunter2hunter2")
 
-	token, user, err := s.Login(context.Background(), "sabrina", "hunter2hunter2", "test")
+	token, user, err := s.Login(context.Background(), "sabrina", "hunter2hunter2", "", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,8 +104,8 @@ func TestLoginFailuresAreIndistinguishable(t *testing.T) {
 	s := newStore(t)
 	seedUser(t, s, "sabrina", "hunter2hunter2")
 
-	_, _, wrongPass := s.Login(context.Background(), "sabrina", "nope", "test")
-	_, _, noUser := s.Login(context.Background(), "ukendt", "nope", "test")
+	_, _, wrongPass := s.Login(context.Background(), "sabrina", "nope", "", "test")
+	_, _, noUser := s.Login(context.Background(), "ukendt", "nope", "", "test")
 	if wrongPass == nil || noUser == nil {
 		t.Fatal("both cases must fail")
 	}
@@ -120,7 +120,7 @@ func TestDisabledUserCannotLogIn(t *testing.T) {
 	if _, err := s.DB.Exec(`UPDATE users SET disabled = 1`); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := s.Login(context.Background(), "sabrina", "hunter2hunter2", "test"); err == nil {
+	if _, _, err := s.Login(context.Background(), "sabrina", "hunter2hunter2", "", "test"); err == nil {
 		t.Error("a disabled user logged in")
 	}
 }
@@ -128,7 +128,7 @@ func TestDisabledUserCannotLogIn(t *testing.T) {
 func TestLogoutRevokes(t *testing.T) {
 	s := newStore(t)
 	seedUser(t, s, "sabrina", "hunter2hunter2")
-	token, _, err := s.Login(context.Background(), "sabrina", "hunter2hunter2", "test")
+	token, _, err := s.Login(context.Background(), "sabrina", "hunter2hunter2", "", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestLogoutRevokes(t *testing.T) {
 func TestResolveRejectsExpiredSession(t *testing.T) {
 	s := newStore(t)
 	seedUser(t, s, "sabrina", "hunter2hunter2")
-	token, _, err := s.Login(context.Background(), "sabrina", "hunter2hunter2", "test")
+	token, _, err := s.Login(context.Background(), "sabrina", "hunter2hunter2", "", "test")
 	if err != nil {
 		t.Fatal(err)
 	}

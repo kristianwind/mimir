@@ -22,8 +22,12 @@
   let showMethod = $state(false)
   let open = $state(null)
 
-  // A character whose picture the server could not produce renders without
-  // one rather than as an empty frame.
+  // The four-piece coverage caveat is surfaced rather than left in the
+  // collapsed method list, because it explains the shape of the whole
+  // ranking rather than qualifying one number in it.
+  let coverage = $derived(
+    (ranking?.caveats ?? []).find((c) => c.includes('four-piece bonus with numbers')),
+  )
 
   $effect(() => {
     const id = account.id
@@ -111,6 +115,9 @@
         that the others are not in the bag yet.
       </p>
     {/if}
+    {#if coverage}
+      <p class="mt-2 text-xs text-warn">{coverage}</p>
+    {/if}
   </div>
 
   <ol class="space-y-3">
@@ -131,6 +138,16 @@
                 +{pct(c.topAction.gainPct)} · the biggest single upgrade available
                 {#if c.topAction.blockedBy}· blocked: {c.topAction.blockedBy}{/if}
               </p>
+              <!--
+                The action's own caveat, which on this page is nearly always
+                the one that matters: most artifact sets have no four-piece
+                bonus the engine can score, so "switch to 4pc X" was decided
+                on stats and X is a label. Ranking a roster without saying
+                that is ranking it on a number the reader cannot interpret.
+              -->
+              {#if c.topAction.note}
+                <p class="mt-0.5 text-xs text-warn">{c.topAction.note}</p>
+              {/if}
             {:else}
               <p class="mt-0.5 text-xs text-muted">Nothing found: this build is the best its gear allows.</p>
             {/if}

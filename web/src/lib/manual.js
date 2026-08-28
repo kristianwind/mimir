@@ -82,7 +82,7 @@ export const MANUAL = [
       'Who is worth building at all. Every character measured on the same yardstick, including everyone with no goal, who is invisible to the plan.',
       'It is ordered by damage added, not by how far behind a character is. The same upgrade buys more absolute damage on an already-strong build, so a settled character can lead while a neglected one has all the room. That is what "most value from the account" means, and it is not the same question as "who needs attention".',
       {
-        note: 'If the same artifact set is recommended to everybody, look at how many arrangements your inventory can assemble — the page says. The search only offers sets you can actually field, so one winner often means one candidate.',
+        note: 'If the same artifact set is recommended to everybody, there are two reasons and the page names both. The search only offers sets you can actually field, so one winner can mean one candidate. And most sets have no four-piece bonus the engine can score, so the arrangement was picked on its stats and the set name is a label — rows where that applies say so.',
       },
     ],
   },
@@ -94,6 +94,9 @@ export const MANUAL = [
       'It is computed rather than repeated. A wiki gives one answer to every player; this runs against your constellation, your talent levels and your rotation, and shows its numbers so you can disagree with it for a reason.',
       {
         note: 'Weapons are deliberately not ranked. Most of what makes a weapon good is its passive, and the passives are mined as wording rather than as numbers — four of two hundred and forty-seven are modelled. A ranking on base attack alone would put a four-star above a five-star and look like advice.',
+      },
+      {
+        note: 'Artifact sets have the same problem and are handled the same way. A four-piece bonus is nearly always conditional wording, so only seven of sixty-three are modelled; the rest are ranked on their stats alone and marked "stats only". They are still worth farming — the entry just is not a claim about the set bonus.',
       },
     ],
   },
@@ -170,6 +173,7 @@ export const MANUAL = [
       {
         terms: [
           ['No resin cost on an ascension or talent', 'The material bill is exact and mined. How many domain runs it takes to collect is published nowhere, so the total is not Mimir\'s to give.'],
+          ['A set recommendation marked "stats only"', 'That set\'s four-piece bonus is conditional wording rather than numbers, so it is not in the score. Seven of the sixty-three sets are modelled. It is also why farming domains can tie: with no set contribution there is nothing left to tell them apart, and the plan folds them into one row rather than printing the same number six times.'],
           ['Transformative reactions unavailable', 'Their coefficients live in ability configs rather than in a table, and are not mined yet. Overload, hyperbloom and swirl therefore return an error naming what is missing.'],
           ['Farming priced in pieces, not resin', 'Your drop rate has not been measured. It is estimated from your own inventory and needs at least two hundred five-star pieces to say anything.'],
           ['A condition nobody has answered', 'The effect is real and switched off, and it appears in the plan rather than being silently ignored.'],

@@ -8,10 +8,14 @@
  */
 
 export class ApiError extends Error {
-  constructor(status, message, hint) {
+  constructor(status, message, hint, extra) {
     super(message)
     this.status = status
     this.hint = hint
+    // secondFactor marks the one 401 that is not a refusal: the password was
+    // right and a code is wanted. The login form reads it to grow a field
+    // rather than starting the reader over.
+    this.secondFactor = !!extra?.secondFactor
   }
 }
 
@@ -84,7 +88,7 @@ async function request(method, path, body, opts = {}) {
   }
 
   if (!res.ok) {
-    throw new ApiError(res.status, data?.error ?? res.statusText, data?.hint)
+    throw new ApiError(res.status, data?.error ?? res.statusText, data?.hint, data)
   }
   return data
 }
@@ -96,7 +100,12 @@ export const api = {
   instance: () => request('GET', '/instance'),
   bootstrapStatus: () => request('GET', '/auth/bootstrap'),
   bootstrap: (username, password) => request('POST', '/auth/bootstrap', { username, password }),
-  login: (username, password) => request('POST', '/auth/login', { username, password }),
+  // The code is absent on the first attempt. The client cannot know whether
+  // one is wanted until the server says so, because asking up front would
+  // reveal which accounts have a second factor to anyone who can type a
+  // username.
+  login: (username, password, code) =>
+    request('POST', '/auth/login', { username, password, code }),
   logout: () => request('POST', '/auth/logout'),
   setPrefs: (theme, themeMode) => request('PUT', '/me/prefs', { theme, themeMode }),
 
@@ -125,6 +134,13 @@ export const api = {
   updateUser: (id, patch) => request('PUT', `/users/${id}`, patch),
   deleteUser: (id) => request('DELETE', `/users/${id}`),
   changePassword: (current, next) => request('PUT', '/me/password', { current, new: next }),
+
+  twoFactorStatus: () => request('GET', '/2fa'),
+  twoFactorBegin: () => request('POST', '/2fa/begin'),
+  twoFactorConfirm: (code) => request('POST', '/2fa/confirm', { code }),
+  // Both of these weaken the account, so both send the password again.
+  twoFactorRecovery: (password) => request('POST', '/2fa/recovery', { password }),
+  twoFactorDisable: (password) => request('POST', '/2fa/disable', { password }),
 
   mineStatus: () => request('GET', '/system/gamedata/mine'),
   startMine: (version) => request('POST', '/system/gamedata/mine', { version }),

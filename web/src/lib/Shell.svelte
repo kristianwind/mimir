@@ -11,6 +11,7 @@
   import Goals from './Goals.svelte'
   import KvasirChat from './KvasirChat.svelte'
   import { kvasirStatus } from './Kvasir.svelte'
+  import Account from './Account.svelte'
   import System from './System.svelte'
   import Users from './Users.svelte'
 
@@ -36,6 +37,7 @@
     },
     { key: 'artifacts', label: 'Artifacts', icon: '✦', hint: 'The whole inventory' },
     { key: 'accounts', label: 'Accounts', icon: '⌂', hint: 'UID and import' },
+    { key: 'account', label: 'Account', icon: '☖', hint: 'Your password and two-factor' },
     { key: 'system', label: 'System', icon: '⚙', hint: 'Version, updates and beacon', admin: true },
     { key: 'users', label: 'Users', icon: '☺', hint: 'Accounts, roles and passwords', admin: true },
   ]
@@ -177,7 +179,9 @@
       </div>
     {/if}
 
-    {#if view === 'system'}
+    {#if view === 'account'}
+      <Account {me} />
+    {:else if view === 'system'}
       <System user={me} />
     {:else if view === 'users'}
       <Users {me} />

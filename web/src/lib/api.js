@@ -91,6 +91,9 @@ async function request(method, path, body, opts = {}) {
 
 export const api = {
   me: () => request('GET', '/me'),
+  // What face to show before sign-in. Answers without a session, because it
+  // is read before there can be one.
+  instance: () => request('GET', '/instance'),
   bootstrapStatus: () => request('GET', '/auth/bootstrap'),
   bootstrap: (username, password) => request('POST', '/auth/bootstrap', { username, password }),
   login: (username, password) => request('POST', '/auth/login', { username, password }),

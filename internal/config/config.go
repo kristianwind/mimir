@@ -30,6 +30,17 @@ type Config struct {
 	SecretKey []byte
 	// Secure controls the session cookie's Secure flag.
 	Secure bool
+	// Hosted marks the one instance that is offered as a paid service, and
+	// it is off everywhere else.
+	//
+	// A self-hosted Mimir must never greet its owner with an offer to
+	// subscribe to Mimir. They already have it; the whole promise is that
+	// running it yourself costs nothing and holds nothing back. So the
+	// public pages — what it is, what it costs, the terms — exist only
+	// where there is actually something to sell, and every other install
+	// keeps going straight to the sign-in form exactly as before.
+	Hosted bool
+
 	// AllowRegistration lets new users sign up. Off by default: this is a
 	// personal instance, not a public service.
 	AllowRegistration bool
@@ -70,6 +81,7 @@ func Load() (*Config, error) {
 		BaseURL:           env("MIMIR_BASE_URL", "http://localhost:8080"),
 		UserAgent:         env("MIMIR_USER_AGENT", "mimir/0.1 (+https://github.com/kristianwind/mimir)"),
 		Secure:            envBool("MIMIR_SECURE_COOKIES", false),
+		Hosted:            envBool("MIMIR_HOSTED", false),
 		AllowRegistration: envBool("MIMIR_ALLOW_REGISTRATION", false),
 		Repo:              env("MIMIR_REPO", "kristianwind/mimir"),
 		SupplementsPath:   env("MIMIR_SUPPLEMENTS", "/etc/mimir/supplements.json"),

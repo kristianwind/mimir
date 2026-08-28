@@ -546,6 +546,31 @@ func (s *Snapshot) Set(key string) (ArtifactSet, error) {
 	return a, nil
 }
 
+// FourPieceModelled reports whether a set's four-piece bonus reaches the
+// damage engine at all — either as a flat stat block, or as an effect rule
+// carrying numbers read out of the in-game wording.
+//
+// Most of them do not. A four-piece is nearly always conditional prose
+// ("after using an Elemental Burst, all party members gain..."), and prose
+// is mined as text, not as numbers. A set with no rule is therefore worn by
+// the engine as four unrelated pieces.
+//
+// This exists so that a recommendation naming a four-piece can say which
+// kind it is. "Switch to 4pc GoldenTroupe" scored on substats alone is not
+// advice about GoldenTroupe, and presenting it as though it were is the one
+// thing this codebase is not allowed to do.
+func (s *Snapshot) FourPieceModelled(key string) bool {
+	if set, ok := s.ArtifactSets[key]; ok && len(set.FourPiece) > 0 {
+		return true
+	}
+	for _, r := range s.Effects {
+		if r.Kind == EffectKindArtifactSet && r.Key == key && r.Trigger == "4pc" {
+			return true
+		}
+	}
+	return false
+}
+
 // CurveValue returns a growth curve's multiplier at a 1-based level.
 func (s *Snapshot) CurveValue(name string, level int) (float64, error) {
 	curve, ok := s.Curves[name]

@@ -524,6 +524,23 @@ func AccountPotential(ctx context.Context, reqs []PotentialRequest) (Ranking, er
 		}
 	}
 
+	// The single largest caveat on this page, and the reason one set can win
+	// for a whole roster: a four-piece bonus is nearly always conditional
+	// prose, and prose is mined as text rather than as numbers. Where there
+	// are no numbers the arrangement is scored on its stats alone, so the
+	// set named in the recommendation is a label on the pieces rather than a
+	// reason to wear them.
+	if len(reqs) > 0 && reqs[0].Snapshot != nil {
+		modelled, total := fourPieceCoverage(reqs[0].Snapshot)
+		if total > 0 && modelled < total {
+			out.Caveats = append(out.Caveats, fmt.Sprintf(
+				"Only %d of the %d artifact sets have a four-piece bonus with numbers behind it. "+
+					"For the rest the arrangement was chosen on its stats alone and the set bonus "+
+					"is not in the figure, which is why the same set can win for the whole roster. "+
+					"Rows where that applies say so.", modelled, total))
+		}
+	}
+
 	// Each character is measured independently — the yardstick is the whole
 	// point — so they are measured at the same time. The results are written
 	// into a slice by index rather than appended, because a ranking that

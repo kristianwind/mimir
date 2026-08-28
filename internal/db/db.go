@@ -173,6 +173,33 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 -- One row per in-game UID. A user may own several: EU and Asia are separate
 -- accounts with separate inventories, and merging them would produce builds
 -- out of artifacts that cannot meet.
+-- What a user is entitled to, on the hosted instance.
+--
+-- Absence of a row is the normal state: it means "on trial, counted from the
+-- day the account was made". A row appears only when something is true that
+-- the users table cannot say — they were comped, or they subscribed. That way
+-- adding billing needed no migration writing a row for every existing user,
+-- and a self-hosted install never grows one at all.
+--
+-- comped is how a tester gets full access without paying and without being an
+-- administrator. It is deliberately not a role: giving somebody free access
+-- must never mean giving them the controls for the machine.
+CREATE TABLE IF NOT EXISTS subscriptions (
+	user_id              INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+	comped               INTEGER NOT NULL DEFAULT 0,
+	comped_note          TEXT NOT NULL DEFAULT '',
+	stripe_customer_id   TEXT NOT NULL DEFAULT '',
+	stripe_subscription_id TEXT NOT NULL DEFAULT '',
+	-- status is Stripe's own word for it, stored verbatim rather than
+	-- translated: trialing, active, past_due, canceled, unpaid, incomplete.
+	-- Inventing our own vocabulary here would mean two things to keep in
+	-- step with each other and with Stripe.
+	status               TEXT NOT NULL DEFAULT '',
+	current_period_end   TEXT NOT NULL DEFAULT '',
+	cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+	updated_at           TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS accounts (
 	id         INTEGER PRIMARY KEY AUTOINCREMENT,
 	user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

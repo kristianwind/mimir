@@ -2,6 +2,14 @@
   import { api } from './api.js'
   import BuyMeACoffee from './BuyMeACoffee.svelte'
 
+  let { user } = $props()
+
+  // Syncing, updating and the beacon are administrator actions. The page
+  // still shows them, because knowing when the game data was last synced is
+  // worth having whoever you are — but it says who can act rather than
+  // letting the button fail on click with a permission error.
+  const admin = $derived(user?.role === 'admin')
+
   let status = $state(null)
   let error = $state('')
   let busy = $state('')
@@ -11,7 +19,12 @@
   let mine = $state(null)
   let ai = $state(null)
   let probe = $state(null)
+  // Seeded from the snapshot in use, because re-syncing the version you are
+  // already on is the ordinary case: a new roster, new material bills, the
+  // same game version. An empty field with a placeholder that reads like a
+  // value left the button greyed out with nothing on the page saying why.
   let gameVersion = $state('')
+  let gamedata = $state(null)
   let poll = null
 
   async function load() {
@@ -26,6 +39,8 @@
     ai = await api.kvasirStatus().catch(() => null)
     receiver = await api.receiver().catch(() => null)
     mine = await api.mineStatus().catch(() => null)
+    gamedata = await api.gamedata().catch(() => null)
+    if (!gameVersion && gamedata?.active) gameVersion = gamedata.active
     watchMine()
   }
 
@@ -207,12 +222,34 @@
         </div>
         <button
           class="btn-primary"
-          disabled={mine?.running || busy === 'mine' || !gameVersion.trim()}
+          disabled={!admin || mine?.running || busy === 'mine' || !gameVersion.trim()}
           onclick={startMine}
         >
           {mine?.running ? `Syncing… ${mine.elapsed}s` : 'Sync game data'}
         </button>
       </div>
+
+      <!--
+        A disabled control has to say what would enable it. Without this the
+        button is simply dead, and the field beside it looks filled in because
+        its placeholder is a plausible version number.
+      -->
+      {#if !admin}
+        <p class="mt-2 text-xs text-muted">
+          Syncing is an administrator action. Ask whoever set this instance up.
+        </p>
+      {:else if !mine?.running && !gameVersion.trim()}
+        <p class="mt-2 text-xs text-muted">
+          Give it a version to label the snapshot with — the one the game is on, like 7.0.0. It is
+          only a label, and syncing the version you are already on is normal: it is how you pick up
+          a new roster or new material bills.
+        </p>
+      {:else if gamedata?.active && gameVersion.trim() === gamedata.active}
+        <p class="mt-2 text-xs text-muted">
+          This will replace the snapshot in use ({gamedata.active}, {gamedata.characters} characters).
+          The old one stays in the list below and you can go back to it.
+        </p>
+      {/if}
 
       {#if mine?.lines?.length}
         <pre class="mt-3 max-h-44 overflow-auto whitespace-pre-wrap rounded-xl bg-raised p-3 text-xs">{mine.lines.join(

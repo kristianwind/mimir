@@ -1,6 +1,7 @@
 <script>
   import { api } from './api.js'
   import ThemePicker from './ThemePicker.svelte'
+  import Manual from './Manual.svelte'
   import Accounts from './Accounts.svelte'
   import Characters from './Characters.svelte'
   import Artifacts from './Artifacts.svelte'
@@ -46,6 +47,10 @@
 
   const NAV = $derived(PAGES.filter((item) => !item.ai || ai))
 
+  // The manual opens beside the page, on the section for whatever view is
+  // showing, and leaves the page usable underneath.
+  let manual = $state(false)
+
   let view = $state('plan')
   let accounts = $state([])
   let selected = $state(null)
@@ -62,7 +67,16 @@
   refresh()
 </script>
 
-<div class="mx-auto flex min-h-dvh max-w-7xl gap-6 p-4 sm:p-6">
+<!--
+  The manual is a fixed panel, so the page is given room for it rather than
+  being covered by it: the point is to read the manual and use the thing it
+  describes at the same time. Below the breakpoint the panel takes the screen,
+  which is the only honest option on a phone.
+-->
+<div
+  class="mx-auto flex min-h-dvh max-w-7xl gap-6 p-4 transition-[padding] sm:p-6
+         {manual ? 'md:pr-[27rem]' : ''}"
+>
   <aside class="hidden w-56 shrink-0 flex-col md:flex">
     <div class="mb-8 flex items-center gap-2 px-2">
       <span class="grid h-9 w-9 place-items-center rounded-xl bg-accent/15 text-lg">🜁</span>
@@ -104,7 +118,18 @@
         </h1>
         <p class="text-sm text-muted">{NAV.find((n) => n.key === view)?.hint ?? ''}</p>
       </div>
-      <ThemePicker {theme} {mode} {setTheme} />
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="btn-ghost px-3 text-sm"
+          aria-expanded={manual}
+          title="Manual"
+          onclick={() => (manual = !manual)}
+        >
+          {manual ? 'Close manual' : 'Manual'}
+        </button>
+        <ThemePicker {theme} {mode} {setTheme} />
+      </div>
     </header>
 
     <nav class="mb-6 flex gap-1 overflow-x-auto md:hidden">
@@ -161,4 +186,6 @@
       <Plan account={selected} ongotogoals={() => (view = 'goals')} />
     {/if}
   </main>
+
+  <Manual open={manual} section={view} onclose={() => (manual = false)} />
 </div>

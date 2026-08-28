@@ -30,6 +30,15 @@ export const DOMAIN = 'mimir.guide'
 // that does not exist instead of saying something false about one that does.
 export const SELLER = {
   name: 'Kristian Wind',
+  // Country only, deliberately.
+  //
+  // Stripe holds the full address for verification and keeps it private;
+  // publishing it was never their requirement. What put it here was the EU
+  // rule that a trader selling to consumers names where they are — and since
+  // Stripe is the merchant of record, they are the seller and that burden is
+  // largely theirs. A residual expectation on a service provider remains, so
+  // this is a judgement rather than a certainty, and the clean way to satisfy
+  // it later is a registered business whose address is not somebody's home.
   address: 'Denmark',
   vat: '',
   email: `support@${DOMAIN}`,

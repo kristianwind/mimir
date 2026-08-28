@@ -3,9 +3,20 @@
   import { applyTheme, storedMode, storedTheme, watchSystemMode } from './lib/theme.js'
   import Login from './lib/Login.svelte'
   import Shell from './lib/Shell.svelte'
+  import Site from './lib/public/Site.svelte'
 
   let user = $state(null)
   let loading = $state(true)
+
+  // Whether this instance is the one that is sold. Off everywhere else, and
+  // then the public pages do not exist at all: a self-hosted Mimir greets its
+  // owner with the sign-in form, exactly as it always has, and never with an
+  // offer to subscribe to software they are already running.
+  let hosted = $state(false)
+
+  // Someone who came to read the terms and then chose to sign in, on an
+  // instance where the front page is a sales page rather than a form.
+  let signingIn = $state(false)
   let theme = $state(storedTheme())
   let mode = $state(storedMode())
 
@@ -27,6 +38,12 @@
   }
 
   async function boot() {
+    // Asked first and separately: it decides what an unauthenticated visitor
+    // sees, and a failure here must not stop the app from loading.
+    api
+      .instance()
+      .then((i) => (hosted = !!i?.hosted))
+      .catch(() => (hosted = false))
     try {
       const me = await api.me()
       user = me
@@ -80,6 +97,8 @@
   </div>
 {:else if user}
   <Shell {user} {theme} {mode} {setTheme} {logout} />
+{:else if hosted && !signingIn}
+  <Site {theme} {mode} {setTheme} onsignin={() => (signingIn = true)} />
 {:else}
   <Login onauthenticated={authenticated} {theme} {mode} {setTheme} />
 {/if}

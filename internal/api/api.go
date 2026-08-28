@@ -72,6 +72,11 @@ func (s *Server) Router() http.Handler {
 		r.Get("/auth/bootstrap", s.handleBootstrapStatus)
 		r.Post("/auth/bootstrap", s.handleBootstrap)
 
+		// What face to show before sign-in. Public by definition: it is read
+		// by a browser that has no session and cannot get one until it
+		// knows whether this instance offers accounts at all.
+		r.Get("/instance", s.handleInstance)
+
 		r.Post("/auth/login", s.handleLogin)
 		r.Post("/auth/logout", s.handleLogout)
 		r.Get("/healthz", s.handleHealth)

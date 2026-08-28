@@ -135,7 +135,7 @@
     {/if}
 
     {#if view === 'system'}
-      <System />
+      <System user={me} />
     {:else if view === 'users'}
       <Users {me} />
     {:else if view === 'accounts'}

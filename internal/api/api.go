@@ -54,6 +54,9 @@ type Server struct {
 	// Updater checks for releases and, where the deployment allows, installs
 	// one.
 	Updater *selfupdate.Updater
+	// signups meters account creation per address. Built on first use so a
+	// zero Server still works in tests.
+	signups *signupLimiter
 	// Mine is the game data sync job. One at a time.
 	Mine *MineJob
 	// Kvasir is the AI layer. Nil, or configured with no endpoint, and every
@@ -70,6 +73,9 @@ type Server struct {
 func (s *Server) Router() http.Handler {
 	if s.Mine == nil {
 		s.Mine = &MineJob{}
+	}
+	if s.signups == nil {
+		s.signups = newSignupLimiter()
 	}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -95,6 +101,10 @@ func (s *Server) Router() http.Handler {
 		// credential says who it belongs to.
 		r.Post("/auth/passkey/begin", s.handlePasskeyLoginBegin)
 		r.Post("/auth/passkey/finish", s.handlePasskeyLoginFinish)
+
+		// Creating an account. Present only where there is something to
+		// sell; see internal/api/signup.go.
+		r.Post("/auth/signup", s.handleSignup)
 
 		r.Post("/auth/login", s.handleLogin)
 		r.Post("/auth/logout", s.handleLogout)

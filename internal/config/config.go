@@ -55,8 +55,11 @@ type Config struct {
 	StripePriceMonthly   string
 	StripePriceYearly    string
 
-	// AllowRegistration lets new users sign up. Off by default: this is a
-	// personal instance, not a public service.
+	// AllowRegistration lets strangers create accounts.
+	//
+	// It follows Hosted by default: the instance being sold has to let
+	// people buy it, and a personal one should not let anybody on the
+	// network help themselves. Either can be overridden explicitly.
 	AllowRegistration bool
 	// Repo is the GitHub repository releases are checked against.
 	Repo string
@@ -101,7 +104,7 @@ func Load() (*Config, error) {
 		StripePublishableKey: env("MIMIR_STRIPE_PUBLISHABLE_KEY", ""),
 		StripePriceMonthly:   env("MIMIR_STRIPE_PRICE_MONTHLY", ""),
 		StripePriceYearly:    env("MIMIR_STRIPE_PRICE_YEARLY", ""),
-		AllowRegistration:    envBool("MIMIR_ALLOW_REGISTRATION", false),
+		AllowRegistration:    envBool("MIMIR_ALLOW_REGISTRATION", envBool("MIMIR_HOSTED", false)),
 		Repo:                 env("MIMIR_REPO", "kristianwind/mimir"),
 		SupplementsPath:      env("MIMIR_SUPPLEMENTS", "/etc/mimir/supplements.json"),
 		EffectsPath:          env("MIMIR_EFFECTS", "/etc/mimir/effects.json"),

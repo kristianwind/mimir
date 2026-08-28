@@ -96,7 +96,7 @@
     </div>
   </div>
 {:else if user}
-  <Shell {user} {theme} {mode} {setTheme} {logout} />
+  <Shell {user} {theme} {mode} {setTheme} {logout} {hosted} />
 {:else if hosted && !signingIn}
   <Site {theme} {mode} {setTheme} onsignin={() => (signingIn = true)} />
 {:else}

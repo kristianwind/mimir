@@ -15,7 +15,7 @@
   import System from './System.svelte'
   import Users from './Users.svelte'
 
-  let { user, theme, mode, setTheme, logout } = $props()
+  let { user, theme, mode, setTheme, logout, hosted = false } = $props()
   const me = $derived(user)
 
   const PAGES = [
@@ -182,7 +182,7 @@
     {#if view === 'account'}
       <Account {me} />
     {:else if view === 'system'}
-      <System user={me} />
+      <System user={me} {hosted} />
     {:else if view === 'users'}
       <Users {me} />
     {:else if view === 'accounts'}

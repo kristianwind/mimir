@@ -21,15 +21,26 @@
 // The one instance that is sold. Everything below assumes it.
 export const DOMAIN = 'mimir.guide'
 
-// Required of a seller to consumers in the EU: who you are, where you are,
-// and how to reach a person. These are Kristian's to fill in — a placeholder
-// that ships is a compliance problem, not a typo.
+// Required of a service provider to consumers in the EU: who you are, where
+// you are, and how to reach a person.
+//
+// vat is empty because there is no registered company behind this yet. Empty
+// rather than a placeholder on purpose — every sentence below omits the
+// clause when it is blank, so the page says nothing about a registration
+// that does not exist instead of saying something false about one that does.
 export const SELLER = {
-  name: 'TODO: registered name',
-  address: 'TODO: address',
-  vat: 'TODO: CVR/VAT number',
+  name: 'Kristian Wind',
+  address: 'Denmark',
+  vat: '',
   email: `support@${DOMAIN}`,
 }
+
+// vatClause renders ", CVR 12345678" or nothing at all.
+const vatClause = SELLER.vat ? `, ${SELLER.vat}` : ''
+
+// Dated when the text was last changed, because "last updated" on a legal
+// page is a promise that somebody looked.
+const UPDATED = '28 August 2026'
 
 export const PRICE = {
   monthly: '$4',
@@ -100,11 +111,11 @@ export const PRICING = {
 export const LEGAL = {
   terms: {
     title: 'Terms of service',
-    updated: 'TODO: date these before publishing',
+    updated: UPDATED,
     sections: [
       [
         'Who you are contracting with',
-        `Hosted Mimir at ${DOMAIN} is operated by ${SELLER.name}, ${SELLER.address}, ${SELLER.vat}. Questions about the service, your account or your data go to ${SELLER.email}.`,
+        `Hosted Mimir at ${DOMAIN} is operated by ${SELLER.name}, ${SELLER.address}${vatClause}. Questions about the service, your account or your data go to ${SELLER.email}.`,
       ],
       [
         'Who sells it to you',
@@ -147,7 +158,7 @@ export const LEGAL = {
 
   privacy: {
     title: 'Privacy',
-    updated: 'TODO: date these before publishing',
+    updated: UPDATED,
     sections: [
       [
         'The short version',
@@ -178,7 +189,7 @@ export const LEGAL = {
 
   refunds: {
     title: 'Refunds and cancellation',
-    updated: 'TODO: date these before publishing',
+    updated: UPDATED,
     sections: [
       [
         'The trial comes first',
@@ -208,7 +219,7 @@ export const LEGAL = {
     updated: '',
     sections: [
       ['Email', SELLER.email],
-      ['Who is behind it', `${SELLER.name}, ${SELLER.address}. ${SELLER.vat}.`],
+      ['Who is behind it', `${SELLER.name}, ${SELLER.address}${vatClause}.`],
       [
         'The software',
         'Mimir is open and can be run by anyone. The source, the issue tracker and the release notes are at github.com/kristianwind/mimir.',

@@ -37,7 +37,7 @@
     },
     { key: 'artifacts', label: 'Artifacts', icon: '✦', hint: 'The whole inventory' },
     { key: 'accounts', label: 'Accounts', icon: '⌂', hint: 'UID and import' },
-    { key: 'account', label: 'Settings', icon: '☖', hint: 'Your password, two-factor and appearance' },
+    { key: 'account', label: 'Settings', icon: '☖', hint: 'Your sign-in, subscription and appearance' },
     { key: 'system', label: 'System', icon: '⚙', hint: 'Version, updates and beacon', admin: true },
     { key: 'users', label: 'Users', icon: '☺', hint: 'Accounts, roles and passwords', admin: true },
   ]

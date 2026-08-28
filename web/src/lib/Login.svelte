@@ -1,6 +1,7 @@
 <script>
   import { api } from './api.js'
   import ThemePicker from './ThemePicker.svelte'
+  import { supported as passkeySupported, get as passkeyGet } from './passkey.js'
 
   let { onauthenticated, theme, mode, setTheme } = $props()
 
@@ -11,6 +12,7 @@
   // which accounts have one.
   let code = $state('')
   let needsCode = $state(false)
+  let passkeyBusy = $state(false)
   let confirm = $state('')
   let error = $state('')
   let busy = $state(false)
@@ -27,6 +29,28 @@
     .then((s) => (first = s.needed))
     .catch(() => {})
     .finally(() => (checked = true))
+
+  // Signing in with a passkey asks for no username. The credential says who
+  // it belongs to, which is friendlier than a form and also quieter: a page
+  // that asks for a name first tells anybody who types one whether that
+  // account exists.
+  async function withPasskey() {
+    passkeyBusy = true
+    error = ''
+    try {
+      const { options, challenge } = await api.passkeyLoginBegin()
+      const response = await passkeyGet(options)
+      const user = await api.passkeyLoginFinish(challenge, response)
+      onauthenticated(user)
+    } catch (err) {
+      // Dismissing the system prompt is a choice, not a failure.
+      if (err.name !== 'NotAllowedError') {
+        error = err.hint ? `${err.message} — ${err.hint}` : err.message
+      }
+    } finally {
+      passkeyBusy = false
+    }
+  }
 
   async function submit(event) {
     event.preventDefault()
@@ -170,6 +194,17 @@
               ? 'Create and log in'
               : 'Log in'}
         </button>
+
+        {#if !first && passkeySupported()}
+          <button
+            type="button"
+            class="btn-ghost w-full text-sm"
+            disabled={passkeyBusy}
+            onclick={withPasskey}
+          >
+            {passkeyBusy ? 'Waiting for your device…' : 'Use a passkey instead'}
+          </button>
+        {/if}
       </form>
     {/if}
 

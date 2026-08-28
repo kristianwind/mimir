@@ -21,6 +21,14 @@
   let showMethod = $state(false)
   let open = $state(null)
 
+  // A character whose picture the server could not produce renders without
+  // one rather than as an empty frame.
+  let artless = $state(new Set())
+
+  function noArt(key) {
+    artless = new Set(artless).add(key)
+  }
+
   $effect(() => {
     const id = account.id
     loading = true
@@ -90,12 +98,56 @@
         {/each}
       </ul>
     {/if}
+
+    <!--
+      Why the same set keeps coming up. With the pieces for one arrangement
+      in the bag, every character is told to switch to it — which reads as
+      Mimir believing one set suits everybody, when what it means is that
+      there is nothing to compare it against.
+    -->
+    {#if ranking.setConfigs?.length}
+      <p class="mt-3 text-xs text-muted">
+        Your inventory can assemble {ranking.setConfigs.length}
+        {ranking.setConfigs.length === 1 ? 'set arrangement' : 'set arrangements'}:
+        {ranking.setConfigs.slice(0, 6).join(', ')}{ranking.setConfigs.length > 6
+          ? `, and ${ranking.setConfigs.length - 6} more`
+          : ''}. Everything above is chosen from those — if one keeps winning, it may be
+        that the others are not in the bag yet.
+      </p>
+    {/if}
   </div>
 
   <ol class="space-y-3">
     {#each ranking.characters as c, index (c.character)}
-      <li class="card p-4">
-        <div class="flex flex-wrap items-start gap-4">
+      <li class="card relative overflow-hidden p-4">
+        <!--
+          The same treatment as the roster: the game's own art behind the
+          text, with a scrim that is a hard wall on the left. A ranking is
+          read by scanning names, and a picture is faster to recognise than a
+          key like KaedeharaKazuha.
+        -->
+        {#if !artless.has(c.character)}
+          <img
+            src="/api/art/{c.character}"
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+            onerror={() => noArt(c.character)}
+            class="pointer-events-none absolute inset-y-0 right-0 h-full w-3/4 object-cover object-center"
+          />
+          <!--
+            Opaque at both edges, not just the left. This card carries a name
+            on one side and a score on the other, so the roster's single wall
+            of colour leaves the numbers sitting on top of the picture and
+            unreadable. The picture shows through the middle instead.
+          -->
+          <div
+            class="pointer-events-none absolute inset-0 bg-gradient-to-r
+                   from-surface from-30% via-surface/25 via-55% to-surface to-85%"
+          ></div>
+        {/if}
+
+        <div class="relative flex flex-wrap items-start gap-4">
           <span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent/15 text-sm font-medium">
             {index + 1}
           </span>
@@ -113,11 +165,22 @@
             {/if}
           </div>
 
+          <!--
+            Headroom is the gain from rearranging gear you already own, and
+            the top action is the largest upgrade of any kind. When the
+            largest upgrade *is* the rearrangement they are the same number by
+            construction — so showing both reads as two findings when there is
+            one, and the more useful thing to say is that it costs nothing.
+          -->
           <div class="text-right">
             <p class="text-lg font-medium text-good">+{score(c.topGain)}</p>
             <p class="text-xs text-muted">damage added</p>
-            {#if c.headroom > 0}
-              <p class="mt-1 text-xs text-accent">{pct(c.headroom)} unequipped</p>
+            {#if c.topAction?.kind === 'reequip'}
+              <p class="mt-1 text-xs text-accent">already yours — just re-equip</p>
+            {:else if c.headroom > 0}
+              <p class="mt-1 text-xs text-accent">
+                {pct(c.headroom)} more sitting unequipped
+              </p>
             {/if}
           </div>
         </div>
@@ -125,14 +188,14 @@
         {#if (c.actions ?? []).length > 1}
           <button
             type="button"
-            class="btn-ghost mt-3 w-full text-xs"
+            class="btn-ghost relative mt-3 w-full text-xs backdrop-blur-sm"
             onclick={() => (open = open === c.character ? null : c.character)}
           >
             {open === c.character ? 'Hide' : `Everything for ${c.character} (${c.actions.length})`}
           </button>
         {/if}
         {#if open === c.character}
-          <ul class="mt-3 space-y-2">
+          <ul class="relative mt-3 space-y-2">
             {#each c.actions as a}
               <li class="rounded-xl bg-raised/60 p-3 text-xs">
                 <p class="font-medium">{a.headline}</p>

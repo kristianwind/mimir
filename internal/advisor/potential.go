@@ -472,6 +472,15 @@ type Ranking struct {
 	Caveats []string `json:"caveats"`
 	// Skipped names characters that could not be measured at all.
 	Skipped []string `json:"skipped,omitempty"`
+	// SetConfigs is how many four-piece and two-plus-two arrangements the
+	// inventory can actually field.
+	//
+	// It is here because of what an answer looks like without it. On an
+	// inventory with the pieces for one set, every character is told to
+	// switch to that set, and the page reads as though Mimir believes one
+	// set is best for everybody — when what it is really saying is that the
+	// bag holds no alternative to compare it against.
+	SetConfigs []string `json:"setConfigs,omitempty"`
 }
 
 // Ranked is one character's place in it.
@@ -505,6 +514,14 @@ func AccountPotential(ctx context.Context, reqs []PotentialRequest) (Ranking, er
 			"Each character is measured as if it could take any piece on the account, so two characters' best builds may want the same artifact. The account plan is where that fight gets resolved; this ranking does not resolve it.",
 			"The order is by damage added, not by how far behind a character is — so the same weapon upgrade ranks higher on an already-strong build than on a neglected one. That is what \"most value from the account\" means, but it is not what \"who needs attention\" means: headroom is the column for that.",
 		},
+	}
+
+	// What the bag can actually assemble. Shared across the roster, so it is
+	// worked out once from the first request rather than per character.
+	if len(reqs) > 0 {
+		for _, cfg := range optimizer.EnumerateSetConfigs(reqs[0].Inventory, 12) {
+			out.SetConfigs = append(out.SetConfigs, cfg.String())
+		}
 	}
 
 	// Each character is measured independently — the yardstick is the whole

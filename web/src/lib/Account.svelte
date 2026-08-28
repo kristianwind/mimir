@@ -11,6 +11,7 @@
    */
   import { api } from './api.js'
   import ThemePicker from './ThemePicker.svelte'
+  import Subscription from './Subscription.svelte'
 
   let { me, theme, mode, setTheme } = $props()
 
@@ -104,6 +105,8 @@
   {#if message}
     <p class="card p-4 text-sm text-good">{message}</p>
   {/if}
+
+  <Subscription />
 
   <!-- ------------------------------------------------ second factor -->
   <section class="card p-5">

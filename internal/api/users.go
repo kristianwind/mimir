@@ -32,6 +32,12 @@ type userRecord struct {
 	Accounts int `json:"accounts"`
 	// Sessions is how many active logins they have.
 	Sessions int `json:"sessions"`
+	// Comped is free access, given by an administrator. Deliberately not a
+	// role: somebody given the product for nothing is still a user of it and
+	// not an operator of the machine.
+	Comped bool `json:"comped"`
+	// CompedNote records why, because a year later nobody remembers.
+	CompedNote string `json:"compedNote,omitempty"`
 }
 
 func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
@@ -42,8 +48,11 @@ func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 		SELECT u.id, u.username, COALESCE(u.email, ''), u.role, u.disabled, u.created_at,
 		       (SELECT COUNT(*) FROM accounts a WHERE a.user_id = u.id),
 		       (SELECT COUNT(*) FROM sessions se WHERE se.user_id = u.id
-		          AND se.expires_at > datetime('now'))
-		FROM users u ORDER BY u.created_at`)
+		          AND se.expires_at > datetime('now')),
+		       COALESCE(s.comped, 0), COALESCE(s.comped_note, '')
+		FROM users u
+		LEFT JOIN subscriptions s ON s.user_id = u.id
+		ORDER BY u.created_at`)
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -53,11 +62,13 @@ func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	out := []userRecord{}
 	for rows.Next() {
 		var u userRecord
+		var comped int
 		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Role, &u.Disabled,
-			&u.CreatedAt, &u.Accounts, &u.Sessions); err != nil {
+			&u.CreatedAt, &u.Accounts, &u.Sessions, &comped, &u.CompedNote); err != nil {
 			writeDomainError(w, err)
 			return
 		}
+		u.Comped = comped == 1
 		out = append(out, u)
 	}
 	writeJSON(w, http.StatusOK, out)

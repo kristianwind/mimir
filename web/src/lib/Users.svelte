@@ -111,6 +111,27 @@
               >
                 {user.disabled ? 'Enable' : 'Disable'}
               </button>
+              <!--
+                Free access, and deliberately its own button rather than a
+                role. Somebody given the product for nothing is still a user
+                of it — making them an administrator to do it would hand them
+                the controls for the machine as well.
+              -->
+              <button
+                class="btn-ghost text-xs {user.comped ? 'text-good' : ''}"
+                disabled={busy === `comp-${user.id}`}
+                title={user.compedNote}
+                onclick={() => {
+                  if (user.comped) {
+                    run(`comp-${user.id}`, () => api.comp(user.id, false, ''))
+                    return
+                  }
+                  const note = prompt(`Why is ${user.username} getting free access?`, 'tester')
+                  if (note !== null) run(`comp-${user.id}`, () => api.comp(user.id, true, note))
+                }}
+              >
+                {user.comped ? 'Free access ✓' : 'Give free access'}
+              </button>
               <button
                 class="btn-ghost text-xs text-bad"
                 disabled={busy === `del-${user.id}`}

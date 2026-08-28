@@ -10,8 +10,9 @@
    * was nowhere else to put them.
    */
   import { api } from './api.js'
+  import ThemePicker from './ThemePicker.svelte'
 
-  let { me } = $props()
+  let { me, theme, mode, setTheme } = $props()
 
   let error = $state('')
   let message = $state('')
@@ -218,6 +219,18 @@
       </button>
     {/if}
   </section>
+
+  <!--
+    On a wide screen this also lives in the header. On a phone the header is
+    for the page you are on, so this is where it is.
+  -->
+  {#if setTheme}
+    <section class="card p-5 sm:hidden">
+      <h2 class="mb-1 font-medium">Appearance</h2>
+      <p class="mb-4 text-xs text-muted">Follows your account to any device you sign in on.</p>
+      <ThemePicker {theme} {mode} {setTheme} />
+    </section>
+  {/if}
 
   <!-- ------------------------------------------------------ password -->
   <section class="card p-5">

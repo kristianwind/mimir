@@ -36,8 +36,8 @@
     },
     { key: 'artifacts', label: 'Artifacts', icon: '✦', hint: 'The whole inventory' },
     { key: 'accounts', label: 'Accounts', icon: '⌂', hint: 'UID and import' },
-    { key: 'system', label: 'System', icon: '⚙', hint: 'Version, updates and beacon' },
-    { key: 'users', label: 'Users', icon: '☺', hint: 'Accounts, roles and passwords' },
+    { key: 'system', label: 'System', icon: '⚙', hint: 'Version, updates and beacon', admin: true },
+    { key: 'users', label: 'Users', icon: '☺', hint: 'Accounts, roles and passwords', admin: true },
   ]
 
   // The AI layer is optional, so its page only exists when a model does.
@@ -45,7 +45,25 @@
   let ai = $state(false)
   kvasirStatus().then((s) => (ai = !!s?.enabled))
 
-  const NAV = $derived(PAGES.filter((item) => !item.ai || ai))
+  // Two axes decide what is on the list. The AI page exists only when a
+  // model does, and the two instance-operation pages exist only for an
+  // administrator — everything else is the product and belongs to whoever
+  // is signed in.
+  //
+  // The server has always refused these to a normal user; the nav offered
+  // them anyway, so the refusal arrived as a page full of errors instead of
+  // as an absence. Someone given an account to use the thing should not be
+  // shown the controls for the machine it runs on.
+  const NAV = $derived(
+    PAGES.filter((item) => (!item.ai || ai) && (!item.admin || me?.role === 'admin')),
+  )
+
+  // A view can survive a change of role — a demotion, or a session restored
+  // from a link — so the shell falls back rather than rendering a page the
+  // reader is not allowed to see.
+  $effect(() => {
+    if (!NAV.some((item) => item.key === view)) view = 'plan'
+  })
 
   // The manual opens beside the page, on the section for whatever view is
   // showing, and leaves the page usable underneath.

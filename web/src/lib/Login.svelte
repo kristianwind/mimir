@@ -6,6 +6,11 @@
 
   let username = $state('')
   let password = $state('')
+  // Only asked for once the server says this account has a second factor.
+  // Asking everybody up front would tell anyone who can type a username
+  // which accounts have one.
+  let code = $state('')
+  let needsCode = $state(false)
   let confirm = $state('')
   let error = $state('')
   let busy = $state(false)
@@ -42,10 +47,22 @@
     try {
       const user = first
         ? await api.bootstrap(username, password)
-        : await api.login(username, password)
+        : await api.login(username, password, code)
       onauthenticated(user)
     } catch (err) {
       error = err.hint ? `${err.message} — ${err.hint}` : err.message
+      // The password was right and is not enough. The form grows a field
+      // rather than starting over — retyping a correct password to satisfy
+      // a second step is a punishment for having security switched on.
+      //
+      // The first time, the field appearing IS the message, so nothing is
+      // printed in red: being asked for a code is not a mistake the reader
+      // made. A second refusal is, and says so.
+      if (err.secondFactor) {
+        if (!needsCode) error = ''
+        needsCode = true
+        code = ''
+      }
       // Somebody else got there first; fall back to the login form rather
       // than leaving a create form that can no longer work.
       if (err.status === 409) first = false
@@ -118,6 +135,23 @@
               autocomplete="new-password"
               required
             />
+          </div>
+        {/if}
+
+        {#if needsCode}
+          <div>
+            <label class="label" for="code">Code from your authenticator app</label>
+            <input
+              id="code"
+              class="field font-mono tracking-widest"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              bind:value={code}
+              required
+            />
+            <p class="mt-1.5 text-xs text-muted">
+              Or one of your recovery codes, if you do not have your phone.
+            </p>
           </div>
         {/if}
 

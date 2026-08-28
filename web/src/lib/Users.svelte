@@ -13,10 +13,6 @@
   let password = $state('')
   let role = $state('user')
 
-  // Own password
-  let current = $state('')
-  let next = $state('')
-
   async function load() {
     error = ''
     try {
@@ -167,33 +163,4 @@
     </div>
   </section>
 
-  <section class="card p-5">
-    <h2 class="mb-1 font-medium">Change your own password</h2>
-    <p class="mb-4 text-xs text-muted">
-      The current password is required — otherwise a borrowed session could be made permanent. Your
-      other logins are signed out.
-    </p>
-    <div class="flex flex-wrap items-end gap-3">
-      <div class="min-w-40 flex-1">
-        <label class="label" for="cur-pass">Current</label>
-        <input id="cur-pass" class="field" type="password" bind:value={current} autocomplete="current-password" />
-      </div>
-      <div class="min-w-40 flex-1">
-        <label class="label" for="next-pass">New</label>
-        <input id="next-pass" class="field" type="password" bind:value={next} autocomplete="new-password" />
-      </div>
-      <button
-        class="btn-primary"
-        disabled={busy === 'pw' || !current || !next}
-        onclick={() =>
-          run('pw', () => api.changePassword(current, next), () => {
-            current = ''
-            next = ''
-            return 'The password has been changed.'
-          })}
-      >
-        {busy === 'pw' ? 'Changing…' : 'Change'}
-      </button>
-    </div>
-  </section>
 </div>

@@ -37,7 +37,7 @@
     },
     { key: 'artifacts', label: 'Artifacts', icon: '✦', hint: 'The whole inventory' },
     { key: 'accounts', label: 'Accounts', icon: '⌂', hint: 'UID and import' },
-    { key: 'account', label: 'Account', icon: '☖', hint: 'Your password and two-factor' },
+    { key: 'account', label: 'Settings', icon: '☖', hint: 'Your password, two-factor and appearance' },
     { key: 'system', label: 'System', icon: '⚙', hint: 'Version, updates and beacon', admin: true },
     { key: 'users', label: 'Users', icon: '☺', hint: 'Accounts, roles and passwords', admin: true },
   ]
@@ -148,11 +148,24 @@
         >
           {manual ? 'Close manual' : 'Manual'}
         </button>
-        <ThemePicker {theme} {mode} {setTheme} />
+        <!--
+          Ten controls for a preference somebody sets once. On a phone they
+          filled the space above the content, so on a narrow screen they move
+          to the Account page and the header keeps only what is about the
+          page you are on.
+        -->
+        <div class="hidden sm:flex">
+          <ThemePicker {theme} {mode} {setTheme} />
+        </div>
       </div>
     </header>
 
-    <nav class="mb-6 flex gap-1 overflow-x-auto md:hidden">
+    <!--
+      Wrapped rather than scrolled sideways. A horizontal scroll put the last
+      entries off the edge of a phone with nothing to say they were there —
+      Compare was cut to "Co".
+    -->
+    <nav class="mb-6 flex flex-wrap gap-1 md:hidden">
       {#each NAV as item (item.key)}
         <button
           type="button"
@@ -180,7 +193,7 @@
     {/if}
 
     {#if view === 'account'}
-      <Account {me} />
+      <Account {me} {theme} {mode} {setTheme} />
     {:else if view === 'system'}
       <System user={me} {hosted} />
     {:else if view === 'users'}

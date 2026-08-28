@@ -150,7 +150,27 @@ export const MANUAL = [
         terms: [
           ['Enka', 'The eight characters in your showcase, live. Needs Show Character Details switched on in the game under Profile → Edit Profile.'],
           ['.good file', 'The whole inventory, from Genshin Optimizer or Inventory Kamera. This is the one the plan wants: it is the only source that includes artifacts you are not wearing.'],
+          ['Not the same as Settings', 'This page is your Genshin accounts. Settings is your Mimir login — password and two-factor.'],
         ],
+      },
+    ],
+  },
+  {
+    id: 'account',
+    title: 'Settings',
+    blocks: [
+      'Your own account: password, two-factor authentication, and which colours the app uses. Not to be confused with Accounts, which is your Genshin UIDs.',
+      {
+        terms: [
+          ['Two-factor authentication', 'A code from an app on your phone as well as your password, so a stolen password is not enough on its own. Nothing is protected until you have typed one code back and proved it works — stopping halfway leaves the account exactly as it was.'],
+          ['Recovery codes', 'Ten single-use codes, shown once when you switch two-factor on. They are stored hashed, so not even the server can print them again. Keep them somewhere that is not the phone they exist to replace.'],
+        ],
+      },
+      {
+        note: 'Turning two-factor off, and printing a new set of recovery codes, both ask for your password again. A session only proves somebody signed in once, and surviving a stolen session is the whole point.',
+      },
+      {
+        note: 'Locked out with no codes left? Whoever runs the server can clear the second factor from the machine itself. That removes it so you can enrol again — it is a way back to a protected account, not to an unprotected one.',
       },
     ],
   },

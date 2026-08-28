@@ -39,6 +39,9 @@ type Server struct {
 
 	// Version is the running build, "dev" when unstamped.
 	Version string
+	// Passkeys verifies WebAuthn credentials. Unavailable, and saying so,
+	// where no origin is configured.
+	Passkeys *auth.Passkeys
 	// Billing reads and writes what a user is entitled to. Present on every
 	// install; on a self-hosted one it always answers yes.
 	Billing *billing.Store
@@ -88,6 +91,11 @@ func (s *Server) Router() http.Handler {
 		// whole of this endpoint's security. See internal/billing.
 		r.Post("/stripe/webhook", s.handleStripeWebhook)
 
+		// Signing in with a passkey needs no session and no username: the
+		// credential says who it belongs to.
+		r.Post("/auth/passkey/begin", s.handlePasskeyLoginBegin)
+		r.Post("/auth/passkey/finish", s.handlePasskeyLoginFinish)
+
 		r.Post("/auth/login", s.handleLogin)
 		r.Post("/auth/logout", s.handleLogout)
 		r.Get("/healthz", s.handleHealth)
@@ -114,6 +122,14 @@ func (s *Server) Router() http.Handler {
 			// The second factor. Enrolling is an ordinary action; removing
 			// it and reprinting the recovery codes are not, and those two
 			// ask for the password again inside the handler.
+			r.Route("/passkeys", func(r chi.Router) {
+				r.Get("/", s.handlePasskeyList)
+				r.Post("/begin", s.handlePasskeyRegisterBegin)
+				r.Post("/finish", s.handlePasskeyRegisterFinish)
+				// Removing a way in asks for the password again.
+				r.Post("/{id}/delete", s.handlePasskeyDelete)
+			})
+
 			r.Route("/2fa", func(r chi.Router) {
 				r.Get("/", s.handleTwoFactorStatus)
 				r.Post("/begin", s.handleTwoFactorBegin)

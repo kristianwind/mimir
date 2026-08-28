@@ -149,6 +149,46 @@ CREATE TABLE IF NOT EXISTS user_totp (
 -- Single-use codes for when the phone is lost. Stored as SHA-256 rather than
 -- argon2: they are generated with 80 bits of entropy, so there is no
 -- dictionary to attack and nothing for a slow hash to buy.
+-- Passkeys. A credential held by a phone, a laptop's secure enclave or a
+-- hardware key, which signs a challenge instead of a password being typed.
+--
+-- public_key is exactly that — public — so unlike the TOTP secret there is
+-- nothing here to encrypt. A stolen database gives an attacker the ability to
+-- verify signatures, not to make them.
+--
+-- sign_count is the authenticator's own counter. A credential that presents a
+-- counter lower than the one last seen has been cloned, which is the one
+-- thing this table exists to be able to notice.
+CREATE TABLE IF NOT EXISTS user_passkeys (
+	id            INTEGER PRIMARY KEY AUTOINCREMENT,
+	user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	credential_id BLOB NOT NULL UNIQUE,
+	public_key    BLOB NOT NULL,
+	attestation   TEXT NOT NULL DEFAULT '',
+	transports    TEXT NOT NULL DEFAULT '',
+	sign_count    INTEGER NOT NULL DEFAULT 0,
+	backup_eligible INTEGER NOT NULL DEFAULT 0,
+	backed_up     INTEGER NOT NULL DEFAULT 0,
+	name          TEXT NOT NULL DEFAULT '',
+	created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+	last_used_at  TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_passkeys_user ON user_passkeys(user_id);
+
+-- The challenge issued at the start of a registration or a sign-in, held
+-- until the browser comes back with a signature over it.
+--
+-- Server-side rather than in a cookie, because the whole point of a challenge
+-- is that the server chose it and remembers choosing it. They are short-lived
+-- and swept on use.
+CREATE TABLE IF NOT EXISTS webauthn_challenges (
+	id         TEXT PRIMARY KEY,
+	user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
+	session    BLOB NOT NULL,
+	expires_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS user_recovery_codes (
 	id        INTEGER PRIMARY KEY AUTOINCREMENT,
 	user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

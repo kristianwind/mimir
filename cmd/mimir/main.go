@@ -135,6 +135,16 @@ func serve(args []string) error {
 	}
 	twoFactor := &auth.TwoFactor{DB: conn, Vault: vault, Issuer: "Mimir"}
 
+	// Passkeys are bound to the host in BaseURL, so this is the one place
+	// that decides which domain a credential will work at. Getting it wrong
+	// does not fail loudly — the browser simply declines — which is why it
+	// is derived from the address the site is actually served on rather than
+	// configured separately.
+	passkeys, err := auth.NewPasskeys(conn, cfg.BaseURL, "Mimir")
+	if err != nil {
+		return err
+	}
+
 	srv := &api.Server{
 		Config:  cfg,
 		DB:      conn,
@@ -147,6 +157,7 @@ func serve(args []string) error {
 			BaseURL:       cfg.BaseURL,
 		},
 		Auth:     &auth.Store{DB: conn, Secure: cfg.Secure, TwoFactor: twoFactor},
+		Passkeys: passkeys,
 		Enka:     enka.NewCached(cfg.UserAgent),
 		GameData: gd,
 		Log:      log,

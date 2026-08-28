@@ -135,6 +135,15 @@ export const api = {
   deleteUser: (id) => request('DELETE', `/users/${id}`),
   changePassword: (current, next) => request('PUT', '/me/password', { current, new: next }),
 
+  passkeys: () => request('GET', '/passkeys'),
+  passkeyRegisterBegin: () => request('POST', '/passkeys/begin'),
+  passkeyRegisterFinish: (challenge, name, response) =>
+    request('POST', '/passkeys/finish', { challenge, name, response }),
+  passkeyDelete: (id, password) => request('POST', `/passkeys/${id}/delete`, { password }),
+  passkeyLoginBegin: () => request('POST', '/auth/passkey/begin'),
+  passkeyLoginFinish: (challenge, response) =>
+    request('POST', '/auth/passkey/finish', { challenge, response }),
+
   billing: () => request('GET', '/billing'),
   checkout: (plan) => request('POST', '/billing/checkout', { plan }),
   billingPortal: () => request('POST', '/billing/portal'),

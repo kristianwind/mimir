@@ -159,15 +159,19 @@ export const MANUAL = [
     id: 'account',
     title: 'Settings',
     blocks: [
-      'Your own account: password, two-factor authentication, and which colours the app uses. Not to be confused with Accounts, which is your Genshin UIDs.',
+      'Your own account: how you sign in, what you pay, and which colours the app uses. Not to be confused with Accounts, which is your Genshin UIDs.',
       {
         terms: [
+          ['Passkeys', 'Your fingerprint, face or device PIN instead of typing anything. A passkey signs in on its own — no password and no code — because the device already checked it was you before it would sign. It will only answer the real address of this site, so a convincing copy of the sign-in page cannot collect it, which is the one thing care while typing cannot promise.'],
           ['Two-factor authentication', 'A code from an app on your phone as well as your password, so a stolen password is not enough on its own. Nothing is protected until you have typed one code back and proved it works — stopping halfway leaves the account exactly as it was.'],
           ['Recovery codes', 'Ten single-use codes, shown once when you switch two-factor on. They are stored hashed, so not even the server can print them again. Keep them somewhere that is not the phone they exist to replace.'],
         ],
       },
       {
         note: 'Turning two-factor off, and printing a new set of recovery codes, both ask for your password again. A session only proves somebody signed in once, and surviving a stolen session is the whole point.',
+      },
+      {
+        note: 'A passkey and an authenticator code are not a ladder to climb — either is enough on its own. Having both simply means losing one device does not lock you out.',
       },
       {
         note: 'Locked out with no codes left? Whoever runs the server can clear the second factor from the machine itself. That removes it so you can enrol again — it is a way back to a protected account, not to an unprotected one.',

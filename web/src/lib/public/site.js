@@ -104,7 +104,11 @@ export const LEGAL = {
     sections: [
       [
         'Who you are contracting with',
-        `Hosted Mimir at ${DOMAIN} is operated by ${SELLER.name}, ${SELLER.address}, ${SELLER.vat}. Questions and notices go to ${SELLER.email}.`,
+        `Hosted Mimir at ${DOMAIN} is operated by ${SELLER.name}, ${SELLER.address}, ${SELLER.vat}. Questions about the service, your account or your data go to ${SELLER.email}.`,
+      ],
+      [
+        'Who sells it to you',
+        'Payment is sold and processed by Stripe, who act as the merchant of record for this subscription. That means Stripe is the seller for the purposes of the transaction: they take the payment, they are responsible for charging and remitting any sales tax or VAT that applies where you live, and their name may appear on your bank statement and on your receipt. The service itself is provided to you by the operator named above, under these terms.',
       ],
       [
         'What the service is',
@@ -124,7 +128,7 @@ export const LEGAL = {
       ],
       [
         'Payment and renewal',
-        `Subscriptions renew automatically at ${PRICE.monthly} monthly or ${PRICE.yearly} yearly until cancelled. Payment is handled by Stripe; card details are never seen by or stored on this service. Prices are exclusive of any VAT that applies to your location, which is calculated at checkout.`,
+        `Subscriptions renew automatically at ${PRICE.monthly} monthly or ${PRICE.yearly} yearly until cancelled. Card details are never seen by or stored on this service; Stripe holds them. Prices are shown exclusive of any sales tax or VAT that applies where you live, which Stripe calculates at checkout and adds to the total shown before you pay.`,
       ],
       [
         'Cancellation',
@@ -159,7 +163,7 @@ export const LEGAL = {
       ],
       [
         'Payments',
-        'Stripe processes payments and holds the card details; this service never receives them. Stripe is a data processor for that purpose and has its own privacy terms.',
+        'Stripe sells and processes the subscription as merchant of record, and holds the card details; this service never receives them. For payment data Stripe is a controller in their own right rather than merely a processor acting on instructions, and their own privacy terms govern what they hold. What this service receives back from them is your subscription status and nothing else — no card number, no billing address.',
       ],
       [
         'Logs',
@@ -185,7 +189,11 @@ export const LEGAL = {
         'As a consumer in the EU you have 14 days to withdraw from a purchase. Because this is a digital service delivered immediately, you will be asked to agree at checkout that delivery starts at once and that you thereby lose that right. If you would rather keep it, do not tick the box — the service will begin after 14 days instead.',
       ],
       [
-        'Refunds beyond that',
+        'Who to ask for a refund',
+        `Write to ${SELLER.email} first. Because Stripe is the merchant of record they are the party who actually issues a refund, but the operator arranges it — you do not have to work out who to chase, and you should not have to raise a dispute with your bank to be heard.`,
+      ],
+      [
+        'Refunds beyond the withdrawal period',
         'If something is broken, or you were charged in error, write and it will be put right. This is a small service and disputes are handled by a person reading the message, not by a policy.',
       ],
       [

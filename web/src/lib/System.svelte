@@ -2,7 +2,7 @@
   import { api } from './api.js'
   import BuyMeACoffee from './BuyMeACoffee.svelte'
 
-  let { user } = $props()
+  let { user, hosted = false } = $props()
 
   // Syncing, updating and the beacon are administrator actions. The page
   // still shows them, because knowing when the game data was last synced is
@@ -425,6 +425,13 @@
       has just installed reads as adware. Asking once, quietly, at the bottom
       of the page nobody visits by accident is the whole of it.
     -->
+    <!--
+      Only where it is true. On the hosted instance people are already paying
+      a subscription, so asking them for a coffee on top is asking twice for
+      the same thing — and the sentence below, which says there is no paid
+      tier, would be a lie on the one install where there is.
+    -->
+    {#if !hosted}
     <section class="card p-5">
       <h2 class="font-medium">Support Mimir</h2>
       <p class="mt-2 max-w-prose text-sm text-muted">
@@ -437,5 +444,6 @@
         <BuyMeACoffee variant="quiet" label="Buy me a coffee ↗" />
       </div>
     </section>
+    {/if}
   </div>
 {/if}

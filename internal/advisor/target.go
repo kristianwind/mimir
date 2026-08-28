@@ -60,6 +60,11 @@ type TargetSet struct {
 	Behind float64 `json:"behind"`
 	// Owned says whether the account can already assemble this.
 	Owned bool `json:"owned"`
+	// Modelled says whether this set's four-piece bonus reaches the engine.
+	// Where it does not, Score is the arrangement's stats and nothing else,
+	// and the entry is ranked on a strictly smaller part of the truth than
+	// the entries above and below it.
+	Modelled bool `json:"modelled"`
 }
 
 // TargetRequest is one character to describe a target for.
@@ -104,6 +109,19 @@ func BuildTarget(ctx context.Context, req TargetRequest) (Target, error) {
 			"The substats are the same invented allocation on every candidate, so the ranking is fair between them. They are not a claim about any artifact you will actually roll.",
 			"Weapons are not ranked. Most of what makes a weapon good is its passive, and the passives are mined as wording rather than as numbers — four of the two hundred and forty-seven are modelled. A ranking on base attack and substat alone would put a four-star above a five-star and look like advice.",
 		},
+	}
+
+	// The same admission the weapons get, for the same reason. A four-piece
+	// bonus is nearly always conditional prose, and prose is mined as text
+	// rather than as numbers, so most sets are scored on their stats alone.
+	// An entry with no modelled four-piece is competing on a strictly
+	// smaller part of the truth than one that has it, and the ranking cannot
+	// be read without knowing which is which.
+	if modelled, total := fourPieceCoverage(snap); modelled < total {
+		out.Caveats = append(out.Caveats, fmt.Sprintf(
+			"Only %d of the %d artifact sets have a four-piece bonus with numbers behind it. "+
+				"The rest are scored on their stats alone, so they are ranked on less than the "+
+				"whole truth — each entry says which it is.", modelled, total))
 	}
 
 	// The order matters and it is not arbitrary. Main stats are chosen
@@ -416,6 +434,7 @@ func rankSets(
 		}
 		out = append(out, TargetSet{
 			Config: key, Score: score, Owned: req.OwnedSets[key],
+			Modelled: req.Snapshot.FourPieceModelled(key),
 		})
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Score > out[j].Score })
@@ -489,4 +508,16 @@ func fillBehind(n int, score func(int) float64, set func(int, float64)) {
 	for i := 0; i < n; i++ {
 		set(i, 1-score(i)/best)
 	}
+}
+
+// fourPieceCoverage counts how many artifact sets have a four-piece bonus the
+// engine can score, against how many there are.
+func fourPieceCoverage(snap *gamedata.Snapshot) (modelled, total int) {
+	for key := range snap.ArtifactSets {
+		total++
+		if snap.FourPieceModelled(key) {
+			modelled++
+		}
+	}
+	return modelled, total
 }

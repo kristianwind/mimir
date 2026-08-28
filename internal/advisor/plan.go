@@ -221,15 +221,33 @@ func reequipCandidate(
 			"pieces": res.Best.Pieces,
 		},
 	}
+	// Caveats accumulate. An earlier version assigned each one to Note in
+	// turn, so a capped search that also stole pieces reported only the
+	// theft — the two are independent facts and dropping either is a lie of
+	// omission.
+	var notes []string
+
+	// A four-piece the engine cannot score is not a four-piece. Only seven
+	// of the sixty-three sets have numbers behind theirs; for the rest this
+	// arrangement was chosen on its substats and main stats alone, and the
+	// set name on it is a label rather than a reason.
+	if four := res.BestConfig.Four; four != "" && !req.Snapshot.FourPieceModelled(four) {
+		notes = append(notes, fmt.Sprintf(
+			"%s has no four-piece bonus with numbers behind it, so this was chosen "+
+				"on its stats alone — the set bonus is not in the figure", four))
+		action.Detail["fourPieceModelled"] = false
+	}
+
 	// A capped search found the best it could reach, not the best that
 	// exists. Saying so is the difference between a result and a claim.
 	if len(res.Capped) > 0 {
-		action.Note = "the search was capped, so a better arrangement may exist"
+		notes = append(notes, "the search was capped, so a better arrangement may exist")
 	}
 	if taken := takenFrom(res.Best.Pieces, req.Goal.CharacterKey); len(taken) > 0 {
-		action.Note = fmt.Sprintf("Takes pieces from %s", joinNames(taken))
+		notes = append(notes, fmt.Sprintf("takes pieces from %s", joinNames(taken)))
 		action.Detail["takenFrom"] = taken
 	}
+	action.Note = strings.Join(notes, "; ")
 	return &action, nil
 }
 
@@ -606,6 +624,7 @@ func farmCandidates(ctx context.Context, req Request, eval Evaluator, base State
 
 		action.GainPct = est.MeanGain
 		action.Detail = map[string]any{
+			"domain":              domain.Name,
 			"runs":                runs,
 			"pieces":              est.Pieces,
 			"medianGain":          est.MedianGain,
@@ -617,7 +636,74 @@ func farmCandidates(ctx context.Context, req Request, eval Evaluator, base State
 		out = append(out, action)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].GainPct > out[j].GainPct })
-	return out, ""
+	return collapseTiedFarms(out, req.Snapshot), ""
+}
+
+// collapseTiedFarms folds farming candidates that scored identically into one
+// action naming every domain that tied.
+//
+// Domains tie when nothing distinguishes their sets to the engine, which is
+// the usual case: only seven of the sixty-three artifact sets have a
+// four-piece bonus with numbers behind it, so for the rest a domain's
+// identity contributes nothing and the simulation is left comparing substats
+// it drew from the same seed. Printing that as six separate recommendations
+// is six times the confidence and none of the information — it reads as a
+// ranking of places to go when Mimir cannot tell them apart.
+//
+// The tie is exact rather than approximate on purpose. Two domains that
+// genuinely differ never land on the same float; two that the engine cannot
+// distinguish always do.
+func collapseTiedFarms(actions []Action, snap *gamedata.Snapshot) []Action {
+	var out []Action
+	for i := 0; i < len(actions); {
+		j := i + 1
+		for j < len(actions) && actions[j].GainPct == actions[i].GainPct {
+			j++
+		}
+		if j-i == 1 {
+			out = append(out, actions[i])
+			i = j
+			continue
+		}
+
+		tied := actions[i:j]
+		names := make([]string, 0, len(tied))
+		var unmodelled []string
+		seen := map[string]bool{}
+		for _, a := range tied {
+			name, _ := a.Detail["domain"].(string)
+			names = append(names, name)
+			sets, _ := a.Detail["sets"].([]string)
+			for _, key := range sets {
+				if !seen[key] && !snap.FourPieceModelled(key) {
+					seen[key] = true
+					unmodelled = append(unmodelled, key)
+				}
+			}
+		}
+		sort.Strings(unmodelled)
+
+		merged := tied[0]
+		merged.Subject = strings.Join(names, ",")
+		merged.Headline = fmt.Sprintf("Farm any of %d domains (%d 5★ pieces)", len(tied), farmPieceHorizon)
+		merged.Note = fmt.Sprintf("%s scored the same, so Mimir cannot tell them apart.", joinNames(names))
+		if len(unmodelled) > 0 {
+			merged.Note += fmt.Sprintf(" None of %s has a four-piece bonus with numbers behind it, "+
+				"so only the substats were compared.", joinNames(unmodelled))
+		}
+		merged.Detail = map[string]any{
+			"tied":                names,
+			"unmodelledSets":      unmodelled,
+			"pieces":              merged.Detail["pieces"],
+			"medianGain":          merged.Detail["medianGain"],
+			"p10Gain":             merged.Detail["p10Gain"],
+			"p90Gain":             merged.Detail["p90Gain"],
+			"noImprovementChance": merged.Detail["noImprovementChance"],
+		}
+		out = append(out, merged)
+		i = j
+	}
+	return out
 }
 
 // takenFrom lists the other characters a build would strip artifacts from.

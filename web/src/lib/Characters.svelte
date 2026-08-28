@@ -118,6 +118,13 @@
                     <li class="flex items-baseline justify-between gap-2">
                       <span class:text-muted={!set.owned}>
                         4pc {set.config}{#if set.owned}<span class="text-good"> · you have it</span
+                          >{/if}{#if !set.modelled}<span
+                            class="text-warn"
+                            title="This set's four-piece bonus is conditional wording rather than
+                                   numbers, so it is not in the score. The entry was ranked on its
+                                   stats alone."
+                          >
+                            · stats only</span
                           >{/if}
                       </span>
                       <span class="shrink-0 text-muted">

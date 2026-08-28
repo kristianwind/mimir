@@ -13,6 +13,7 @@
    * work on.
    */
   import { api } from './api.js'
+  import CharacterArt from './CharacterArt.svelte'
 
   let { account } = $props()
 
@@ -111,8 +112,10 @@
 
   <ol class="space-y-3">
     {#each result.characters as c (c.character)}
-      <li class="card p-4">
-        <div class="flex flex-wrap items-start gap-4">
+      <li class="card relative overflow-hidden p-4">
+        <CharacterArt character={c.character} scrim="both" />
+
+        <div class="relative flex flex-wrap items-start gap-4">
           <div class="min-w-48 flex-1">
             <p class="font-medium">{c.character}</p>
             <p class="mt-0.5 text-xs text-muted">

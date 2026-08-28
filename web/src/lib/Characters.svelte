@@ -1,6 +1,7 @@
 <script>
   import { api } from './api.js'
   import Kvasir from './Kvasir.svelte'
+  import CharacterArt from './CharacterArt.svelte'
 
   let { account } = $props()
 
@@ -16,11 +17,6 @@
   // Characters whose picture the server could not produce — a Traveler, a
   // snapshot mined before the art was carried. The card then renders as it
   // always did rather than as an empty frame.
-  let artless = $state(new Set())
-
-  function noArt(key) {
-    artless = new Set(artless).add(key)
-  }
 
   // What the character should aim for, computed rather than looked up. One at
   // a time and only when asked: it searches every farmable set against every
@@ -71,33 +67,7 @@
   <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
     {#each characters as character (character.id)}
       <article class="card relative overflow-hidden p-4">
-        <!--
-          The game's own art, behind the text rather than beside it. An <img>
-          rather than a CSS background so a missing picture is an event the
-          card can react to; a background-image fails silently and leaves a
-          hole. The scrim is what keeps the numbers legible over it, and it is
-          built from the surface colour so it works in both modes.
-        -->
-        {#if !artless.has(character.key)}
-          <img
-            src="/api/art/{character.key}"
-            alt=""
-            aria-hidden="true"
-            loading="lazy"
-            onerror={() => noArt(character.key)}
-            class="pointer-events-none absolute inset-y-0 right-0 h-full w-3/4 object-cover object-center"
-          />
-          <!--
-            Opaque under the text, gone by the right edge. The picture is the
-            point, but a name and three talent levels that cannot be read are
-            not a card — so the scrim is a hard wall on the left rather than a
-            wash over everything.
-          -->
-          <div
-            class="pointer-events-none absolute inset-0
-                   bg-gradient-to-r from-surface from-30% via-surface/80 to-transparent"
-          ></div>
-        {/if}
+        <CharacterArt character={character.key} />
 
         <div class="relative">
           <div class="flex items-baseline justify-between gap-2">

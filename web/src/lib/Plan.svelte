@@ -1,6 +1,7 @@
 <script>
   import { api } from './api.js'
   import Kvasir from './Kvasir.svelte'
+  import CharacterArt from './CharacterArt.svelte'
 
   let { account, ongotogoals } = $props()
 
@@ -113,8 +114,15 @@
 
     <ol class="space-y-3">
       {#each shown as action, index (action.goal + action.kind + action.subject + index)}
-        <li class="card p-4 {action.blockedBy ? 'opacity-70' : ''}">
-          <div class="flex flex-wrap items-start gap-4">
+        <li class="card relative overflow-hidden p-4 {action.blockedBy ? 'opacity-70' : ''}">
+          <!--
+            The goal's character, not the action's subject: a swap that takes
+            pieces from Xiangling is still Arlecchino's row, and picturing the
+            character being robbed would say the opposite of what it means.
+          -->
+          <CharacterArt character={action.goal} scrim="both" />
+
+          <div class="relative flex flex-wrap items-start gap-4">
             <span
               class="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-sm font-medium
                      {action.blockedBy ? 'bg-raised text-muted' : action.free ? 'bg-good/20 text-good' : 'bg-accent/15'}"

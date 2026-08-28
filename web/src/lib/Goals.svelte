@@ -1,6 +1,7 @@
 <script>
   import { api } from './api.js'
   import Kvasir from './Kvasir.svelte'
+  import CharacterArt from './CharacterArt.svelte'
 
   let { account } = $props()
 
@@ -265,16 +266,20 @@
     {#if goals.length}
       <div class="space-y-3">
         {#each goals as goal (goal.characterKey)}
-          <div class="card flex flex-wrap items-center gap-4 p-4">
-            <div class="min-w-40 flex-1">
+          <div class="card relative flex flex-wrap items-center gap-4 overflow-hidden p-4">
+            <CharacterArt character={goal.characterKey} scrim="both" />
+
+            <div class="relative min-w-40 flex-1">
               <p class="font-medium">{goal.characterKey}</p>
               <p class="text-xs text-muted">
                 {goal.rotation?.steps?.reduce((n, s) => n + (s.hits ?? 1), 0) ?? 0} attacks over
                 {goal.rotation?.duration ?? 0} sec. · priority {goal.priority}
               </p>
             </div>
-            <button class="btn-ghost" onclick={() => edit(goal.characterKey)}>Edit</button>
-            <button class="btn-ghost" onclick={() => remove(goal.characterKey)}>Delete</button>
+            <button class="btn-ghost relative" onclick={() => edit(goal.characterKey)}>Edit</button>
+            <button class="btn-ghost relative" onclick={() => remove(goal.characterKey)}>
+              Delete
+            </button>
           </div>
         {/each}
       </div>

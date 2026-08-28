@@ -10,6 +10,7 @@
    */
   import { api } from './api.js'
   import Kvasir from './Kvasir.svelte'
+  import CharacterArt from './CharacterArt.svelte'
 
   let { account, ongotogoals } = $props()
 
@@ -23,11 +24,6 @@
 
   // A character whose picture the server could not produce renders without
   // one rather than as an empty frame.
-  let artless = $state(new Set())
-
-  function noArt(key) {
-    artless = new Set(artless).add(key)
-  }
 
   $effect(() => {
     const id = account.id
@@ -120,32 +116,7 @@
   <ol class="space-y-3">
     {#each ranking.characters as c, index (c.character)}
       <li class="card relative overflow-hidden p-4">
-        <!--
-          The same treatment as the roster: the game's own art behind the
-          text, with a scrim that is a hard wall on the left. A ranking is
-          read by scanning names, and a picture is faster to recognise than a
-          key like KaedeharaKazuha.
-        -->
-        {#if !artless.has(c.character)}
-          <img
-            src="/api/art/{c.character}"
-            alt=""
-            aria-hidden="true"
-            loading="lazy"
-            onerror={() => noArt(c.character)}
-            class="pointer-events-none absolute inset-y-0 right-0 h-full w-3/4 object-cover object-center"
-          />
-          <!--
-            Opaque at both edges, not just the left. This card carries a name
-            on one side and a score on the other, so the roster's single wall
-            of colour leaves the numbers sitting on top of the picture and
-            unreadable. The picture shows through the middle instead.
-          -->
-          <div
-            class="pointer-events-none absolute inset-0 bg-gradient-to-r
-                   from-surface from-30% via-surface/25 via-55% to-surface to-85%"
-          ></div>
-        {/if}
+        <CharacterArt character={c.character} scrim="both" />
 
         <div class="relative flex flex-wrap items-start gap-4">
           <span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent/15 text-sm font-medium">

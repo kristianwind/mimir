@@ -98,6 +98,8 @@ export const api = {
   // What face to show before sign-in. Answers without a session, because it
   // is read before there can be one.
   instance: () => request('GET', '/instance'),
+  signup: (username, email, password) =>
+    request('POST', '/auth/signup', { username, email, password }),
   bootstrapStatus: () => request('GET', '/auth/bootstrap'),
   bootstrap: (username, password) => request('POST', '/auth/bootstrap', { username, password }),
   // The code is absent on the first attempt. The client cannot know whether

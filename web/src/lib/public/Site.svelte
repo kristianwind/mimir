@@ -14,8 +14,19 @@
    */
   import { LANDING, PRICING, LEGAL, PAGES, PRICE } from './site.js'
   import ThemePicker from '../ThemePicker.svelte'
+  import Signup from './Signup.svelte'
+  import { api } from '../api.js'
 
-  let { theme, mode, setTheme, onsignin } = $props()
+  let { theme, mode, setTheme, onsignin, onauthenticated } = $props()
+
+  // Whether this instance takes signups at all. Asked rather than assumed,
+  // because the buttons that lead to the form must not exist when the form
+  // would refuse.
+  let open = $state(false)
+  api
+    .instance()
+    .then((i) => (open = !!i?.registration))
+    .catch(() => (open = false))
 
   let path = $state(window.location.pathname)
 
@@ -55,7 +66,9 @@
   </header>
 
   <main class="flex-1">
-    {#if path === '/pricing'}
+    {#if path === '/signup' && open}
+      <Signup {onauthenticated} />
+    {:else if path === '/pricing'}
       <h1 class="text-2xl font-semibold tracking-tight">{PRICING.title}</h1>
       <p class="mt-2 text-muted">{PRICING.intro}</p>
 
@@ -77,6 +90,14 @@
           <li>· {line}</li>
         {/each}
       </ul>
+
+      {#if open}
+        <div class="mt-6">
+          <a href="/signup" onclick={(e) => go('/signup', e)} class="btn-primary">
+            Start {PRICE.trialDays} days free
+          </a>
+        </div>
+      {/if}
 
       <p class="mt-6 rounded-xl bg-raised px-4 py-3 text-sm leading-relaxed text-muted">
         {PRICING.trial}
@@ -100,10 +121,14 @@
       <p class="mt-4 leading-relaxed text-muted">{LANDING.intro}</p>
 
       <div class="mt-8 flex flex-wrap items-center gap-3">
-        <a href="/pricing" onclick={(e) => go('/pricing', e)} class="btn-primary">
-          Start {PRICE.trialDays} days free
+        <a
+          href={open ? '/signup' : '/pricing'}
+          onclick={(e) => go(open ? '/signup' : '/pricing', e)}
+          class="btn-primary"
+        >
+          {open ? `Start ${PRICE.trialDays} days free` : 'What it costs'}
         </a>
-        <span class="text-sm text-muted">No card.</span>
+        {#if open}<span class="text-sm text-muted">No card.</span>{/if}
       </div>
 
       <div class="mt-10 space-y-6">

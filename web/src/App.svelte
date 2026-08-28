@@ -98,7 +98,13 @@
 {:else if user}
   <Shell {user} {theme} {mode} {setTheme} {logout} {hosted} />
 {:else if hosted && !signingIn}
-  <Site {theme} {mode} {setTheme} onsignin={() => (signingIn = true)} />
+  <Site
+    {theme}
+    {mode}
+    {setTheme}
+    onsignin={() => (signingIn = true)}
+    onauthenticated={authenticated}
+  />
 {:else}
   <Login onauthenticated={authenticated} {theme} {mode} {setTheme} />
 {/if}

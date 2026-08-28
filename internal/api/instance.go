@@ -16,6 +16,6 @@ func (s *Server) handleInstance(w http.ResponseWriter, r *http.Request) {
 		// Whether an account can be created without an administrator. On a
 		// self-hosted instance this is off, and the public pages do not
 		// exist to offer it anyway.
-		"registration": s.Config.AllowRegistration,
+		"registration": s.Config.Hosted && s.Config.AllowRegistration,
 	})
 }

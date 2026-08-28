@@ -17,6 +17,7 @@ import (
 	"github.com/kristianwind/mimir/internal/api"
 	"github.com/kristianwind/mimir/internal/auth"
 	"github.com/kristianwind/mimir/internal/beacon"
+	"github.com/kristianwind/mimir/internal/billing"
 	"github.com/kristianwind/mimir/internal/config"
 	"github.com/kristianwind/mimir/internal/db"
 	"github.com/kristianwind/mimir/internal/enka"
@@ -135,8 +136,16 @@ func serve(args []string) error {
 	twoFactor := &auth.TwoFactor{DB: conn, Vault: vault, Issuer: "Mimir"}
 
 	srv := &api.Server{
-		Config:   cfg,
-		DB:       conn,
+		Config:  cfg,
+		DB:      conn,
+		Billing: &billing.Store{DB: conn},
+		Stripe: &billing.Stripe{
+			SecretKey:     cfg.StripeSecretKey,
+			WebhookSecret: cfg.StripeWebhookSecret,
+			PriceMonthly:  cfg.StripePriceMonthly,
+			PriceYearly:   cfg.StripePriceYearly,
+			BaseURL:       cfg.BaseURL,
+		},
 		Auth:     &auth.Store{DB: conn, Secure: cfg.Secure, TwoFactor: twoFactor},
 		Enka:     enka.NewCached(cfg.UserAgent),
 		GameData: gd,

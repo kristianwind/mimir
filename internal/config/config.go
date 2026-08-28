@@ -41,6 +41,20 @@ type Config struct {
 	// keeps going straight to the sign-in form exactly as before.
 	Hosted bool
 
+	// Stripe. Empty on every self-hosted install, and then the billing
+	// endpoints report themselves unconfigured rather than half-working.
+	//
+	// The secret key and the webhook secret are credentials and come from
+	// the environment only. The publishable key and the price ids are not
+	// secret — the first is embedded in every checkout page by design, and
+	// the second two name a public catalogue — so they are configured the
+	// same way purely for consistency.
+	StripeSecretKey      string
+	StripeWebhookSecret  string
+	StripePublishableKey string
+	StripePriceMonthly   string
+	StripePriceYearly    string
+
 	// AllowRegistration lets new users sign up. Off by default: this is a
 	// personal instance, not a public service.
 	AllowRegistration bool
@@ -76,22 +90,27 @@ type Config struct {
 // Load reads configuration from the environment, applying defaults.
 func Load() (*Config, error) {
 	c := &Config{
-		Addr:              env("MIMIR_ADDR", ":8080"),
-		DataDir:           env("MIMIR_DATA_DIR", "./data"),
-		BaseURL:           env("MIMIR_BASE_URL", "http://localhost:8080"),
-		UserAgent:         env("MIMIR_USER_AGENT", "mimir/0.1 (+https://github.com/kristianwind/mimir)"),
-		Secure:            envBool("MIMIR_SECURE_COOKIES", false),
-		Hosted:            envBool("MIMIR_HOSTED", false),
-		AllowRegistration: envBool("MIMIR_ALLOW_REGISTRATION", false),
-		Repo:              env("MIMIR_REPO", "kristianwind/mimir"),
-		SupplementsPath:   env("MIMIR_SUPPLEMENTS", "/etc/mimir/supplements.json"),
-		EffectsPath:       env("MIMIR_EFFECTS", "/etc/mimir/effects.json"),
-		LLMBaseURL:        env("MIMIR_LLM_BASE_URL", ""),
-		LLMModel:          env("MIMIR_LLM_MODEL", ""),
-		LLMAPIKey:         env("MIMIR_LLM_API_KEY", ""),
-		LLMThinking:       envBool("MIMIR_LLM_THINKING", false),
-		LLMMaxTokens:      envInt("MIMIR_LLM_MAX_TOKENS", 4000),
-		LLMTimeout:        time.Duration(envInt("MIMIR_LLM_TIMEOUT", 90)) * time.Second,
+		Addr:                 env("MIMIR_ADDR", ":8080"),
+		DataDir:              env("MIMIR_DATA_DIR", "./data"),
+		BaseURL:              env("MIMIR_BASE_URL", "http://localhost:8080"),
+		UserAgent:            env("MIMIR_USER_AGENT", "mimir/0.1 (+https://github.com/kristianwind/mimir)"),
+		Secure:               envBool("MIMIR_SECURE_COOKIES", false),
+		Hosted:               envBool("MIMIR_HOSTED", false),
+		StripeSecretKey:      env("MIMIR_STRIPE_SECRET_KEY", ""),
+		StripeWebhookSecret:  env("MIMIR_STRIPE_WEBHOOK_SECRET", ""),
+		StripePublishableKey: env("MIMIR_STRIPE_PUBLISHABLE_KEY", ""),
+		StripePriceMonthly:   env("MIMIR_STRIPE_PRICE_MONTHLY", ""),
+		StripePriceYearly:    env("MIMIR_STRIPE_PRICE_YEARLY", ""),
+		AllowRegistration:    envBool("MIMIR_ALLOW_REGISTRATION", false),
+		Repo:                 env("MIMIR_REPO", "kristianwind/mimir"),
+		SupplementsPath:      env("MIMIR_SUPPLEMENTS", "/etc/mimir/supplements.json"),
+		EffectsPath:          env("MIMIR_EFFECTS", "/etc/mimir/effects.json"),
+		LLMBaseURL:           env("MIMIR_LLM_BASE_URL", ""),
+		LLMModel:             env("MIMIR_LLM_MODEL", ""),
+		LLMAPIKey:            env("MIMIR_LLM_API_KEY", ""),
+		LLMThinking:          envBool("MIMIR_LLM_THINKING", false),
+		LLMMaxTokens:         envInt("MIMIR_LLM_MAX_TOKENS", 4000),
+		LLMTimeout:           time.Duration(envInt("MIMIR_LLM_TIMEOUT", 90)) * time.Second,
 	}
 
 	if err := os.MkdirAll(c.DataDir, 0o750); err != nil {

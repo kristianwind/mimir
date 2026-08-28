@@ -18,6 +18,7 @@ import (
 
 	"github.com/kristianwind/mimir/internal/auth"
 	"github.com/kristianwind/mimir/internal/beacon"
+	"github.com/kristianwind/mimir/internal/billing"
 	"github.com/kristianwind/mimir/internal/config"
 	"github.com/kristianwind/mimir/internal/enka"
 	"github.com/kristianwind/mimir/internal/gamedata"
@@ -38,6 +39,12 @@ type Server struct {
 
 	// Version is the running build, "dev" when unstamped.
 	Version string
+	// Billing reads and writes what a user is entitled to. Present on every
+	// install; on a self-hosted one it always answers yes.
+	Billing *billing.Store
+	// Stripe is nil-safe and reports itself unconfigured where there is
+	// nothing to sell.
+	Stripe *billing.Stripe
 	// Beacon sends the one anonymous daily ping, when the operator has said
 	// it may.
 	Beacon *beacon.Beacon
@@ -77,6 +84,10 @@ func (s *Server) Router() http.Handler {
 		// knows whether this instance offers accounts at all.
 		r.Get("/instance", s.handleInstance)
 
+		// Stripe has no session, so the signature on the payload is the
+		// whole of this endpoint's security. See internal/billing.
+		r.Post("/stripe/webhook", s.handleStripeWebhook)
+
 		r.Post("/auth/login", s.handleLogin)
 		r.Post("/auth/logout", s.handleLogout)
 		r.Get("/healthz", s.handleHealth)
@@ -90,6 +101,15 @@ func (s *Server) Router() http.Handler {
 			r.Use(s.Auth.Middleware)
 
 			r.Get("/me", s.handleMe)
+
+			r.Route("/billing", func(r chi.Router) {
+				r.Get("/", s.handleBillingStatus)
+				r.Post("/checkout", s.handleCheckout)
+				r.Post("/portal", s.handlePortal)
+				// Comping is an administrator's decision about a person; the
+				// handler checks the role.
+				r.Post("/comp", s.handleComp)
+			})
 
 			// The second factor. Enrolling is an ordinary action; removing
 			// it and reprinting the recovery codes are not, and those two

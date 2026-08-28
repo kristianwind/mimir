@@ -90,7 +90,7 @@ func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 	// Straight in rather than back to a login form: they typed the
 	// credentials a second ago, and asking for them again is friction with
 	// no security in it.
-	token, user, err := s.Auth.Login(r.Context(), body.Username, body.Password, r.UserAgent())
+	token, user, err := s.Auth.Login(r.Context(), body.Username, body.Password, "", r.UserAgent())
 	if err != nil {
 		writeDomainError(w, err)
 		return

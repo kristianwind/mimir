@@ -135,6 +135,11 @@ export const api = {
   deleteUser: (id) => request('DELETE', `/users/${id}`),
   changePassword: (current, next) => request('PUT', '/me/password', { current, new: next }),
 
+  billing: () => request('GET', '/billing'),
+  checkout: (plan) => request('POST', '/billing/checkout', { plan }),
+  billingPortal: () => request('POST', '/billing/portal'),
+  comp: (userId, comped, note) => request('POST', '/billing/comp', { userId, comped, note }),
+
   twoFactorStatus: () => request('GET', '/2fa'),
   twoFactorBegin: () => request('POST', '/2fa/begin'),
   twoFactorConfirm: (code) => request('POST', '/2fa/confirm', { code }),

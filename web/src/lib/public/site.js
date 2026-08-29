@@ -126,6 +126,43 @@ export const LANDING = {
     ],
   ],
 
+  // The questions people actually ask before handing over money, answered
+  // where they are asked rather than in a manual they have not got yet.
+  //
+  // No FAQPage markup wraps this. Google restricted those rich results to
+  // health and government sites in 2023, so the schema would buy nothing and
+  // cost a second copy of every answer in the Go source. The content is the
+  // point; the badge is gone.
+  faq: {
+    title: 'Questions people ask first',
+    items: [
+      [
+        'Does it need my Genshin Impact login?',
+        'No, and there is nowhere to type one. Mimir reads your public showcase through Enka.Network, or a .good file you exported yourself. It never asks for game account credentials, because it never needs them.',
+      ],
+      [
+        'Will it get my account banned?',
+        'It does not touch the game. Enka.Network reads a profile you have already made public, and a .good file is one you produced on your own machine. Nothing is automated, injected or sent to HoYoverse.',
+      ],
+      [
+        'How is this different from Genshin Optimizer?',
+        'Genshin Optimizer answers "what is the best build for this character". Mimir answers the question before it: across your whole account, which single change buys the most right now, and what does it cost. It reads the same .good file, so you can use both.',
+      ],
+      [
+        'What is a .good file?',
+        'The standard inventory export, produced by Genshin Optimizer or Inventory Kamera. It is the only source that includes artifacts you are not currently wearing — which is exactly where the free upgrades hide.',
+      ],
+      [
+        'What happens when a new patch lands?',
+        'Game data is synced from the datamines rather than typed in by hand, so a new character or weapon is a sync and not a wait for somebody to update a spreadsheet.',
+      ],
+      [
+        'Do I have to pay?',
+        'No. The software is open source and running it yourself costs nothing and holds nothing back. The subscription buys a machine that is already running, kept updated and backed up. Fourteen days free, and no card to start.',
+      ],
+    ],
+  },
+
   // The honest answer to "why pay". Not a feature list — the free version
   // has every feature.
   why: {

@@ -210,6 +210,29 @@
         {/each}
       </div>
 
+      <!--
+        Real questions, answered on the page where they are asked. Details
+        rather than always-open text: six answers at full length is a wall,
+        and somebody scanning for one of them should be able to see all six
+        headings at once.
+      -->
+      <section class="mt-14">
+        <h2 class="text-xl font-medium tracking-tight">{LANDING.faq.title}</h2>
+        <div class="mt-4 divide-y divide-line border-y border-line">
+          {#each LANDING.faq.items as [question, answer]}
+            <details class="group py-3">
+              <summary
+                class="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium"
+              >
+                {question}
+                <span class="text-muted transition group-open:rotate-45" aria-hidden="true">+</span>
+              </summary>
+              <p class="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{answer}</p>
+            </details>
+          {/each}
+        </div>
+      </section>
+
       <section class="card mt-14 p-6">
         <h2 class="font-medium">{LANDING.why.title}</h2>
         <p class="mt-1.5 text-sm leading-relaxed text-muted">{LANDING.why.body}</p>

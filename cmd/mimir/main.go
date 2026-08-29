@@ -115,6 +115,14 @@ func serve(args []string) error {
 	if err != nil {
 		return err
 	}
+
+	// Said at boot, because the alternative is finding out from a customer
+	// who could not pay. Stripe's own answer to a swapped credential is
+	// "Invalid API Key provided: whsec_Ma…", which names neither the
+	// variable nor the service it belongs to.
+	for _, complaint := range cfg.StripeComplaints {
+		log.Error("Stripe is misconfigured", "problem", complaint)
+	}
 	conn, err := db.Open(cfg.DBPath())
 	if err != nil {
 		return err

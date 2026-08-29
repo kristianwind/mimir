@@ -59,9 +59,15 @@ export const PRICE = {
 
 export const LANDING = {
   title: 'Mimir',
+  // Said above the headline, because the headline is a question and a
+  // question does not tell somebody who has never heard of this what it is.
+  // It is also the phrase people actually type into a search box, which is a
+  // second reason for it to be the first text on the page rather than the
+  // fourth.
+  kicker: 'Genshin Impact build advisor',
   tagline: 'What should you do next with this account?',
   intro:
-    'Every other Genshin tool tells you what your best possible build would be. Mimir answers the question before that: out of everything available to you right now, which single change buys the most — and what does it cost.',
+    'Every other Genshin Impact tool tells you what your best possible build would be. Mimir answers the question before that: out of everything available to you right now, which single change buys the most — and what does it cost.',
 
   // The screenshots are the argument. They are real output from a real
   // inventory rather than a mock-up, which is why the caveats are visible in
@@ -69,7 +75,7 @@ export const LANDING = {
   // would be selling something other than the product.
   proof: {
     shot: '/shots/plan.jpg',
-    alt: 'A ranked list of upgrades. The top three are marked free.',
+    alt: 'A ranked list of upgrades for a Genshin Impact account. The top three are marked free.',
     title: 'The first thing it finds usually costs nothing',
     body: 'Before it suggests farming anything, Mimir looks through what is already in your bag for damage you own and have not equipped. On this account the top three actions are free — the gear is there, on the wrong characters. That is the one upgrade no amount of resin buys back.',
     caption: 'A test inventory of two thousand artifacts. Every figure comes from the game’s own data.',
@@ -80,13 +86,17 @@ export const LANDING = {
       title: 'The whole account, ranked',
       body: 'Not one character at a time. Every upgrade for everybody in one list, ordered by what it actually buys — and where two characters want the same artifact it says so and resolves it, rather than quietly recommending the same piece twice.',
       shot: '/shots/potential.jpg',
-      alt: 'Characters ranked by how much damage the best available upgrade would add.',
+      w: 1408,
+      h: 920,
+      alt: 'Genshin Impact characters ranked by how much damage the best available upgrade would add.',
     },
     {
       title: 'What each character should aim for',
       body: 'The thing people open a wiki for: which set, which main stats, which substats to chase. Computed against your constellation, your talent levels and the rotation you actually press — not one generic answer printed for everybody.',
       shot: '/shots/characters.jpg',
-      alt: 'A roster of characters with their levels and talents.',
+      w: 1408,
+      h: 960,
+      alt: 'A Genshin Impact roster with character levels, constellations and talent levels.',
     },
   ],
 

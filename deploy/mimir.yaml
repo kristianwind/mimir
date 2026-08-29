@@ -4,7 +4,7 @@ gameskill:
   category: "Apps"
   description: "Genshin Impact build advisor: Enka/GOOD/HoYoLAB import, artifact optimizer and a resin plan ranked by damage per resin"
   author: "kristianwind"
-  version: 5
+  version: 6
   icon: "app"
 
   docker:
@@ -64,7 +64,49 @@ gameskill:
       name: "Allow self-registration"
       type: bool
       default: false
-      hint: "Off by default: this is a personal instance, not a public service"
+      hint: "Off by default: this is a personal instance, not a public service. Tick this as well as 'Offered as a paid service' below, or the public pages appear with no way to sign up."
+
+    # Selling it. Every one of these is blank on a self-hosted install, and
+    # then Mimir has no public pages, no signup, no billing and no expiry —
+    # the software is free and running it yourself holds nothing back. Only
+    # the one instance that is offered as a service fills them in.
+    - key: MIMIR_HOSTED
+      name: "Offered as a paid service"
+      type: bool
+      default: false
+      hint: "Leave off. This turns on the public pages — what it is, what it costs, the terms — and signup, which only make sense on an instance somebody is selling. On your own copy they would be an advert in your own house."
+
+    - key: MIMIR_STRIPE_SECRET_KEY
+      name: "Stripe secret key"
+      type: string
+      default: ""
+      secret: true
+      hint: "sk_test_... while testing, sk_live_... in earnest. Blank means no subscriptions."
+
+    - key: MIMIR_STRIPE_WEBHOOK_SECRET
+      name: "Stripe webhook signing secret"
+      type: string
+      default: ""
+      secret: true
+      hint: "whsec_..., shown when you create the endpoint at <your URL>/api/stripe/webhook. Without it every event is refused, because the signature is the only thing stopping anyone granting themselves a subscription."
+
+    - key: MIMIR_STRIPE_PUBLISHABLE_KEY
+      name: "Stripe publishable key"
+      type: string
+      default: ""
+      hint: "pk_... Not a secret: it is embedded in every checkout page by design."
+
+    - key: MIMIR_STRIPE_PRICE_MONTHLY
+      name: "Stripe price ID (monthly)"
+      type: string
+      default: ""
+      hint: "price_... Prices are per mode: one made in live mode is invisible to a test key."
+
+    - key: MIMIR_STRIPE_PRICE_YEARLY
+      name: "Stripe price ID (yearly)"
+      type: string
+      default: ""
+      hint: "price_... The product needs a tax code set in Stripe or every checkout is rejected; Mimir's is txcd_10103000."
 
     # Kvasir, the AI layer. Optional and additive: it explains what the engine
     # calculated and answers questions about it, and every figure it writes is

@@ -12,7 +12,7 @@
    * static pages and one of Mimir's few standing rules is that the frontend
    * carries no dependency it can do without.
    */
-  import { LANDING, PRICING, LEGAL, PAGES, PRICE } from './site.js'
+  import { LANDING, PRICING, LEGAL, PAGES, PRICE, REPO_URL } from './site.js'
   import ThemePicker from '../ThemePicker.svelte'
   import Signup from './Signup.svelte'
   import { api } from '../api.js'
@@ -290,6 +290,12 @@
           {page.label}
         </a>
       {/each}
+      <!--
+        The claim that the source is public is worth nothing without a way to
+        go and look, so the link is on every page rather than in a sentence
+        somebody has to find.
+      -->
+      <a href={REPO_URL} rel="noopener" target="_blank" class="hover:text-fg">Source</a>
     </nav>
     <p class="mt-3 text-xs text-muted">
       Not affiliated with HoYoverse. Game data and imagery belong to their owners.

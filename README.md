@@ -183,3 +183,19 @@ else:
 ## Status
 
 See [PROGRESS.md](PROGRESS.md).
+
+## Licence
+
+[GNU Affero General Public License v3.0](LICENSE).
+
+Run it, read it, change it, host it. The one obligation is the reason this
+licence was chosen over a permissive one: **if you run a modified Mimir as a
+service other people use, those people are entitled to your changes.** That is
+the whole of it, and it is the same bargain the hosted instance at
+[mimir.guide](https://mimir.guide) keeps — that instance runs this code, and
+paying for it buys a machine somebody else administers, never a feature held
+back from the version you can run yourself.
+
+Mimir is not affiliated with, endorsed by, or connected to HoYoverse or
+Cognosphere. Genshin Impact, its characters, artwork and game data belong to
+their owners; this licence covers only the code in this repository.

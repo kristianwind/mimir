@@ -73,7 +73,7 @@ func (s *Server) handleCheckout(w http.ResponseWriter, r *http.Request) {
 	// row nobody is reading.
 	customerID, err := s.Stripe.Customer(r.Context(), rec.StripeCustomerID, u.ID, u.Username, s.emailOf(r, u.ID))
 	if err != nil {
-		writeDomainError(w, err)
+		s.writeStripeError(w, r, "create customer", err)
 		return
 	}
 	if customerID != rec.StripeCustomerID {
@@ -85,7 +85,7 @@ func (s *Server) handleCheckout(w http.ResponseWriter, r *http.Request) {
 
 	url, err := s.Stripe.Checkout(r.Context(), customerID, body.Plan)
 	if err != nil {
-		writeDomainError(w, err)
+		s.writeStripeError(w, r, "create checkout session", err)
 		return
 	}
 	s.audit(r, "billing.checkout", u.Username, map[string]any{"plan": body.Plan})
@@ -107,7 +107,7 @@ func (s *Server) handlePortal(w http.ResponseWriter, r *http.Request) {
 	}
 	url, err := s.Stripe.Portal(r.Context(), rec.StripeCustomerID)
 	if err != nil {
-		writeDomainError(w, err)
+		s.writeStripeError(w, r, "create portal session", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"url": url})
@@ -188,6 +188,28 @@ func (s *Server) handleComp(w http.ResponseWriter, r *http.Request) {
 		"userId": body.UserID, "comped": body.Comped, "note": body.Note,
 	})
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+}
+
+// writeStripeError turns a failure from Stripe into something a customer can
+// read, and puts the detail in the log where it belongs.
+//
+// Stripe's errors are written for whoever wired the integration up: they
+// carry request ids, dashboard links and the internal id of a price. A person
+// trying to pay for something should never see any of that — it tells them
+// nothing they can act on, and it reads like the service is broken in a way
+// that makes handing over a card feel unwise.
+//
+// The operator still gets the whole thing, because the operator is the one
+// who can fix it.
+func (s *Server) writeStripeError(w http.ResponseWriter, r *http.Request, what string, err error) {
+	if errors.Is(err, billing.ErrNotConfigured) {
+		writeError(w, http.StatusNotFound, "this instance does not sell subscriptions", "")
+		return
+	}
+	s.Log.Error("stripe", "doing", what, "error", err)
+	writeError(w, http.StatusBadGateway,
+		"the payment provider could not be reached just now",
+		"Nothing was charged. Try again in a moment; if it keeps happening the operator has been told.")
 }
 
 // access is the one place the entitlement question is asked.

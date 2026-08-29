@@ -76,12 +76,39 @@
   let selected = $state(null)
   let gamedata = $state(null)
 
+  // The beacon disclosure. It is on by default, so the administrator is told
+  // the first time they sign in rather than left to discover it in the
+  // source — which is the only thing that separates a default-on ping from
+  // telemetry nobody agreed to. Asked only of an administrator, because they
+  // are the one whose answer it is; a normal user cannot change it and
+  // showing them a decision they cannot make is just noise.
+  let beacon = $state(null)
+  let beaconBusy = $state(false)
+
   async function refresh() {
     accounts = (await api.accounts()) ?? []
     if (!selected || !accounts.some((a) => a.id === selected.id)) {
       selected = accounts[0] ?? null
     }
     gamedata = await api.gamedata().catch(() => null)
+    if (me?.role === 'admin') {
+      beacon = (await api.system().catch(() => null))?.beacon ?? null
+    }
+  }
+
+  // Both buttons record an answer, so the card does not come back either way.
+  // "Leave it on" has to be as explicit as "Turn it off", or the choice is
+  // only a choice in one direction.
+  async function answerBeacon(on) {
+    beaconBusy = true
+    try {
+      await api.setBeacon(on)
+      beacon = { ...beacon, chosen: true, enabled: on }
+    } catch {
+      // Left unanswered rather than silently marked as agreed.
+    } finally {
+      beaconBusy = false
+    }
   }
 
   refresh()
@@ -165,6 +192,41 @@
       entries off the edge of a phone with nothing to say they were there —
       Compare was cut to "Co".
     -->
+    <!--
+      Shown once, above everything, until it is answered. It states the whole
+      payload rather than describing it, because "anonymous usage data" is
+      what every tracker calls itself and the only version of this worth
+      reading is the literal bytes.
+    -->
+    {#if beacon && !beacon.chosen}
+      <section class="card mb-6 p-5">
+        <h2 class="font-medium">Mimir sends one ping a day</h2>
+        <p class="mt-2 max-w-prose text-sm leading-relaxed text-muted">
+          So the project can see how many installs there are and which versions are still
+          running. It is on. This is all of it, once a day, and nothing else ever leaves the
+          machine:
+        </p>
+        <pre class="mt-3 overflow-auto rounded-xl bg-raised p-3 text-xs">{JSON.stringify(
+            beacon.payload ?? {},
+            null,
+            2,
+          )}</pre>
+        <p class="mt-3 max-w-prose text-xs leading-relaxed text-muted">
+          A random id made on this machine, and the version. No account, no UID, no inventory,
+          no email — and the receiver stores no IP address. Turn it off and it stays off through
+          every upgrade. You can change your mind either way on the System page.
+        </p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button class="btn-primary" disabled={beaconBusy} onclick={() => answerBeacon(true)}>
+            Leave it on
+          </button>
+          <button class="btn-ghost" disabled={beaconBusy} onclick={() => answerBeacon(false)}>
+            Turn it off
+          </button>
+        </div>
+      </section>
+    {/if}
+
     {#if gamedata && !gamedata.synced}
       <p class="mb-6 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn md:hidden">
         Game data is missing. Run a sync, or nothing can be calculated.

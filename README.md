@@ -188,23 +188,28 @@ See [PROGRESS.md](PROGRESS.md).
 
 Mimir sends one thing to one place, and only if you tell it to.
 
-**It is off.** Not off-by-default-until-an-upgrade — off. `Enabled()` requires
-both an explicit opt-in *and* a collector address, and **there is no default
-collector in the source**. With nothing configured the beacon has nowhere to
-report to and no permission to, so it cannot phone anywhere even by accident.
-Switching it off later is recorded explicitly, so an upgrade cannot quietly
-turn it back on.
+**It is on, and you are told so the first time you sign in as an
+administrator** — with the payload printed in front of you and a button that
+turns it off in one click. That disclosure is the part that matters: a
+default-on ping nobody is told about is telemetry whatever its size, and a
+project asking you to run its code has no business burying it in a source
+file.
 
-If you do switch it on, the entire payload is:
+**Turning it off is permanent.** The choice is recorded, and an upgrade cannot
+undo it. That promise is worth more than the default, so it is the one the
+tests pin down.
+
+The entire payload is:
 
 ```json
 {"instance_id": "<random, generated locally>", "version": "v0.3.0"}
 ```
 
 That is the whole of it. No UID, no account, no inventory, no artifacts, no
-email, and the receiver stores no IP address. The System page shows you the
-literal bytes before you agree to anything, because a promise about what is
-sent is only worth the payload struct behind it — see
+email, and the receiver stores no IP address. It goes to `mimir.guide`, and
+you can point it at your own collector instead — one instance can receive the
+others' pings, which is a supported arrangement rather than a workaround. A
+promise about what is sent is only worth the payload struct behind it, so see
 [`internal/beacon`](internal/beacon/beacon.go) and check for yourself.
 
 There is no other telemetry, no analytics, and no third-party script anywhere

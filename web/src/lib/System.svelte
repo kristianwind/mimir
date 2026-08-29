@@ -326,13 +326,16 @@
           bind:value={collector}
         />
         <p class="mt-1.5 text-xs text-muted">
-          There is deliberately no default address. A beacon has to know where it reports —
-          otherwise the ping either goes nowhere or somewhere it does not belong.
+          Blank reports to mimir.guide. Point it at your own collector to keep the count to
+          yourself — one instance can receive the others' pings.
         </p>
       </div>
 
       {#if !beacon?.chosen}
-        <p class="mt-3 text-sm">It is switched off until you say otherwise.</p>
+        <p class="mt-3 text-sm">
+          It is on, and you have not answered yet. Turning it off here is permanent — an
+          upgrade will not switch it back on.
+        </p>
       {/if}
 
       <div class="mt-4 flex flex-wrap gap-2">

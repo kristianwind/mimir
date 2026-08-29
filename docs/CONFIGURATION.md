@@ -169,9 +169,9 @@ it on for somebody: it lives in the database and is set from Mimir's own
 System page, by the person who administers the instance, after being shown the
 literal payload.
 
-It is off, there is no default collector in the source, and both of those have
-to be untrue at once before anything is sent. See the README for what the
-payload contains.
+It is on, it reports to `mimir.guide`, and an administrator is shown the
+payload and a one-click decline the first time they sign in. Declining is
+recorded and survives every upgrade. See the README for what is sent.
 
 ## Command line
 

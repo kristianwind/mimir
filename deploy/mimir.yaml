@@ -149,10 +149,12 @@ gameskill:
       default: "90"
       hint: "How long one call to the model may take. Kept under the server's own two-minute write timeout, so a slow answer times out with a message rather than arriving after the browser gave up."
 
-    # The beacon is off until it is switched on in Mimir's own System page,
-    # and there is deliberately no default collector — a beacon that does not
-    # know where it reports either goes nowhere or somewhere it does not
-    # belong. Nothing here turns it on; the setting lives with the operator.
+    # The beacon is on, reports to mimir.guide, and is disclosed to the
+    # administrator on first sign-in with a one-click decline. Nothing here
+    # controls it, deliberately: an environment variable would let whoever
+    # writes the deployment answer on the operator's behalf, and this is the
+    # one setting that has to be the operator's own. It lives in the database,
+    # set from Mimir's System page.
 
     - key: MIMIR_REPO
       name: "Release repository"

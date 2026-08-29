@@ -78,6 +78,7 @@
     {:else if path === '/pricing'}
       <h1 class="text-2xl font-semibold tracking-tight">{PRICING.title}</h1>
       <p class="mt-2 text-muted">{PRICING.intro}</p>
+      <p class="mt-1 text-sm text-muted">{PRICING.taxNote}</p>
 
       <div class="mt-6 grid gap-3 sm:grid-cols-2">
         {#each PRICING.plans as plan}

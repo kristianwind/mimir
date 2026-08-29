@@ -53,6 +53,18 @@
 
 <svelte:window {onpopstate} />
 
+<!--
+  A wash behind the top of the page. Full bleed, so it is a sibling of the
+  column rather than inside it, and -z-10 so nothing has to know it is there.
+  Without it the first screenful was flat white in the light theme, which is
+  the wrong first impression for something being sold.
+-->
+<div
+  class="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[32rem]
+         bg-gradient-to-b from-accent/12 via-accent/5 to-transparent"
+  aria-hidden="true"
+></div>
+
 <div class="mx-auto flex min-h-dvh max-w-4xl flex-col px-5 py-6">
   <header class="mb-10 flex items-center justify-between gap-4">
     <a href="/" onclick={(e) => go('/', e)} class="flex items-center gap-2.5">
@@ -159,21 +171,29 @@
         stranger an empty rectangle.
       -->
       <figure class="mt-10">
-        <div class="relative">
-          <div
-            class="pointer-events-none absolute -inset-x-8 -inset-y-6 rounded-[2rem] bg-accent/10 blur-3xl"
-            aria-hidden="true"
-          ></div>
+        <!--
+          The screenshot sits on a mat, and the mat is dark in both themes.
+
+          Without one it did not read as a picture at all. The shots were
+          captured in the light theme, so they are mostly white; in the light
+          theme --line is 219 224 235 and --raised is 241 243 248, so a white
+          picture on a near-white mat behind a near-white border simply
+          dissolved into the page — which is exactly what Kristian reported.
+          A dark mat is the one choice that works in both themes at once,
+          because the contrast comes from the picture being light rather than
+          from the page being anything in particular.
+        -->
+        <div class="rounded-3xl border border-line bg-[rgb(19,22,31)] p-2.5 shadow-2xl sm:p-4">
           <img
             src={LANDING.proof.shot}
             alt={LANDING.proof.alt}
             width="1408"
             height="636"
             fetchpriority="high"
-            class="relative w-full rounded-2xl border border-line shadow-2xl"
+            class="w-full rounded-2xl border border-line bg-surface"
           />
         </div>
-        <figcaption class="mt-2 text-xs text-muted">{LANDING.proof.caption}</figcaption>
+        <figcaption class="mt-3 text-xs text-muted">{LANDING.proof.caption}</figcaption>
       </figure>
 
       <section class="mt-14">
@@ -185,14 +205,16 @@
         <section class="mt-14">
           <h2 class="text-xl font-medium tracking-tight">{section.title}</h2>
           <p class="mt-2 max-w-2xl leading-relaxed text-muted">{section.body}</p>
-          <img
-            src={section.shot}
-            alt={section.alt}
-            width={section.w}
-            height={section.h}
-            loading="lazy"
-            class="mt-5 w-full rounded-2xl border border-line shadow-lg"
-          />
+          <div class="mt-5 rounded-3xl border border-line bg-[rgb(19,22,31)] p-2.5 shadow-xl sm:p-4">
+            <img
+              src={section.shot}
+              alt={section.alt}
+              width={section.w}
+              height={section.h}
+              loading="lazy"
+              class="w-full rounded-2xl border border-line bg-surface"
+            />
+          </div>
         </section>
       {/each}
 

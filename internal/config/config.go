@@ -55,6 +55,10 @@ type Config struct {
 	StripePriceMonthly   string
 	StripePriceYearly    string
 
+	// StripeComplaints names any Stripe variable holding the wrong kind of
+	// value. Empty when they are all plausible.
+	StripeComplaints []string
+
 	// AllowRegistration lets strangers create accounts.
 	//
 	// It follows Hosted when the variable is absent, which covers running
@@ -125,12 +129,61 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	c.StripeComplaints = c.checkStripe()
+
 	key, err := loadOrCreateSecret(filepath.Join(c.DataDir, "secret.key"))
 	if err != nil {
 		return nil, err
 	}
 	c.SecretKey = key
 	return c, nil
+}
+
+// checkStripe reports fields that hold the wrong kind of value.
+//
+// Every Stripe credential is a prefixed string, and the five of them sit next
+// to each other in a settings form as five boxes of similar-looking gibberish.
+// Putting one in the wrong box is a normal mistake, and Stripe's answer to it
+// names neither the field nor the product: "Invalid API Key provided:
+// whsec_Ma…", at the moment a customer is trying to pay.
+//
+// This is a complaint and not a refusal. A bad key should not stop the whole
+// service booting — the calculations do not need Stripe — but it must not be
+// discovered by a customer either, so it is said loudly at startup with the
+// variable named.
+func (c *Config) checkStripe() []string {
+	var out []string
+	expect := func(name, value string, prefixes ...string) {
+		if value == "" {
+			return
+		}
+		for _, p := range prefixes {
+			if strings.HasPrefix(value, p) {
+				return
+			}
+		}
+		// The value itself is never quoted back: one of these is a secret,
+		// and a log line is exactly where it must not end up. The prefix it
+		// *does* start with is enough to say which box it belongs in.
+		out = append(out, fmt.Sprintf(
+			"%s should start with %s, but starts with %q — is it in the wrong box?",
+			name, strings.Join(prefixes, " or "), prefixOf(value)))
+	}
+	expect("MIMIR_STRIPE_SECRET_KEY", c.StripeSecretKey, "sk_", "rk_")
+	expect("MIMIR_STRIPE_WEBHOOK_SECRET", c.StripeWebhookSecret, "whsec_")
+	expect("MIMIR_STRIPE_PUBLISHABLE_KEY", c.StripePublishableKey, "pk_")
+	expect("MIMIR_STRIPE_PRICE_MONTHLY", c.StripePriceMonthly, "price_")
+	expect("MIMIR_STRIPE_PRICE_YEARLY", c.StripePriceYearly, "price_")
+	return out
+}
+
+// prefixOf returns the part before the first underscore, which is the only
+// part of any of these that is safe to print.
+func prefixOf(v string) string {
+	if i := strings.Index(v, "_"); i > 0 && i < 12 {
+		return v[:i+1]
+	}
+	return "something else"
 }
 
 // DBPath is the SQLite file path.

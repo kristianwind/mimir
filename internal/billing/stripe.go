@@ -172,6 +172,9 @@ func (s *Stripe) Portal(ctx context.Context, customerID string) (string, error) 
 	params.Context = ctx
 	sess, err := billingportal.New(params)
 	if err != nil {
+		if IsMissingCustomer(err) {
+			return "", ErrCustomerGone
+		}
 		return "", fmt.Errorf("billing: create portal session: %w", err)
 	}
 	return sess.URL, nil

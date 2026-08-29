@@ -2,9 +2,9 @@ gameskill:
   id: mimir
   name: "Mimir"
   category: "Apps"
-  description: "Genshin Impact build advisor: Enka/GOOD/HoYoLAB import, artifact optimizer and a resin plan ranked by damage per resin"
+  description: "Genshin Impact build advisor: Enka and GOOD import, artifact optimizer and a resin plan ranked by damage per resin"
   author: "kristianwind"
-  version: 7
+  version: 8
   icon: "app"
 
   docker:
@@ -161,6 +161,34 @@ gameskill:
       type: string
       default: "kristianwind/mimir"
       hint: "Where Mimir checks for new versions. It reports what it finds; updating the container is this panel's job, not Mimir's."
+
+  # One button that actually fetches a new version.
+  #
+  # Without this block the panel has no update path for Mimir at all, and
+  # Restart is not one: it recreates the container, which makes rune and
+  # variable changes take effect, but it never pulls. A recreate runs whatever
+  # :latest already resolves to on that host, so a server could sit on an old
+  # image indefinitely while GHCR moved on — measured on 2026-08-29, when
+  # production held 0.4.1 and GHCR was already on 0.4.2.
+  #
+  # image: is deliberately absent. Unset, the pull targets docker.image — this
+  # app's own — and that pull IS the update. The field exists for apps whose
+  # update needs a different toolchain than they run on.
+  #
+  # The script cannot veto a bad release: the pull happens before it and the
+  # container is recreated whether it succeeds or fails. So it does not try to
+  # be a gate. It is here to make the update log say which version arrived,
+  # because a pull that quietly served a cached image looks identical to one
+  # that fetched a new one.
+  update:
+    label: "Update Mimir"
+    script: |
+      # /bin/sh, not bash, and root in an ephemeral container with the data
+      # directory at /data. Nothing to migrate: the image is immutable, and
+      # Mimir applies its own schema changes on start.
+      set -e
+      echo "Pulled image reports:"
+      /usr/local/bin/mimir version
 
   backup:
     include: ["."]

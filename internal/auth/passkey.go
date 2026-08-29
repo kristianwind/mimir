@@ -87,6 +87,19 @@ func NewPasskeys(db *sql.DB, baseURL, displayName string) (*Passkeys, error) {
 // Available reports whether passkeys can be used on this instance.
 func (p *Passkeys) Available() bool { return p != nil && p.Web != nil }
 
+// RelyingParty is the hostname credentials are bound to.
+//
+// Reported publicly, because it is the public domain and every visitor
+// already knows it — and because an instance quietly bound to "localhost"
+// behind a real domain is the commonest way this is misconfigured, and
+// otherwise the only symptom is a browser silently declining.
+func (p *Passkeys) RelyingParty() string {
+	if !p.Available() {
+		return ""
+	}
+	return p.Web.Config.RPID
+}
+
 // Credential is one enrolled passkey, as the interface shows it.
 type Credential struct {
 	ID         int64   `json:"id"`

@@ -13,6 +13,14 @@
   let code = $state('')
   let needsCode = $state(false)
   let passkeyBusy = $state(false)
+  // Whether this instance can do passkeys at all. Asked rather than assumed:
+  // an instance with no origin configured has none, and offering a button
+  // that fails on press is worse than not offering one.
+  let passkeysHere = $state(false)
+  api
+    .instance()
+    .then((i) => (passkeysHere = !!i?.passkeys))
+    .catch(() => (passkeysHere = false))
   let confirm = $state('')
   let error = $state('')
   let busy = $state(false)
@@ -195,7 +203,7 @@
               : 'Log in'}
         </button>
 
-        {#if !first && passkeySupported()}
+        {#if !first && passkeysHere && passkeySupported()}
           <button
             type="button"
             class="btn-ghost w-full text-sm"

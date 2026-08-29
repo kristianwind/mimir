@@ -17,5 +17,18 @@ func (s *Server) handleInstance(w http.ResponseWriter, r *http.Request) {
 		// self-hosted instance this is off, and the public pages do not
 		// exist to offer it anyway.
 		"registration": s.Config.Hosted && s.Config.AllowRegistration,
+		// Whether passkeys work here at all.
+		//
+		// They need an origin to bind to, so an instance with no usable
+		// MIMIR_BASE_URL has none. The sign-in page reads this rather than
+		// offering a button that would fail on press — and it makes the
+		// commonest deployment mistake visible from outside, which a setting
+		// that only fails silently in a browser otherwise is not.
+		"passkeys": s.Passkeys.Available(),
+		// The hostname credentials are bound to. An instance serving a real
+		// domain while reporting "localhost" here has a wrong
+		// MIMIR_BASE_URL, and every passkey enrolled against it is bound to
+		// the wrong place.
+		"passkeyHost": s.Passkeys.RelyingParty(),
 	})
 }

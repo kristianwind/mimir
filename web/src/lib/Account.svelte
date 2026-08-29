@@ -14,7 +14,7 @@
   import Subscription from './Subscription.svelte'
   import Passkeys from './Passkeys.svelte'
 
-  let { me, theme, mode, setTheme } = $props()
+  let { me, theme, mode, setTheme, logout } = $props()
 
   let error = $state('')
   let message = $state('')
@@ -269,4 +269,23 @@
       <p class="w-full text-xs text-muted">At least 12 characters. Signed in as {me?.username}.</p>
     </div>
   </section>
+
+  <!--
+    Signing out, on the screens with no sidebar to do it from. Same reasoning
+    as the theme picker above — except that this one was not merely awkward
+    on a phone, it was missing: the button lived in an aside the layout hides
+    below md, so there was no way off the device at all.
+
+    Last on the page on purpose. It is the one control here that throws away
+    what you were doing.
+  -->
+  {#if logout}
+    <section class="card p-5 md:hidden">
+      <h2 class="mb-1 font-medium">Sign out</h2>
+      <p class="mb-4 text-xs text-muted">
+        Signed in as {me?.username}. Nothing is deleted; you will need your password again.
+      </p>
+      <button class="btn-ghost text-sm" onclick={logout}>Log out</button>
+    </section>
+  {/if}
 </div>

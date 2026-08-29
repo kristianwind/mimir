@@ -84,6 +84,21 @@ func (s *Server) handleCheckout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url, err := s.Stripe.Checkout(r.Context(), customerID, body.Plan)
+	if errors.Is(err, billing.ErrCustomerGone) {
+		// The recorded customer is from another mode, or was deleted in the
+		// dashboard. Make a fresh one and go again — once. A stale id is a
+		// thing to recover from, not a dead end to show somebody who is
+		// trying to pay.
+		s.Log.Warn("stored Stripe customer is gone; making a new one",
+			"user", u.Username, "was", customerID)
+		customerID, err = s.Stripe.Customer(r.Context(), "", u.ID, u.Username, s.emailOf(r, u.ID))
+		if err == nil {
+			err = s.Billing.SetCustomer(r.Context(), u.ID, customerID)
+		}
+		if err == nil {
+			url, err = s.Stripe.Checkout(r.Context(), customerID, body.Plan)
+		}
+	}
 	if err != nil {
 		s.writeStripeError(w, r, "create checkout session", err)
 		return

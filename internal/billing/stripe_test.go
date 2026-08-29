@@ -4,10 +4,13 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stripe/stripe-go/v85"
 )
 
 // sign builds the Stripe-Signature header the way Stripe does, so these tests
@@ -254,5 +257,35 @@ func TestAnEventWithNoCustomerNamesTheLikelyCause(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "snapshot") {
 		t.Errorf("the error does not point at the likely cause: %v", err)
+	}
+}
+
+// Switching between test and live keys leaves a customer id recorded under a
+// mode where it does not exist. That is a stale record to recover from, not a
+// dead end to show somebody who is trying to pay — so it has to be
+// recognisable, and told apart from every other refusal.
+func TestAMissingCustomerIsRecognised(t *testing.T) {
+	missing := &stripe.Error{
+		Code: stripe.ErrorCodeResourceMissing,
+		Msg:  "No such customer: 'cus_V9kKQ7cTQ4hfmb'",
+	}
+	if !IsMissingCustomer(missing) {
+		t.Error("a missing customer was not recognised")
+	}
+
+	// A missing price is the same error code and a different problem: the
+	// caller must not respond by making a new customer.
+	price := &stripe.Error{
+		Code: stripe.ErrorCodeResourceMissing,
+		Msg:  "No such price: 'price_1U9NyTJ'; a similar object exists in test mode",
+	}
+	if IsMissingCustomer(price) {
+		t.Error("a missing price was mistaken for a missing customer")
+	}
+	if IsMissingCustomer(errors.New("something else entirely")) {
+		t.Error("an unrelated error was mistaken for a missing customer")
+	}
+	if IsMissingCustomer(nil) {
+		t.Error("nil was mistaken for a missing customer")
 	}
 }

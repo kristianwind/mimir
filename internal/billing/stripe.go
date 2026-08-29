@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/stripe/stripe-go/v85"
@@ -123,9 +124,34 @@ func (s *Stripe) Checkout(ctx context.Context, customerID string, plan Plan) (st
 	params.Context = ctx
 	sess, err := checkout.New(params)
 	if err != nil {
+		if IsMissingCustomer(err) {
+			// Said plainly so the caller can act rather than guess.
+			return "", ErrCustomerGone
+		}
 		return "", fmt.Errorf("billing: create checkout session: %w", err)
 	}
 	return sess.URL, nil
+}
+
+// ErrCustomerGone means the stored Stripe customer no longer exists.
+//
+// The usual cause is switching between test and live keys: customers, prices
+// and everything else live in one mode or the other, so an id recorded under
+// one is simply absent under the other. Deleting a customer in the dashboard
+// does it too. Either way the recorded id is stale rather than the account
+// being broken, and the fix is to make a new one — which is what the caller
+// does, instead of showing somebody a dead end.
+var ErrCustomerGone = errors.New("billing: the stored Stripe customer no longer exists")
+
+// IsMissingCustomer reports whether Stripe refused because a customer it was
+// pointed at is not there.
+func IsMissingCustomer(err error) bool {
+	var se *stripe.Error
+	if !errors.As(err, &se) {
+		return false
+	}
+	return se.Code == stripe.ErrorCodeResourceMissing &&
+		strings.Contains(strings.ToLower(se.Msg), "customer")
 }
 
 // Portal opens Stripe's own billing page for a customer.

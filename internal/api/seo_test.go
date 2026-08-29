@@ -382,3 +382,21 @@ func TestTheAdvertisedPriceIsThePriceOnThePage(t *testing.T) {
 			"say fourteen — update them together", days)
 	}
 }
+
+// robots.txt and the sitemap say how the whole site should be treated, so a
+// wrong one is expensive and a stale one is invisible. Cloudflare caches by
+// file extension and .txt is on its default list — on mimir.guide it held the
+// pre-feature robots.txt, which was the SPA's HTML, for four hours after the
+// deploy that fixed it. An explicit bound is the only thing the origin can do
+// about that.
+func TestTheCrawlerFilesCannotBeCachedForever(t *testing.T) {
+	s := seoServer(t, true, "https://mimir.guide")
+
+	for _, path := range []string{"/robots.txt", "/sitemap.xml"} {
+		w := httptest.NewRecorder()
+		s.Router().ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		if got := w.Header().Get("Cache-Control"); got != "public, max-age=600" {
+			t.Errorf("%s Cache-Control = %q, want a bounded one", path, got)
+		}
+	}
+}

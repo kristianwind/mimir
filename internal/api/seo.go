@@ -296,6 +296,7 @@ func (s *Server) seoDocument(path string) (string, bool) {
 // and the fact that it is reachable is not consent to be listed.
 func (s *Server) handleRobots(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	seoCaching(w)
 	if !s.Config.Hosted {
 		_, _ = w.Write([]byte("User-agent: *\nDisallow: /\n"))
 		return
@@ -341,7 +342,24 @@ func (s *Server) handleSitemap(w http.ResponseWriter, r *http.Request) {
 	}
 	b.WriteString("</urlset>\n")
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+	seoCaching(w)
 	_, _ = w.Write(b.Bytes())
+}
+
+// seoCaching bounds how long a wrong answer can outlive the deploy that fixed
+// it.
+//
+// Learned from mimir.guide: Cloudflare caches by file extension, and .txt is
+// on its default list, so the robots.txt served *before* this feature existed
+// — which was the SPA's index.html, because the route did not exist yet —
+// was held at the edge for four hours after the deploy that added the real
+// one. The origin was correct and every crawler saw HTML.
+//
+// Ten minutes is long enough that these two are not fetched from Go on every
+// crawl, and short enough that a mistake in either is measured in minutes
+// rather than in whatever the CDN felt like.
+func seoCaching(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "public, max-age=600")
 }
 
 func (s *Server) seoOrigin() string {

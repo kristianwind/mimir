@@ -76,6 +76,20 @@ func (s *Store) SetComped(ctx context.Context, userID int64, comped bool, note s
 // SetCustomer records the Stripe customer a user was given, before they have
 // any subscription. Written at checkout so a second attempt reuses the same
 // customer instead of making a duplicate.
+// ForgetCustomer drops a stored Stripe customer that no longer exists.
+//
+// The subscription status is left alone on purpose. A customer disappearing
+// says the link is dead, not that somebody stopped paying, and revoking
+// access on the strength of one API reply is the wrong way round: entitlement
+// is the webhook's to change. This only stops the interface offering a
+// billing portal that cannot open.
+func (s *Store) ForgetCustomer(ctx context.Context, userID int64) error {
+	_, err := s.DB.ExecContext(ctx,
+		`UPDATE subscriptions SET stripe_customer_id = '', updated_at = datetime('now')
+		 WHERE user_id = ?`, userID)
+	return err
+}
+
 func (s *Store) SetCustomer(ctx context.Context, userID int64, customerID string) error {
 	_, err := s.DB.ExecContext(ctx,
 		`INSERT INTO subscriptions (user_id, stripe_customer_id, updated_at)

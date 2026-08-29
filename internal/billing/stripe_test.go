@@ -289,3 +289,27 @@ func TestAMissingCustomerIsRecognised(t *testing.T) {
 		t.Error("nil was mistaken for a missing customer")
 	}
 }
+
+// The portal has to recognise a dead customer for the same reason checkout
+// does — a test-mode customer id in the database and a live-mode key in the
+// environment is a real state, and it is the one Kristian's own account was
+// in — but it must not be mistaken for any other resource_missing.
+func TestThePortalSeparatesAMissingCustomerFromOtherMissingThings(t *testing.T) {
+	gone := &stripe.Error{
+		Code: stripe.ErrorCodeResourceMissing,
+		Msg:  "No such customer: 'cus_ABC'; a similar object exists in test mode",
+	}
+	if !IsMissingCustomer(gone) {
+		t.Error("a missing customer was not recognised")
+	}
+
+	// A configuration that has nothing to do with the customer.
+	other := &stripe.Error{
+		Code: stripe.ErrorCodeResourceMissing,
+		Msg:  "No such configuration: 'bpc_ABC'",
+	}
+	if IsMissingCustomer(other) {
+		t.Error("a missing portal configuration was treated as a missing customer, " +
+			"which would silently drop a working customer id")
+	}
+}

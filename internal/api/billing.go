@@ -121,6 +121,25 @@ func (s *Server) handlePortal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	url, err := s.Stripe.Portal(r.Context(), rec.StripeCustomerID)
+	if errors.Is(err, billing.ErrCustomerGone) {
+		// Deliberately not the recovery checkout does. Checkout makes a new
+		// customer because somebody about to subscribe needs one; opening a
+		// portal for a customer created two seconds ago would show an empty
+		// page listing no card and no invoices, which is a worse answer than
+		// the truth.
+		//
+		// The dead id is dropped so the interface stops offering a button
+		// that cannot work. Whether they are still entitled is left alone —
+		// that is the webhook's to decide, not one failed API call's.
+		s.Log.Warn("stored Stripe customer is gone; forgetting it",
+			"user", u.Username, "was", rec.StripeCustomerID)
+		if err := s.Billing.ForgetCustomer(r.Context(), u.ID); err != nil {
+			s.Log.Error("could not forget a dead Stripe customer", "error", err)
+		}
+		writeError(w, http.StatusBadRequest, "there is nothing to manage yet",
+			"This account has no billing set up with the payment provider. Subscribing will create it.")
+		return
+	}
 	if err != nil {
 		s.writeStripeError(w, r, "create portal session", err)
 		return

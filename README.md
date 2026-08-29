@@ -5,6 +5,13 @@ what to spend tomorrow's resin on.
 
 The name is the adviser at the well, who knows.
 
+> **Want to see it before you install anything? → [mimir.guide](https://mimir.guide)**
+>
+> That is this code, hosted, on a machine somebody else keeps running. Fourteen
+> days free and it does not ask for a card. If you would rather not pay, read
+> on: running it yourself is free, it is the same software, and nothing is held
+> back from it — that is the arrangement, not a concession.
+
 ## What it does that other tools do not
 
 The existing tools answer *what your best build would be*. That is a static

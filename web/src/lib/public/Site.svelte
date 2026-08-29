@@ -12,7 +12,7 @@
    * static pages and one of Mimir's few standing rules is that the frontend
    * carries no dependency it can do without.
    */
-  import { LANDING, PRICING, LEGAL, PAGES, PRICE } from './site.js'
+  import { LANDING, PRICING, LEGAL, PAGES, PRICE, REPO_URL } from './site.js'
   import ThemePicker from '../ThemePicker.svelte'
   import Signup from './Signup.svelte'
   import { api } from '../api.js'
@@ -179,11 +179,12 @@
           theme --line is 219 224 235 and --raised is 241 243 248, so a white
           picture on a near-white mat behind a near-white border simply
           dissolved into the page — which is exactly what Kristian reported.
-          A dark mat is the one choice that works in both themes at once,
-          because the contrast comes from the picture being light rather than
-          from the page being anything in particular.
+          The mat is the accent at low opacity, so it belongs to whichever
+          theme is chosen rather than fighting it. A near-black mat also
+          separated the picture, but against seven pastel accents it read as
+          a foreign object dropped on the page.
         -->
-        <div class="rounded-3xl border border-line bg-[rgb(19,22,31)] p-2.5 shadow-2xl sm:p-4">
+        <div class="rounded-3xl border border-accent/25 bg-accent/20 p-2.5 shadow-lg sm:p-4">
           <img
             src={LANDING.proof.shot}
             alt={LANDING.proof.alt}
@@ -205,7 +206,7 @@
         <section class="mt-14">
           <h2 class="text-xl font-medium tracking-tight">{section.title}</h2>
           <p class="mt-2 max-w-2xl leading-relaxed text-muted">{section.body}</p>
-          <div class="mt-5 rounded-3xl border border-line bg-[rgb(19,22,31)] p-2.5 shadow-xl sm:p-4">
+          <div class="mt-5 rounded-3xl border border-accent/25 bg-accent/20 p-2.5 shadow-lg sm:p-4">
             <img
               src={section.shot}
               alt={section.alt}
@@ -289,6 +290,12 @@
           {page.label}
         </a>
       {/each}
+      <!--
+        The claim that the source is public is worth nothing without a way to
+        go and look, so the link is on every page rather than in a sentence
+        somebody has to find.
+      -->
+      <a href={REPO_URL} rel="noopener" target="_blank" class="hover:text-fg">Source</a>
     </nav>
     <p class="mt-3 text-xs text-muted">
       Not affiliated with HoYoverse. Game data and imagery belong to their owners.

@@ -57,6 +57,11 @@ export const PRICE = {
   trialDays: 14,
 }
 
+// Where the source actually is. Deliberately not in PAGES: that list is the
+// site's own pages, it is mirrored in Go for the crawler, and a test fails if
+// the two drift — an external link does not belong in either.
+export const REPO_URL = 'https://github.com/kristianwind/mimir'
+
 export const LANDING = {
   title: 'Mimir',
   // Said above the headline, because the headline is a question and a
@@ -167,7 +172,7 @@ export const LANDING = {
   // has every feature.
   why: {
     title: 'Mimir is free, and this is the hosted version of it',
-    body: 'The software is open and costs nothing. Run it on your own machine and you get all of it — every calculation, the whole inventory, the AI layer if you point it at a model. Nothing is held back and nothing ever will be. What a subscription pays for is not features: it is a machine that is already running, kept updated, backed up, and reachable from your phone without you administering anything.',
+    body: 'The software is open source under the AGPL and costs nothing. Run it on your own machine and you get all of it — every calculation, the whole inventory, the AI layer if you point it at a model. Nothing is held back and nothing ever will be. What a subscription pays for is not features: it is a machine that is already running, kept updated, backed up, and reachable from your phone without you administering anything.',
   },
 }
 
@@ -201,7 +206,7 @@ export const PRICING = {
   ],
   trial: `The trial is ${PRICE.trialDays} days and asks for no card. When it ends the account simply stops until you subscribe — nothing is deleted and nothing is charged.`,
   selfHost:
-    'If you would rather not pay, run it yourself. The source is public and the same. That is not a lesser option offered grudgingly; it is the point of the project.',
+    'If you would rather not pay, run it yourself. The source is public, AGPL-3.0, and the same code this runs on. That is not a lesser option offered grudgingly; it is the point of the project.',
 }
 
 export const LEGAL = {

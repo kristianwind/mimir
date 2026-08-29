@@ -51,20 +51,23 @@ func newBeacon(t *testing.T) (*Beacon, *[]Payload, func(string)) {
 	return b, &got, func(s string) { status = s }
 }
 
-func TestBeaconIsOffUntilChosen(t *testing.T) {
+// On until answered — and reporting itself as unanswered, because that flag
+// is what makes the interface show the disclosure. A default-on beacon whose
+// status claimed to be "chosen" would send the ping and never mention it.
+func TestBeaconIsOnUntilAnswered(t *testing.T) {
 	b, got, _ := newBeacon(t)
 	ctx := context.Background()
 
-	if b.Enabled(ctx) {
-		t.Error("the beacon is on before anyone said so")
+	if !b.Enabled(ctx) {
+		t.Error("the beacon is off despite defaulting to on")
 	}
 	if b.Chosen(ctx) {
-		t.Error("an unanswered beacon reports itself as chosen")
+		t.Error("an unanswered beacon reports itself as answered, so nobody is ever asked")
 	}
 
 	b.Tick(ctx)
-	if len(*got) != 0 {
-		t.Errorf("pinged without consent: %+v", *got)
+	if len(*got) != 1 {
+		t.Errorf("sent %d pings, want 1", len(*got))
 	}
 }
 
@@ -195,7 +198,10 @@ func TestStatusShowsTheLiteralPayload(t *testing.T) {
 	}
 }
 
-func TestBeaconRefusesToEnableWithoutACollector(t *testing.T) {
+// The default collector is Mimir's own, and that is the point. Borrowing
+// another project's address once made Mimir's pings land in that project's
+// install count as panels that did not exist.
+func TestTheDefaultCollectorIsMimirsOwn(t *testing.T) {
 	conn, err := db.Open(t.TempDir() + "/t.db")
 	if err != nil {
 		t.Fatal(err)
@@ -204,29 +210,46 @@ func TestBeaconRefusesToEnableWithoutACollector(t *testing.T) {
 	b := New(conn, "v1.2.3", nil)
 	ctx := context.Background()
 
-	// There is no default collector on purpose: borrowing another project's
-	// address made Mimir's pings land in that project's install count.
-	if err := b.SetEnabled(ctx, true); err == nil {
-		t.Fatal("enabled a beacon with nowhere to report to")
+	if got := b.URL(ctx); got != DefaultCollector {
+		t.Errorf("URL with nothing configured = %q, want %q", got, DefaultCollector)
 	}
-	if b.Enabled(ctx) {
-		t.Error("the beacon considers itself on without a collector")
+	if !strings.Contains(DefaultCollector, "mimir.guide") {
+		t.Errorf("the default collector is not Mimir's own: %q", DefaultCollector)
+	}
+	if err := b.SetEnabled(ctx, true); err != nil {
+		t.Fatalf("could not enable a beacon that has a default collector: %v", err)
 	}
 }
 
-func TestBeaconStopsIfTheCollectorIsCleared(t *testing.T) {
+// Clearing the address no longer stops the beacon — it falls back to the
+// default — so the only way to stop it is to turn it off. Worth pinning
+// down, because the previous behaviour was the opposite and somebody
+// clearing the field to silence it would otherwise be quietly redirected to
+// mimir.guide.
+//
+// Asserted through URL() rather than by ticking. A Tick here would send a
+// real request to the live collector from a unit test, which is how a test
+// suite starts producing traffic nobody asked for.
+func TestClearingTheCollectorFallsBackToTheDefault(t *testing.T) {
 	b, got, _ := newBeacon(t)
 	ctx := context.Background()
 	if err := b.SetEnabled(ctx, true); err != nil {
 		t.Fatal(err)
 	}
-
 	if err := b.SetURL(ctx, ""); err != nil {
+		t.Fatal(err)
+	}
+	if got := b.URL(ctx); got != DefaultCollector {
+		t.Errorf("URL after clearing = %q, want the default %q", got, DefaultCollector)
+	}
+
+	// And off is still off, which is the promise that actually matters.
+	if err := b.SetEnabled(ctx, false); err != nil {
 		t.Fatal(err)
 	}
 	b.Tick(ctx)
 	if len(*got) != 0 {
-		t.Errorf("pinged after the collector was removed: %+v", *got)
+		t.Errorf("pinged after being switched off: %+v", *got)
 	}
 }
 
@@ -240,5 +263,27 @@ func TestSetURLRejectsNonsense(t *testing.T) {
 	}
 	if err := b.SetURL(ctx, "https://beacon.example.com/api/beacon"); err != nil {
 		t.Errorf("rejected a valid address: %v", err)
+	}
+}
+
+// A working copy is not an install. Every `go run` on a laptop would
+// otherwise register as a new installation running a version that was never
+// published — and this is not hypothetical: a local instance started to take
+// a screenshot pinged production and was counted before the guard existed.
+func TestAnUnreleasedBuildDoesNotPing(t *testing.T) {
+	for _, version := range []string{"dev", ""} {
+		b, got, _ := newBeacon(t)
+		b.Version = version
+		ctx := context.Background()
+		if err := b.SetEnabled(ctx, true); err != nil {
+			t.Fatal(err)
+		}
+		if b.Enabled(ctx) {
+			t.Errorf("version %q considers itself countable", version)
+		}
+		b.Tick(ctx)
+		if len(*got) != 0 {
+			t.Errorf("version %q pinged: %+v", version, *got)
+		}
 	}
 }

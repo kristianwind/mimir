@@ -162,6 +162,17 @@ page. It is a column and not a role, deliberately: somebody given the product
 for nothing is a user of it and not an operator of the machine, and making
 them an administrator to do it would hand them the controls for the server.
 
+## The beacon is not configured here
+
+Deliberately. It is not an environment variable, so a deployment cannot switch
+it on for somebody: it lives in the database and is set from Mimir's own
+System page, by the person who administers the instance, after being shown the
+literal payload.
+
+It is on, it reports to `mimir.guide`, and an administrator is shown the
+payload and a one-click decline the first time they sign in. Declining is
+recorded and survives every upgrade. See the README for what is sent.
+
 ## Command line
 
     mimir serve                  start the server (default)

@@ -7,10 +7,11 @@
 // literal payload, and a beacon that sends anything the user was not told
 // about is how a self-hosted project loses the trust it runs on.
 //
-// It is off until the operator turns it on, and off stays off: an upgrade
-// must never re-enable it. Yggdrasil ships the same beacon default-on behind
-// a first-login disclosure; Mimir holds a single household's game account, so
-// it starts from the other end and asks first.
+// It is on unless the operator turns it off, and off stays off: an upgrade
+// must never re-enable it. The same shape as Yggdrasil's — default on, behind
+// a disclosure the administrator meets on first sign-in with a one-click
+// decline, which is the only thing that makes a default-on ping honest. A
+// beacon nobody is told about is telemetry no matter how little it sends.
 package beacon
 
 import (
@@ -43,12 +44,17 @@ const (
 	keyLastErrorAt = "beacon.last_error_at"
 )
 
-// There is deliberately no default collector.
+// DefaultCollector is where an unconfigured instance reports.
 //
-// Copying another project's collector address seemed harmless and was not:
-// pointed at Yggdrasil's, Mimir's pings land in Yggdrasil's install count as
-// phantom panels running a version that does not exist. A beacon has to know
-// where it is reporting to, and the operator is the only one who does.
+// It is Mimir's own, and that is the whole point. Copying another project's
+// address seemed harmless and was not: pointed at Yggdrasil's, Mimir's pings
+// landed in Yggdrasil's install count as phantom panels running a version
+// that does not exist. A beacon has to report somewhere that knows what it is
+// counting.
+//
+// An operator can still change it, and pointing it at their own collector is
+// a supported thing to do rather than a workaround.
+const DefaultCollector = "https://mimir.guide/api/beacon"
 
 // Interval is how often the loop wakes. It acts at most once per day, but
 // wakes more often so an instance that is not up around the clock still pings
@@ -89,6 +95,21 @@ func New(conn *sql.DB, version string, log *slog.Logger) *Beacon {
 // Unset means off. Only an explicit "1" turns it on, so a new setting, a
 // schema change or an upgrade can never flip it by accident.
 func (b *Beacon) Enabled(ctx context.Context) bool {
+	// An unreleased build is somebody's working copy, not an install worth
+	// counting. Without this, every `go run` on a laptop registers as a new
+	// installation running a version that was never published — which is the
+	// phantom-install problem the default collector exists to avoid, arriving
+	// from the other direction. Found by doing it: a local instance started
+	// for a screenshot pinged production and was counted.
+	if b.Version == "" || b.Version == "dev" {
+		return false
+	}
+	// Unanswered means on. Answered means whatever was answered — so an
+	// operator who turned it off stays off through every upgrade, which is
+	// the promise that matters more than the default.
+	if !b.Chosen(ctx) {
+		return b.URL(ctx) != ""
+	}
 	return db.Setting(ctx, b.DB, keyEnabled) == "1" && b.URL(ctx) != ""
 }
 
@@ -132,7 +153,10 @@ func (b *Beacon) InstanceID(ctx context.Context) string {
 
 // URL returns the configured collector, or empty when none is set.
 func (b *Beacon) URL(ctx context.Context) string {
-	return db.Setting(ctx, b.DB, keyURL)
+	if u := db.Setting(ctx, b.DB, keyURL); u != "" {
+		return u
+	}
+	return DefaultCollector
 }
 
 // SetURL records where pings go.

@@ -280,3 +280,105 @@ func TestStructuredDataCannotBreakOutOfItsTag(t *testing.T) {
 		t.Errorf("round trip changed the text:\n got %q\nwant %q", back, want)
 	}
 }
+
+// The JSON-LD is assembled by concatenating strings, which is the cheap way
+// and also the way that produces a document Google discards without a word.
+// Invalid structured data is not an error anybody sees — it is simply
+// ignored, so it has to be parsed here or nowhere.
+func TestTheStructuredDataIsValidJSON(t *testing.T) {
+	s := seoServer(t, true, "https://mimir.guide")
+	w := httptest.NewRecorder()
+	s.Router().ServeHTTP(w, httptest.NewRequest("GET", "/", nil))
+
+	m := regexp.MustCompile(`(?s)<script type="application/ld\+json">(.*?)</script>`).
+		FindStringSubmatch(w.Body.String())
+	if m == nil {
+		t.Fatal("no structured data on the front page")
+	}
+
+	var doc map[string]any
+	if err := json.Unmarshal([]byte(m[1]), &doc); err != nil {
+		t.Fatalf("structured data is not valid JSON: %v\n%s", err, m[1])
+	}
+	if doc["@context"] != "https://schema.org" {
+		t.Errorf("@context = %v", doc["@context"])
+	}
+	if doc["@type"] != "SoftwareApplication" {
+		t.Errorf("@type = %v", doc["@type"])
+	}
+
+	// The offers are what put a price in a search result. Two of them, and
+	// they have to match the page — a result advertising a number nobody
+	// honours is worse than a result with no number.
+	offers, ok := doc["offers"].([]any)
+	if !ok || len(offers) != 2 {
+		t.Fatalf("offers = %v, want two", doc["offers"])
+	}
+	prices := map[string]bool{}
+	for _, o := range offers {
+		om, ok := o.(map[string]any)
+		if !ok {
+			t.Fatalf("offer is not an object: %v", o)
+		}
+		if om["priceCurrency"] != "USD" {
+			t.Errorf("priceCurrency = %v", om["priceCurrency"])
+		}
+		prices[om["price"].(string)] = true
+	}
+	if !prices["4.00"] || !prices["40.00"] {
+		t.Errorf("prices = %v, want 4.00 and 40.00", prices)
+	}
+}
+
+// The price appears in three places: the pricing page, the meta description a
+// search engine prints, and the structured data that can put a figure
+// directly into a result. Only the first is generated from site.js's PRICE —
+// the other two are literals here, because Go cannot import a JavaScript
+// module.
+//
+// So a price change would leave two of the three advertising the old number,
+// and the one most likely to be believed is the one nobody looks at. A search
+// result quoting a price nobody honours is worse than one quoting none.
+func TestTheAdvertisedPriceIsThePriceOnThePage(t *testing.T) {
+	raw, err := os.ReadFile("../../web/src/lib/public/site.js")
+	if err != nil {
+		t.Skipf("no frontend source to compare against: %v", err)
+	}
+
+	find := func(field string) string {
+		m := regexp.MustCompile(field + `:\s*'\$([0-9]+)'`).FindSubmatch(raw)
+		if m == nil {
+			t.Fatalf("could not read %s out of site.js", field)
+		}
+		return string(m[1])
+	}
+	monthly, yearly := find("monthly"), find("yearly")
+
+	s := seoServer(t, true, "https://mimir.guide")
+	w := httptest.NewRecorder()
+	s.Router().ServeHTTP(w, httptest.NewRequest("GET", "/", nil))
+	if !strings.Contains(w.Body.String(), `"price":"`+monthly+`.00"`) {
+		t.Errorf("the structured data does not offer the monthly price $%s from site.js", monthly)
+	}
+	if !strings.Contains(w.Body.String(), `"price":"`+yearly+`.00"`) {
+		t.Errorf("the structured data does not offer the yearly price $%s from site.js", yearly)
+	}
+
+	// And the sentence a search engine prints under the link.
+	pricing := seoPages["/pricing"].Description
+	for _, want := range []string{"$" + monthly, "$" + yearly} {
+		if !strings.Contains(pricing, want) {
+			t.Errorf("the pricing description does not quote %s: %q", want, pricing)
+		}
+	}
+
+	// The trial length too, said in the descriptions as a word.
+	m := regexp.MustCompile(`trialDays:\s*(\d+)`).FindSubmatch(raw)
+	if m == nil {
+		t.Fatal("could not read trialDays out of site.js")
+	}
+	if days := string(m[1]); days != "14" {
+		t.Errorf("the trial is %s days in site.js, but both descriptions here "+
+			"say fourteen — update them together", days)
+	}
+}

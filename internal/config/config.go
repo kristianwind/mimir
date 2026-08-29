@@ -57,9 +57,11 @@ type Config struct {
 
 	// AllowRegistration lets strangers create accounts.
 	//
-	// It follows Hosted by default: the instance being sold has to let
-	// people buy it, and a personal one should not let anybody on the
-	// network help themselves. Either can be overridden explicitly.
+	// It follows Hosted when the variable is absent, which covers running
+	// the binary directly. It does NOT cover the Yggdrasil panel: that
+	// materialises every declared variable, so an unticked box arrives as an
+	// explicit false and wins. Under the panel both boxes have to be ticked,
+	// and the rune's hint says so.
 	AllowRegistration bool
 	// Repo is the GitHub repository releases are checked against.
 	Repo string

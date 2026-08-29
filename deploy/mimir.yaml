@@ -4,7 +4,7 @@ gameskill:
   category: "Apps"
   description: "Genshin Impact build advisor: Enka and GOOD import, artifact optimizer and a resin plan ranked by damage per resin"
   author: "kristianwind"
-  version: 8
+  version: 9
   icon: "app"
 
   docker:
@@ -162,24 +162,38 @@ gameskill:
       default: "kristianwind/mimir"
       hint: "Where Mimir checks for new versions. It reports what it finds; updating the container is this panel's job, not Mimir's."
 
-  # One button that actually fetches a new version.
+  # One button whose result you can read.
   #
-  # Without this block the panel has no update path for Mimir at all, and
-  # Restart is not one: it recreates the container, which makes rune and
-  # variable changes take effect, but it never pulls. A recreate runs whatever
-  # :latest already resolves to on that host, so a server could sit on an old
-  # image indefinitely while GHCR moved on — measured on 2026-08-29, when
-  # production held 0.4.1 and GHCR was already on 0.4.2.
+  # An earlier version of this comment said Restart never pulls. That was
+  # wrong, and measuring it is what proved it wrong: recreateAndStart calls
+  # pullImageRetry one line above Create, unconditionally, so every Restart
+  # does fetch. Production went 0.4.1 to 0.4.3 across a single restart with
+  # nothing else touching the box.
+  #
+  # The reason to have this block is subtler and worse:
+  #
+  #     func (s *Server) pullImageRetry(ctx context.Context, image string) {
+  #         if err := s.docker.PullImage(ctx, image, io.Discard); err != nil {
+  #             s.docker.PullImage(ctx, image, io.Discard) //nolint:errcheck
+  #         }
+  #     }
+  #
+  # Two attempts, then it gives up and returns nothing. No error propagates.
+  # An unreachable registry, an expired credential or a rate limit does not
+  # stop the restart: the container comes up on the LOCAL image and the panel
+  # reports success. Restart deploys right up until the moment it silently
+  # does not, and the two look identical from the panel.
+  #
+  # That is what the version echo below is for. It is the only thing in the
+  # sequence that says which image actually arrived.
   #
   # image: is deliberately absent. Unset, the pull targets docker.image — this
   # app's own — and that pull IS the update. The field exists for apps whose
   # update needs a different toolchain than they run on.
   #
-  # The script cannot veto a bad release: the pull happens before it and the
-  # container is recreated whether it succeeds or fails. So it does not try to
-  # be a gate. It is here to make the update log say which version arrived,
-  # because a pull that quietly served a cached image looks identical to one
-  # that fetched a new one.
+  # The script cannot veto a bad release either: the pull happens before it and
+  # the container is recreated whether it succeeds or fails. So it is not a
+  # gate anywhere. It is a witness.
   update:
     label: "Update Mimir"
     script: |

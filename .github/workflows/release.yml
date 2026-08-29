@@ -4,9 +4,15 @@
 #   - release binaries + checksums.txt — what the self-updater downloads and
 #     verifies, and refuses to install without
 #
-# The image is rebuilt on every push to main so the rune's :latest is never
-# stale. Binaries are published on a version tag only, because the updater
-# compares tags and an untagged build is not something it should offer.
+# :latest is a release, not a branch tip. The panel pulls :latest, so pointing
+# it at main meant the hosted instance ran a build stamped "dev" that no
+# self-hoster could install, while the newest release sat a week behind it.
+# The two were never the same image. Now a version tag publishes :latest and
+# main publishes :edge, so "the hosted instance runs this code" is true of the
+# artefact and not only of the repository.
+#
+# Binaries are published on a version tag only, because the updater compares
+# tags and an untagged build is not something it should offer.
 name: release
 
 on:
@@ -15,8 +21,8 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
-# Two pushes in quick succession race for the same :latest tag, and whichever
-# build finishes last wins — which can leave :latest on the *older* commit.
+# Two pushes in quick succession race for the same :edge tag, and whichever
+# build finishes last wins — which can leave :edge on the *older* commit.
 # Superseding a branch build is safe: its only output is a tag that is about
 # to be overwritten anyway.
 #
@@ -103,7 +109,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
+            type=raw,value=edge,enable={{is_default_branch}}
             type=semver,pattern={{version}}
             type=sha,format=short
 

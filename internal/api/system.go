@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kristianwind/mimir/internal/auth"
+	"github.com/kristianwind/mimir/internal/selfupdate"
 )
 
 // handleSystemStatus reports the version, the update state and exactly what
@@ -74,12 +75,7 @@ func (s *Server) handleApplyUpdate(w http.ResponseWriter, r *http.Request) {
 
 	// Exit after the response has been written, so the browser sees the
 	// answer rather than a dropped connection.
-	if s.Shutdown != nil {
-		go func() {
-			time.Sleep(500 * time.Millisecond)
-			s.Shutdown()
-		}()
-	}
+	s.exitForRestart()
 }
 
 // handleRollback restores the binary the last update replaced.
@@ -104,12 +100,39 @@ func (s *Server) handleRollback(w http.ResponseWriter, r *http.Request) {
 		"note":     "Restart Mimir to run the restored version.",
 	})
 
-	if s.Shutdown != nil {
-		go func() {
-			time.Sleep(500 * time.Millisecond)
-			s.Shutdown()
-		}()
+	s.exitForRestart()
+}
+
+// exitForRestart leaves the process, but only where something will start it
+// again.
+//
+// The assumption underneath this used to be "a supervisor restarts it", and
+// on the deployment that actually matters that assumption is false. The
+// Yggdrasil container runs with a restart policy of on-failure: a clean exit
+// zero is never revived, so exiting would take Mimir down until somebody
+// pressed a button. Found by the Yggdrasil session reading the running
+// container rather than by anything here.
+//
+// Both callers are refused earlier by the updater in container mode today, so
+// this is a guard against a coincidence rather than a live fault — which is
+// the only comfortable time to write one. Where exiting would not bring us
+// back, the version on disk is still the new one, and saying so is more use
+// than a process that does not return.
+func (s *Server) exitForRestart() {
+	if s.Updater != nil && s.Updater.Mode() == selfupdate.ModeContainer {
+		if s.Log != nil {
+			s.Log.Warn("not exiting: a container that exits cleanly is not restarted here — " +
+				"recreate it from the panel to run the new version")
+		}
+		return
 	}
+	if s.Shutdown == nil {
+		return
+	}
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		s.Shutdown()
+	}()
 }
 
 // handleSetBeacon records the operator's choice about the daily ping.

@@ -85,12 +85,19 @@
   let beacon = $state(null)
   let beaconBusy = $state(false)
 
+  // Whether this account may use the product. Only ever false on the hosted
+  // instance — a self-hosted Mimir answers allowed before it looks at
+  // anything. Asked here so a lapsed reader meets one sentence explaining
+  // why, rather than every page failing separately with an error each.
+  let access = $state(null)
+
   async function refresh() {
     accounts = (await api.accounts()) ?? []
     if (!selected || !accounts.some((a) => a.id === selected.id)) {
       selected = accounts[0] ?? null
     }
     gamedata = await api.gamedata().catch(() => null)
+    access = (await api.billing().catch(() => null))?.access ?? null
     if (me?.role === 'admin') {
       beacon = (await api.system().catch(() => null))?.beacon ?? null
     }
@@ -260,7 +267,28 @@
       </div>
     {/if}
 
-    {#if view === 'account'}
+    <!--
+      One explanation instead of every page failing on its own. Settings,
+      System and Users stay reachable: the first is where you subscribe, and
+      the other two operate the machine rather than use the product — locking
+      an administrator out of the controls over a billing state is how
+      somebody ends up unable to fix the billing state.
+    -->
+    {#if access && !access.allowed && view !== 'account' && view !== 'system' && view !== 'users'}
+      <section class="card p-6">
+        <h2 class="font-medium">
+          {access.reason === 'trial-over' ? 'The free trial has ended' : 'The subscription is not active'}
+        </h2>
+        <p class="mt-2 max-w-prose text-sm leading-relaxed text-muted">
+          Your account, everything you imported and every goal you set are still here, exactly as
+          you left them. Nothing has been deleted and nothing will be. Subscribing turns the
+          calculations back on.
+        </p>
+        <div class="mt-4">
+          <button class="btn-primary" onclick={() => (view = 'account')}>See the options</button>
+        </div>
+      </section>
+    {:else if view === 'account'}
       <Account {me} {theme} {mode} {setTheme} {logout} />
     {:else if view === 'system'}
       <System user={me} {hosted} />

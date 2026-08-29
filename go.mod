@@ -5,7 +5,7 @@ go 1.26.3
 require (
 	github.com/go-chi/chi/v5 v5.3.0
 	github.com/go-webauthn/webauthn v0.18.0
-	github.com/stripe/stripe-go/v82 v82.5.1
+	github.com/stripe/stripe-go/v85 v85.2.0
 	golang.org/x/crypto v0.55.0
 	modernc.org/sqlite v1.51.0
 )

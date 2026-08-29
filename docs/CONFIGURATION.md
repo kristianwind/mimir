@@ -83,17 +83,23 @@ error that does not obviously name the cause.
    Without one, every checkout is rejected. Mimir's is `txcd_10103000` —
    Software as a service, personal use.
 
-2. **The webhook endpoint must use the API version this build reads.** Stripe
-   moves fields between versions — `current_period_end` moved off the
-   subscription and onto its items — and a misparsed subscription does not
-   fail loudly, it reads as "no subscription" and locks out someone who is
-   paying. So Mimir refuses a mismatched version outright, and the error names
-   the version it wants. Create the endpoint with that version selected.
+2. **The destination must send a snapshot payload, not a thin one.** Stripe
+   can deliver either the whole object or just an id for you to fetch back.
+   Mimir reads the object, so a thin destination arrives with no customer on
+   it — and says exactly that rather than failing vaguely.
+
+   The API version does **not** have to match. It used to be required to, and
+   that was wrong: an account's version is whatever Stripe has moved it to,
+   the dashboard offers only that and a preview, and no release of the Go
+   library has ever matched it exactly. What is checked instead is whether
+   the fields entitlement is computed from actually arrived — a live
+   subscription with no period end is refused, because recording it would set
+   an expiry of the zero time and lock out somebody who is paying.
 
 3. **The endpoint URL is `<MIMIR_BASE_URL>/api/stripe/webhook`**, subscribed to
-   `customer.subscription.created`, `.updated` and `.deleted`. Nothing else is
-   acted on; anything else is acknowledged and ignored so Stripe stops
-   retrying it.
+   `customer.subscription.created`, `.updated` and `.deleted` — those three
+   and nothing else. Anything else is acknowledged and ignored so Stripe stops
+   retrying it, but subscribing to everything just spends both ends' time.
 
 4. **Products and prices are per mode.** Ones created in live mode are
    invisible to test keys and the other way round. Mismatched ids give "no

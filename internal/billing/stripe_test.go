@@ -24,6 +24,7 @@ func sign(t *testing.T, payload, secret string, at time.Time) string {
 func subscriptionEvent(kind, customer, status string, periodEnd time.Time, cancelAtEnd bool) string {
 	return fmt.Sprintf(`{
 	  "id": "evt_test",
+	  "object": "event",
 	  "api_version": %q,
 	  "type": %q,
 	  "data": {"object": {
@@ -150,7 +151,7 @@ func TestUnrelatedEventsAreAcknowledgedAndIgnored(t *testing.T) {
 	const secret = "whsec_test"
 	s := &Stripe{WebhookSecret: secret}
 	body := fmt.Sprintf(
-		`{"id":"evt_x","api_version":%q,"type":"payment_intent.succeeded","data":{"object":{"id":"pi_x"}}}`,
+		`{"id":"evt_x","object":"event","api_version":%q,"type":"payment_intent.succeeded","data":{"object":{"id":"pi_x"}}}`,
 		APIVersion())
 
 	got, err := s.Verify([]byte(body), sign(t, body, secret, time.Now()))
@@ -181,25 +182,77 @@ func TestAnUnconfiguredInstanceRefusesToTakeMoney(t *testing.T) {
 	}
 }
 
-// An endpoint configured on a different Stripe API version sends objects of a
-// different shape, and this very version moved current_period_end off the
-// subscription onto its items. Waving that through would not fail loudly; it
-// would read as "no subscription" and lock a paying customer out. So it is
-// refused, and the refusal has to name the fix.
-func TestAVersionMismatchIsRefusedAndSaysWhy(t *testing.T) {
+// The version check that used to live here has gone, and this replaced it.
+// An account's API version is whatever Stripe has moved it to — the dashboard
+// offers that one and a preview, and no release of the library has ever
+// matched it — so demanding a match was a check nobody could satisfy. What
+// matters is whether the fields entitlement is computed from arrived.
+func TestAnEventFromAnotherAPIVersionIsAccepted(t *testing.T) {
 	const secret = "whsec_test"
 	s := &Stripe{WebhookSecret: secret}
-	body := `{"id":"evt_x","api_version":"2019-01-01","type":"customer.subscription.updated",` +
-		`"data":{"object":{"id":"sub_x","object":"subscription","customer":"cus_x","status":"active"}}}`
+	ends := time.Now().Add(30 * 24 * time.Hour).Truncate(time.Second)
+	body := strings.Replace(
+		subscriptionEvent("customer.subscription.updated", "cus_1", "active", ends, false),
+		APIVersion(), "2019-01-01", 1)
+
+	got, err := s.Verify([]byte(body), sign(t, body, secret, time.Now()))
+	if err != nil {
+		t.Fatalf("an event from another API version was refused: %v", err)
+	}
+	if got.Status != "active" || got.CustomerID != "cus_1" {
+		t.Errorf("read %+v", got)
+	}
+}
+
+// The real guard. A live subscription with no period end would be recorded as
+// expiring at the zero time, locking out somebody who is paying — so it is
+// refused, and the refusal names the field rather than a version.
+func TestALiveSubscriptionWithNoPeriodEndIsRefused(t *testing.T) {
+	const secret = "whsec_test"
+	s := &Stripe{WebhookSecret: secret}
+	body := fmt.Sprintf(`{"id":"evt_x","object":"event","api_version":%q,`+
+		`"type":"customer.subscription.updated","data":{"object":{"id":"sub_x",`+
+		`"object":"subscription","customer":"cus_x","status":"active",`+
+		`"items":{"object":"list","data":[]}}}}`, APIVersion())
 
 	_, err := s.Verify([]byte(body), sign(t, body, secret, time.Now()))
 	if err == nil {
-		t.Fatal("an event from another API version was accepted")
+		t.Fatal("a live subscription with no period end was accepted")
 	}
-	if !strings.Contains(err.Error(), APIVersion()) {
-		t.Errorf("the error does not name the version this build reads: %v", err)
+	if !strings.Contains(err.Error(), "period end") {
+		t.Errorf("the error does not name what was missing: %v", err)
 	}
-	if !strings.Contains(err.Error(), "dashboard") {
-		t.Errorf("the error does not say where to fix it: %v", err)
+}
+
+// A cancelled one has nothing left to expire, so the same absence is fine.
+func TestACancelledSubscriptionNeedsNoPeriodEnd(t *testing.T) {
+	const secret = "whsec_test"
+	s := &Stripe{WebhookSecret: secret}
+	body := fmt.Sprintf(`{"id":"evt_x","object":"event","api_version":%q,`+
+		`"type":"customer.subscription.deleted","data":{"object":{"id":"sub_x",`+
+		`"object":"subscription","customer":"cus_x","status":"canceled",`+
+		`"items":{"object":"list","data":[]}}}}`, APIVersion())
+
+	if _, err := s.Verify([]byte(body), sign(t, body, secret, time.Now())); err != nil {
+		t.Fatalf("a cancellation with no period end was refused: %v", err)
+	}
+}
+
+// A payload with no customer cannot be acted on, and the likeliest cause is a
+// destination sending thin events rather than the whole object — so the error
+// says so rather than leaving somebody to guess.
+func TestAnEventWithNoCustomerNamesTheLikelyCause(t *testing.T) {
+	const secret = "whsec_test"
+	s := &Stripe{WebhookSecret: secret}
+	body := fmt.Sprintf(`{"id":"evt_x","object":"event","api_version":%q,`+
+		`"type":"customer.subscription.updated","data":{"object":{"id":"sub_x",`+
+		`"object":"subscription","status":"active"}}}`, APIVersion())
+
+	_, err := s.Verify([]byte(body), sign(t, body, secret, time.Now()))
+	if err == nil {
+		t.Fatal("an event with no customer was accepted")
+	}
+	if !strings.Contains(err.Error(), "snapshot") {
+		t.Errorf("the error does not point at the likely cause: %v", err)
 	}
 }

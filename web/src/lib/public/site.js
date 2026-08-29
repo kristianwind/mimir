@@ -49,7 +49,7 @@ const vatClause = SELLER.vat ? `, ${SELLER.vat}` : ''
 
 // Dated when the text was last changed, because "last updated" on a legal
 // page is a promise that somebody looked.
-const UPDATED = '28 August 2026'
+const UPDATED = '29 August 2026'
 
 export const PRICE = {
   monthly: '$4',
@@ -127,6 +127,10 @@ export const LANDING = {
 export const PRICING = {
   title: 'Pricing',
   intro: `One plan. ${PRICE.trialDays} days free to start, and no card until you decide.`,
+  // Said next to the number rather than only in the terms. A price that grows
+  // at the last step is the worst possible moment to be surprised, and for a
+  // consumer in the EU the inclusive figure is the one that must be shown.
+  taxNote: 'Tax included. What you see is what you are charged, wherever you live.',
   plans: [
     {
       name: 'Monthly',
@@ -184,7 +188,7 @@ export const LEGAL = {
       ],
       [
         'Payment and renewal',
-        `Subscriptions renew automatically at ${PRICE.monthly} monthly or ${PRICE.yearly} yearly until cancelled. Card details are never seen by or stored on this service; Stripe holds them. Prices are shown exclusive of any sales tax or VAT that applies where you live, which Stripe calculates at checkout and adds to the total shown before you pay.`,
+        `Subscriptions renew automatically at ${PRICE.monthly} monthly or ${PRICE.yearly} yearly until cancelled. Card details are never seen by or stored on this service; Stripe holds them. Prices include any sales tax or VAT that applies where you live: the price shown is the price charged, and Stripe accounts for the tax portion out of it. Nothing is added at checkout.`,
       ],
       [
         'Cancellation',

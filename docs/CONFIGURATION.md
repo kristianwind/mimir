@@ -76,7 +76,8 @@ expiry — the software is free and running it yourself holds nothing back.
 ### Setting up the Stripe side
 
 Four things have to be true or checkout fails, and three of them fail with an
-error that does not obviously name the cause.
+error that does not obviously name the cause. A fifth does not fail at all —
+it quietly charges the wrong amount, and cannot be corrected later.
 
 1. **The product needs a tax code.** Managed Payments makes Stripe the seller,
    and a seller has to know what it is selling to charge the right VAT.
@@ -104,6 +105,18 @@ error that does not obviously name the cause.
 4. **Products and prices are per mode.** Ones created in live mode are
    invisible to test keys and the other way round. Mismatched ids give "no
    such price".
+
+5. **Every price is created with `tax_behavior=inclusive`, and that cannot be
+   changed afterwards.** The advertised figure is what the customer is
+   charged: Stripe accounts for VAT out of it rather than adding it on top.
+   Exclusive pricing would show $4 to a Danish reader and take $5, which is
+   both the worst moment to surprise somebody and not how a consumer price
+   may be shown in the EU — the inclusive figure is the one that has to
+   appear. The catch is that Stripe freezes `tax_behavior` once it is set to
+   `inclusive` or `exclusive`; only `unspecified` can still be changed, and
+   `unspecified` behaves as exclusive in the meantime. So a price created
+   wrongly cannot be repaired — it has to be replaced and the environment
+   variable pointed at the new id.
 
 ### What the trial is, and is not
 

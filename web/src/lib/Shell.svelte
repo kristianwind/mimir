@@ -165,6 +165,12 @@
       entries off the edge of a phone with nothing to say they were there —
       Compare was cut to "Co".
     -->
+    {#if gamedata && !gamedata.synced}
+      <p class="mb-6 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn md:hidden">
+        Game data is missing. Run a sync, or nothing can be calculated.
+      </p>
+    {/if}
+
     <nav class="mb-6 flex flex-wrap gap-1 md:hidden">
       {#each NAV as item (item.key)}
         <button
@@ -193,7 +199,7 @@
     {/if}
 
     {#if view === 'account'}
-      <Account {me} {theme} {mode} {setTheme} />
+      <Account {me} {theme} {mode} {setTheme} {logout} />
     {:else if view === 'system'}
       <System user={me} {hosted} />
     {:else if view === 'users'}

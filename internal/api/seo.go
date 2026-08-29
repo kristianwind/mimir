@@ -235,8 +235,21 @@ func (s *Server) structuredData(origin string) string {
 }
 
 // jsonEscape makes a description safe inside the JSON-LD literal above.
+//
+// The angle brackets become \u003c and \u003e rather than staying as
+// themselves: a description containing "</script>" would otherwise close the
+// tag it lives in, and the rest of the page would be parsed as markup. The
+// text is a compile-time constant today, so this is guarding a door nobody is
+// currently at — which is the only time to fit a lock.
 func jsonEscape(v string) string {
-	r := strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", " ", "<", `<`, ">", `>`)
+	r := strings.NewReplacer(
+		`\`, `\\`,
+		`"`, `\"`,
+		"\n", " ",
+		"<", `\u003c`,
+		">", `\u003e`,
+		"&", `\u0026`,
+	)
 	return r.Replace(v)
 }
 
@@ -296,19 +309,14 @@ func (s *Server) handleRobots(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(&b, "Allow: %s\n", p)
 		}
 	}
-	// The application itself. Not secret — it is behind a login — but a
-	// crawler spending its budget on pages that answer "sign in" is budget
-	// not spent on the pages that sell.
+	// The API, and the form. Nothing else is listed, because nothing else is
+	// an address: once signed in the application swaps its whole view in
+	// place and never touches the URL, so "/plan" and the rest are not
+	// pages a crawler could reach even in principle. Every path that is not
+	// a marketing page is served the document with "noindex" in its head,
+	// which is the part that actually does the work — this file only saves
+	// the crawler the fetch.
 	b.WriteString("Disallow: /api/\n")
-	b.WriteString("Disallow: /plan\n")
-	b.WriteString("Disallow: /potential\n")
-	b.WriteString("Disallow: /characters\n")
-	b.WriteString("Disallow: /compare\n")
-	b.WriteString("Disallow: /artifacts\n")
-	b.WriteString("Disallow: /goals\n")
-	b.WriteString("Disallow: /accounts\n")
-	b.WriteString("Disallow: /settings\n")
-	b.WriteString("Disallow: /kvasir\n")
 	b.WriteString("Disallow: /signup\n")
 	if origin := s.seoOrigin(); origin != "" {
 		fmt.Fprintf(&b, "\nSitemap: %s/sitemap.xml\n", origin)

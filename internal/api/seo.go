@@ -79,8 +79,8 @@ var seoPages = map[string]seoPage{
 	},
 	"/privacy": {
 		Title: "Privacy — Mimir",
-		Description: "What Mimir stores, for how long, and what it never does. " +
-			"No analytics, no tracking, no advertising.",
+		Description: "What Mimir stores, what it sends elsewhere, and for how long. " +
+			"The software you run yourself measures you for nobody.",
 		Priority: "0.3",
 		Changes:  "yearly",
 	},

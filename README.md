@@ -219,11 +219,14 @@ others' pings, which is a supported arrangement rather than a workaround. A
 promise about what is sent is only worth the payload struct behind it, so see
 [`internal/beacon`](internal/beacon/beacon.go) and check for yourself.
 
-There is no other telemetry, no analytics, and no third-party script anywhere
-in this repository. The hosted instance at
-[mimir.guide](https://mimir.guide) does not add any: it is this code with
-`MIMIR_HOSTED=true`, which turns on the public pages and billing and nothing
-else.
+Nothing else in Mimir reports anywhere. **An instance you run measures you for
+nobody** — the beacon above is the only thing that ever leaves the machine, it
+is two fields, and it switches off in one click.
+
+The hosted service at [mimir.guide](https://mimir.guide) is a different
+question, and worth being straight about: it is a website, it is run as a
+business, and its traffic is measured like any other website's. That belongs
+to whoever operates it and says nothing about the copy you run at home.
 
 ## Licence
 

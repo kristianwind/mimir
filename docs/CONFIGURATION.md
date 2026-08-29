@@ -21,16 +21,40 @@ domain, a model, or a payment processor.
 
 ### `MIMIR_BASE_URL` decides more than it looks like
 
-Three things read it, and two of them fail quietly if it is wrong.
+Four things read it, and three of them fail quietly if it is wrong.
 
 It is where Stripe sends a customer back to after checkout. It is the origin
 Mimir accepts passkeys from, and the host part becomes the WebAuthn RP ID —
 **a passkey enrolled under one hostname will not work under another**, and the
-failure is a browser silently declining rather than an error anybody sees. And
-it is the address in the PWA manifest.
+failure is a browser silently declining rather than an error anybody sees. It
+is the address in the PWA manifest. And it is the origin every canonical
+URL, `og:image` and sitemap entry is built from, so a wrong one tells search
+engines the real pages live somewhere else.
 
 Change the domain and every existing passkey is orphaned. Get it right before
 anybody enrols one.
+
+## Being found
+
+Only on the hosted instance, and this is not a knob — it follows
+`MIMIR_HOSTED`.
+
+The frontend is a single page application, so every address is served the
+same document and the page is chosen in the browser. Search engines will run
+the script eventually; the crawlers that decide what a pasted link looks like
+— Discord, Reddit, Slack, iMessage, Bluesky — will not. They read the head
+and give up. So the server writes the title, description, Open Graph and
+JSON-LD into the document per path before it goes out (`internal/api/seo.go`),
+and `/robots.txt` and `/sitemap.xml` are served from the same table.
+
+A self-hosted instance is the opposite: `robots.txt` refuses everything and
+no page describes itself. Being reachable is not the same as asking to be
+listed, and somebody running this on a box at home did not ask to appear in
+Google.
+
+The card in a link preview is `web/public/og.jpg`, 1200×630. It is a real
+file rather than something rendered on demand, because the one thing a link
+preview must not do is depend on the service being quick.
 
 ## The AI layer
 

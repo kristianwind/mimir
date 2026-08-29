@@ -9,9 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -63,6 +65,10 @@ type Server struct {
 	// other part of Mimir behaves exactly as it does now — no number in the
 	// product comes from a model.
 	Kvasir *kvasir.Advisor
+	// seoCache holds index.html with per-path meta tags written into it, so
+	// a crawler that runs no JavaScript still gets a title and a description.
+	// Built on first use from the embedded bundle.
+	seoCache seo
 	// Shutdown asks the process to exit so a supervisor restarts it. The
 	// updater needs it: replacing the binary does nothing until the old
 	// process leaves.
@@ -230,6 +236,12 @@ func (s *Server) Router() http.Handler {
 		})
 	})
 
+	// Served whether or not there is a bundle: a crawler asking a headless
+	// instance for robots.txt should be told no, not given a 404 it may read
+	// as permission.
+	r.Get("/robots.txt", s.handleRobots)
+	r.Get("/sitemap.xml", s.handleSitemap)
+
 	if s.Web != nil {
 		r.Handle("/*", s.spa())
 	}
@@ -238,14 +250,37 @@ func (s *Server) Router() http.Handler {
 
 // spa serves the built frontend, falling back to index.html so client-side
 // routes survive a hard refresh.
+//
+// The fallback is where the document gets its title and description written
+// in — see seo.go. Doing it here rather than at build time is what lets six
+// addresses share one bundle and still describe themselves differently to a
+// crawler that will never run the script.
 func (s *Server) spa() http.Handler {
 	files := http.FileServer(http.FS(s.Web))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, err := fs.Stat(s.Web, trimLeadingSlash(r.URL.Path)); err != nil {
+		// Directories do not count as a hit. "/" resolves to ".", which
+		// stats perfectly well and would hand the front page to the plain
+		// file server — untouched, and so unreadable to a crawler. That is
+		// the one page this whole file exists for.
+		if info, err := fs.Stat(s.Web, trimLeadingSlash(r.URL.Path)); err == nil && !info.IsDir() {
+			files.ServeHTTP(w, r)
+			return
+		}
+		doc, ok := s.seoDocument(r.URL.Path)
+		if !ok {
+			// No bundle to read, or an unreadable one. Fall back to the
+			// plain file server rather than inventing a page.
 			r = r.Clone(r.Context())
 			r.URL.Path = "/"
+			files.ServeHTTP(w, r)
+			return
 		}
-		files.ServeHTTP(w, r)
+		// Written straight out rather than through ServeContent: there is no
+		// meaningful modification time for a document assembled in memory,
+		// and a Range request for an HTML page is nobody's use case.
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Content-Length", strconv.Itoa(len(doc)))
+		_, _ = io.WriteString(w, doc)
 	})
 }
 

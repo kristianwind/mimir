@@ -127,7 +127,8 @@
     {:else}
       <!-- Hero. One claim, one button, and then the thing itself. -->
       <section class="pb-2">
-        <h1 class="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+        <p class="text-sm font-medium tracking-tight text-accent">{LANDING.kicker}</p>
+        <h1 class="mt-2 text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
           {LANDING.tagline}
         </h1>
         <p class="mt-4 max-w-2xl leading-relaxed text-muted">{LANDING.intro}</p>
@@ -152,19 +153,32 @@
         The screenshots are the argument, so they are large and they are real.
         The caveats visible inside them are not a flaw in the picture: a page
         that cropped them out would be selling a different product.
+
+        This one is eager rather than lazy: it is the largest thing above the
+        fold, and deferring the hero image is how a page ends up showing a
+        stranger an empty rectangle.
       -->
-      <section class="mt-12">
-        <h2 class="text-xl font-medium tracking-tight">{LANDING.proof.title}</h2>
-        <p class="mt-2 max-w-2xl leading-relaxed text-muted">{LANDING.proof.body}</p>
-        <figure class="mt-5">
+      <figure class="mt-10">
+        <div class="relative">
+          <div
+            class="pointer-events-none absolute -inset-x-8 -inset-y-6 rounded-[2rem] bg-accent/10 blur-3xl"
+            aria-hidden="true"
+          ></div>
           <img
             src={LANDING.proof.shot}
             alt={LANDING.proof.alt}
-            loading="lazy"
-            class="w-full rounded-2xl border border-line shadow-lg"
+            width="1408"
+            height="636"
+            fetchpriority="high"
+            class="relative w-full rounded-2xl border border-line shadow-2xl"
           />
-          <figcaption class="mt-2 text-xs text-muted">{LANDING.proof.caption}</figcaption>
-        </figure>
+        </div>
+        <figcaption class="mt-2 text-xs text-muted">{LANDING.proof.caption}</figcaption>
+      </figure>
+
+      <section class="mt-14">
+        <h2 class="text-xl font-medium tracking-tight">{LANDING.proof.title}</h2>
+        <p class="mt-2 max-w-2xl leading-relaxed text-muted">{LANDING.proof.body}</p>
       </section>
 
       {#each LANDING.sections as section}
@@ -174,6 +188,8 @@
           <img
             src={section.shot}
             alt={section.alt}
+            width={section.w}
+            height={section.h}
             loading="lazy"
             class="mt-5 w-full rounded-2xl border border-line shadow-lg"
           />

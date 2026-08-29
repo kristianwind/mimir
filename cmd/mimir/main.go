@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
@@ -35,6 +36,15 @@ import (
 // An unstamped build stays "dev", and the updater refuses to replace it —
 // throwing away a binary somebody built on purpose is not an upgrade.
 var version = "dev"
+
+// newBeacon is the beacon as the application wants it: reporting to Mimir's
+// own collector unless the operator says otherwise. The package deliberately
+// does not apply that default itself — see beacon.Beacon.DefaultURL.
+func newBeacon(conn *sql.DB, version string, log *slog.Logger) *beacon.Beacon {
+	b := beacon.New(conn, version, log)
+	b.DefaultURL = beacon.DefaultCollector
+	return b
+}
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -163,7 +173,7 @@ func serve(args []string) error {
 		Log:      log,
 		Web:      web,
 		Version:  version,
-		Beacon:   beacon.New(conn, version, log),
+		Beacon:   newBeacon(conn, version, log),
 		Updater: selfupdate.New(conn, version, cfg.Repo, cfg.DataDir,
 			healthURL(cfg.Addr), log),
 		// The AI layer. With no endpoint configured this is an advisor with a

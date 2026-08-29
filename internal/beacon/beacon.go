@@ -75,6 +75,19 @@ type Beacon struct {
 	Version string
 	HTTP    *http.Client
 	Log     *slog.Logger
+	// DefaultURL is where to report when the operator has configured no
+	// collector. It is a field the application sets rather than a constant
+	// this package applies, and the direction of that default is the point:
+	// a Beacon built without it reports nowhere.
+	//
+	// Forgetting it in main means the beacon stays quiet, which is visible
+	// and harmless. Baking it in meant every test that ticked without an
+	// explicit address sent a real ping to production — which is not a
+	// hypothetical: two rows arrived in the live table on the evening this
+	// was written, one from `go test` and one from a local instance started
+	// to take a screenshot. Defaults belong on the side where being wrong is
+	// cheap.
+	DefaultURL string
 	// Now is injectable for tests.
 	Now func() time.Time
 }
@@ -156,7 +169,7 @@ func (b *Beacon) URL(ctx context.Context) string {
 	if u := db.Setting(ctx, b.DB, keyURL); u != "" {
 		return u
 	}
-	return DefaultCollector
+	return b.DefaultURL
 }
 
 // SetURL records where pings go.

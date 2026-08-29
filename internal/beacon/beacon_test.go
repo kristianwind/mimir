@@ -210,6 +210,14 @@ func TestTheDefaultCollectorIsMimirsOwn(t *testing.T) {
 	b := New(conn, "v1.2.3", nil)
 	ctx := context.Background()
 
+	// Nothing set at all: the package applies no default of its own, so a
+	// beacon nobody configured reports nowhere. That is what keeps a test
+	// from pinging production by omission.
+	if got := b.URL(ctx); got != "" {
+		t.Errorf("a beacon with no DefaultURL reports to %q, want nowhere", got)
+	}
+
+	b.DefaultURL = DefaultCollector
 	if got := b.URL(ctx); got != DefaultCollector {
 		t.Errorf("URL with nothing configured = %q, want %q", got, DefaultCollector)
 	}
@@ -239,9 +247,11 @@ func TestClearingTheCollectorFallsBackToTheDefault(t *testing.T) {
 	if err := b.SetURL(ctx, ""); err != nil {
 		t.Fatal(err)
 	}
+	b.DefaultURL = DefaultCollector
 	if got := b.URL(ctx); got != DefaultCollector {
 		t.Errorf("URL after clearing = %q, want the default %q", got, DefaultCollector)
 	}
+	b.DefaultURL = ""
 
 	// And off is still off, which is the promise that actually matters.
 	if err := b.SetEnabled(ctx, false); err != nil {

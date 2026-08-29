@@ -184,6 +184,35 @@ else:
 
 See [PROGRESS.md](PROGRESS.md).
 
+## The beacon
+
+Mimir sends one thing to one place, and only if you tell it to.
+
+**It is off.** Not off-by-default-until-an-upgrade — off. `Enabled()` requires
+both an explicit opt-in *and* a collector address, and **there is no default
+collector in the source**. With nothing configured the beacon has nowhere to
+report to and no permission to, so it cannot phone anywhere even by accident.
+Switching it off later is recorded explicitly, so an upgrade cannot quietly
+turn it back on.
+
+If you do switch it on, the entire payload is:
+
+```json
+{"instance_id": "<random, generated locally>", "version": "v0.3.0"}
+```
+
+That is the whole of it. No UID, no account, no inventory, no artifacts, no
+email, and the receiver stores no IP address. The System page shows you the
+literal bytes before you agree to anything, because a promise about what is
+sent is only worth the payload struct behind it — see
+[`internal/beacon`](internal/beacon/beacon.go) and check for yourself.
+
+There is no other telemetry, no analytics, and no third-party script anywhere
+in this repository. The hosted instance at
+[mimir.guide](https://mimir.guide) does not add any: it is this code with
+`MIMIR_HOSTED=true`, which turns on the public pages and billing and nothing
+else.
+
 ## Licence
 
 [GNU Affero General Public License v3.0](LICENSE).

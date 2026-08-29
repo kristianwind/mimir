@@ -70,9 +70,13 @@ type Server struct {
 	// a crawler that runs no JavaScript still gets a title and a description.
 	// Built on first use from the embedded bundle.
 	seoCache seo
-	// Shutdown asks the process to exit so a supervisor restarts it. The
-	// updater needs it: replacing the binary does nothing until the old
-	// process leaves.
+	// Shutdown asks the process to exit. The updater needs it: replacing the
+	// binary does nothing until the old process leaves.
+	//
+	// It is NOT called unconditionally — see exitForRestart. Whether anything
+	// starts Mimir again depends on the deployment, and in the container one
+	// that matters most, nothing does: the restart policy is on-failure, so a
+	// clean exit is final.
 	Shutdown func()
 }
 
@@ -195,46 +199,59 @@ func (s *Server) Router() http.Handler {
 
 				r.Route("/{accountID}", func(r chi.Router) {
 					r.Use(s.requireAccount)
+					// Free of the subscription, deliberately and
+					// permanently: reading, editing and deleting what is
+					// already yours. Somebody who stops paying has not
+					// stopped owning their inventory, and a service that
+					// locks you out of your own data to make a point about
+					// billing has made a different point.
 					r.Get("/", s.handleGetAccount)
 					r.Delete("/", s.handleDeleteAccount)
-					r.Post("/import/enka", s.handleImportEnka)
-					r.Post("/import/good", s.handleImportGOOD)
 					r.Get("/characters", s.handleListCharacters)
 					r.Get("/artifacts", s.handleListArtifacts)
 					r.Get("/weapons", s.handleListWeapons)
 					r.Get("/talents/{characterKey}", s.handleTalentTable)
-					r.Get("/build/{characterKey}", s.handleBuildSheet)
 
 					r.Get("/goals", s.handleListGoals)
 					r.Put("/goals", s.handleSaveGoal)
 					r.Delete("/goals/{characterKey}", s.handleDeleteGoal)
 
-					// The ranking that needs no goal, and the one endpoint
-					// that writes goals from it.
-					r.Get("/potential", s.handlePotential)
-					r.Post("/goals/derive", s.handleDeriveGoals)
+					// Everything below is the thing being sold: work the
+					// server does, rather than data it is holding.
+					r.Group(func(r chi.Router) {
+						r.Use(s.requirePaid)
 
-					// Somebody else's published showcase, measured on the
-					// same yardstick as this account. Read-only in both
-					// directions: nothing about this account is sent
-					// anywhere, and nothing about theirs is kept.
-					r.Get("/compare/{uid}", s.handleCompare)
+						r.Post("/import/enka", s.handleImportEnka)
+						r.Post("/import/good", s.handleImportGOOD)
+						r.Get("/build/{characterKey}", s.handleBuildSheet)
 
-					// What a character wants, computed rather than looked
-					// up on a wiki: which set, which main stats, which
-					// weapon — none of it filtered by what is in the bag.
-					r.Get("/target/{characterKey}", s.handleTarget)
+						// The ranking that needs no goal, and the one
+						// endpoint that writes goals from it.
+						r.Get("/potential", s.handlePotential)
+						r.Post("/goals/derive", s.handleDeriveGoals)
 
-					r.Get("/dropmodel", s.handleDropModel)
-					r.Get("/plan", s.handleAccountPlan)
-					r.Get("/plan/{characterKey}", s.handlePlanForGoal)
+						// Somebody else's published showcase, measured on the
+						// same yardstick as this account. Read-only in both
+						// directions: nothing about this account is sent
+						// anywhere, and nothing about theirs is kept.
+						r.Get("/compare/{uid}", s.handleCompare)
 
-					// The AI layer. Every other route above answers with a
-					// number the engine produced; these two answer with
-					// sentences about those numbers, and never with a
-					// number of their own.
-					r.Post("/kvasir/opinion", s.handleKvasirOpinion)
-					r.Post("/kvasir/chat", s.handleKvasirChat)
+						// What a character wants, computed rather than looked
+						// up on a wiki: which set, which main stats, which
+						// weapon — none of it filtered by what is in the bag.
+						r.Get("/target/{characterKey}", s.handleTarget)
+
+						r.Get("/dropmodel", s.handleDropModel)
+						r.Get("/plan", s.handleAccountPlan)
+						r.Get("/plan/{characterKey}", s.handlePlanForGoal)
+
+						// The AI layer. Every other route above answers with a
+						// number the engine produced; these two answer with
+						// sentences about those numbers, and never with a
+						// number of their own.
+						r.Post("/kvasir/opinion", s.handleKvasirOpinion)
+						r.Post("/kvasir/chat", s.handleKvasirChat)
+					})
 				})
 			})
 		})

@@ -53,15 +53,22 @@
 
 <svelte:window {onpopstate} />
 
-<div class="mx-auto flex min-h-dvh max-w-3xl flex-col px-5 py-6">
+<div class="mx-auto flex min-h-dvh max-w-4xl flex-col px-5 py-6">
   <header class="mb-10 flex items-center justify-between gap-4">
     <a href="/" onclick={(e) => go('/', e)} class="flex items-center gap-2.5">
       <span class="grid h-8 w-8 place-items-center rounded-xl bg-accent/15">🜁</span>
       <span class="font-semibold tracking-tight">Mimir</span>
     </a>
     <div class="flex items-center gap-2">
-      <ThemePicker {theme} {mode} {setTheme} />
-      <button class="btn-ghost text-sm" onclick={onsignin}>Sign in</button>
+      <!--
+        Ten controls for a preference, in front of somebody who has not
+        decided whether to sign up. On a phone they pushed "Sign in" off the
+        edge; on any size they are the wrong thing to offer first.
+      -->
+      <div class="hidden sm:flex">
+        <ThemePicker {theme} {mode} {setTheme} />
+      </div>
+      <button class="btn-ghost shrink-0 text-sm" onclick={onsignin}>Sign in</button>
     </div>
   </header>
 
@@ -117,10 +124,82 @@
         {/each}
       </div>
     {:else}
-      <h1 class="text-3xl font-semibold tracking-tight">{LANDING.tagline}</h1>
-      <p class="mt-4 leading-relaxed text-muted">{LANDING.intro}</p>
+      <!-- Hero. One claim, one button, and then the thing itself. -->
+      <section class="pb-2">
+        <h1 class="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+          {LANDING.tagline}
+        </h1>
+        <p class="mt-4 max-w-2xl leading-relaxed text-muted">{LANDING.intro}</p>
 
-      <div class="mt-8 flex flex-wrap items-center gap-3">
+        <div class="mt-8 flex flex-wrap items-center gap-3">
+          <a
+            href={open ? '/signup' : '/pricing'}
+            onclick={(e) => go(open ? '/signup' : '/pricing', e)}
+            class="btn-primary"
+          >
+            {open ? `Start ${PRICE.trialDays} days free` : 'What it costs'}
+          </a>
+          {#if open}
+            <span class="text-sm text-muted">
+              No card. {PRICE.monthly} a month after, or {PRICE.yearly} a year.
+            </span>
+          {/if}
+        </div>
+      </section>
+
+      <!--
+        The screenshots are the argument, so they are large and they are real.
+        The caveats visible inside them are not a flaw in the picture: a page
+        that cropped them out would be selling a different product.
+      -->
+      <section class="mt-12">
+        <h2 class="text-xl font-medium tracking-tight">{LANDING.proof.title}</h2>
+        <p class="mt-2 max-w-2xl leading-relaxed text-muted">{LANDING.proof.body}</p>
+        <figure class="mt-5">
+          <img
+            src={LANDING.proof.shot}
+            alt={LANDING.proof.alt}
+            loading="lazy"
+            class="w-full rounded-2xl border border-line shadow-lg"
+          />
+          <figcaption class="mt-2 text-xs text-muted">{LANDING.proof.caption}</figcaption>
+        </figure>
+      </section>
+
+      {#each LANDING.sections as section}
+        <section class="mt-14">
+          <h2 class="text-xl font-medium tracking-tight">{section.title}</h2>
+          <p class="mt-2 max-w-2xl leading-relaxed text-muted">{section.body}</p>
+          <img
+            src={section.shot}
+            alt={section.alt}
+            loading="lazy"
+            class="mt-5 w-full rounded-2xl border border-line shadow-lg"
+          />
+        </section>
+      {/each}
+
+      <section class="mt-14 rounded-2xl border border-line bg-raised p-6">
+        <h2 class="text-xl font-medium tracking-tight">{LANDING.honest.title}</h2>
+        <p class="mt-2 max-w-2xl leading-relaxed text-muted">{LANDING.honest.body}</p>
+      </section>
+
+      <div class="mt-14 grid gap-6 sm:grid-cols-2">
+        {#each LANDING.points as [heading, body]}
+          <section>
+            <h3 class="font-medium">{heading}</h3>
+            <p class="mt-1.5 text-sm leading-relaxed text-muted">{body}</p>
+          </section>
+        {/each}
+      </div>
+
+      <section class="card mt-14 p-6">
+        <h2 class="font-medium">{LANDING.why.title}</h2>
+        <p class="mt-1.5 text-sm leading-relaxed text-muted">{LANDING.why.body}</p>
+      </section>
+
+      <!-- Asked again at the bottom, for somebody who read the whole page. -->
+      <section class="mt-14 text-center">
         <a
           href={open ? '/signup' : '/pricing'}
           onclick={(e) => go(open ? '/signup' : '/pricing', e)}
@@ -128,27 +207,12 @@
         >
           {open ? `Start ${PRICE.trialDays} days free` : 'What it costs'}
         </a>
-        {#if open}<span class="text-sm text-muted">No card.</span>{/if}
-      </div>
-
-      <div class="mt-10 space-y-6">
-        {#each LANDING.points as [heading, body]}
-          <section>
-            <h2 class="font-medium">{heading}</h2>
-            <p class="mt-1.5 text-sm leading-relaxed text-muted">{body}</p>
-          </section>
-        {/each}
-      </div>
-
-      <!--
-        The honest answer to "why pay for something that is free". Given its
-        own box rather than buried, because a reader who finds this out later
-        rather than here has been misled by omission.
-      -->
-      <div class="mt-10 card p-5">
-        <h2 class="font-medium">{LANDING.why.title}</h2>
-        <p class="mt-1.5 text-sm leading-relaxed text-muted">{LANDING.why.body}</p>
-      </div>
+        {#if open}
+          <p class="mt-3 text-sm text-muted">
+            No card, and nothing to cancel if you stop.
+          </p>
+        {/if}
+      </section>
     {/if}
   </main>
 

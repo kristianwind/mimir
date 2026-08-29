@@ -62,25 +62,61 @@ export const LANDING = {
   tagline: 'What should you do next with this account?',
   intro:
     'Every other Genshin tool tells you what your best possible build would be. Mimir answers the question before that: out of everything available to you right now, which single change buys the most — and what does it cost.',
+
+  // The screenshots are the argument. They are real output from a real
+  // inventory rather than a mock-up, which is why the caveats are visible in
+  // them: a page that showed the product with its qualifications cropped out
+  // would be selling something other than the product.
+  proof: {
+    shot: '/shots/plan.jpg',
+    alt: 'A ranked list of upgrades. The top three are marked free.',
+    title: 'The first thing it finds usually costs nothing',
+    body: 'Before it suggests farming anything, Mimir looks through what is already in your bag for damage you own and have not equipped. On this account the top three actions are free — the gear is there, on the wrong characters. That is the one upgrade no amount of resin buys back.',
+    caption: 'A test inventory of two thousand artifacts. Every figure comes from the game’s own data.',
+  },
+
+  sections: [
+    {
+      title: 'The whole account, ranked',
+      body: 'Not one character at a time. Every upgrade for everybody in one list, ordered by what it actually buys — and where two characters want the same artifact it says so and resolves it, rather than quietly recommending the same piece twice.',
+      shot: '/shots/potential.jpg',
+      alt: 'Characters ranked by how much damage the best available upgrade would add.',
+    },
+    {
+      title: 'What each character should aim for',
+      body: 'The thing people open a wiki for: which set, which main stats, which substats to chase. Computed against your constellation, your talent levels and the rotation you actually press — not one generic answer printed for everybody.',
+      shot: '/shots/characters.jpg',
+      alt: 'A roster of characters with their levels and talents.',
+    },
+  ],
+
+  // The honest half, and it is not an afterthought: it is the reason to trust
+  // the other half.
+  honest: {
+    title: 'It tells you what it does not know',
+    body: 'Look closely at the screenshots and you will see the qualifications, because Mimir puts them where the number is. Weapons are not ranked, because their passives are not modelled. Most artifact set bonuses are conditional wording rather than numbers, and every recommendation that leans on one says so. Where something cannot be computed you get a stated gap, never an estimate dressed as a fact.',
+  },
+
   points: [
     [
       'It starts with what you already own',
-      'Import your inventory and the first thing Mimir looks for is damage sitting in your bag unequipped. That is the one upgrade no amount of farming buys back, and it is almost always the biggest.',
-    ],
-    [
-      'It ranks the whole account, not one character',
-      'Every upgrade for every character in one list, ordered by what it buys. Where two characters want the same artifact, it says so and resolves it rather than pretending the conflict does not exist.',
+      'Import your inventory and the first thing Mimir looks for is damage sitting in your bag unequipped.',
     ],
     [
       'It shows its working',
       'Every number comes from the game’s own data, synced from the datamines. Nothing is a constant somebody typed in, so a patch is a sync rather than a wait for an update.',
     ],
     [
-      'It tells you what it does not know',
-      'Where something cannot be computed you get a stated gap, never an estimate dressed as a fact. Weapons are not ranked because their passives are not modelled. Most artifact set bonuses are not modelled either, and every recommendation that involves one says so. That is the part most tools leave out.',
+      'It asks what you actually press',
+      'A rotation, not a theoretical maximum. The ranking is measured against the buttons you push, which is why it disagrees with a spreadsheet.',
+    ],
+    [
+      'It works on a phone',
+      'Because that is where you are when you are deciding what to spend resin on.',
     ],
   ],
-  // The honest version of "why pay". Not a feature list — the free version
+
+  // The honest answer to "why pay". Not a feature list — the free version
   // has every feature.
   why: {
     title: 'Mimir is free, and this is the hosted version of it',

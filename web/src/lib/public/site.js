@@ -49,7 +49,7 @@ const vatClause = SELLER.vat ? `, ${SELLER.vat}` : ''
 
 // Dated when the text was last changed, because "last updated" on a legal
 // page is a promise that somebody looked.
-const UPDATED = '29 August 2026'
+const UPDATED = '30 August 2026'
 
 export const PRICE = {
   monthly: '$4',
@@ -263,7 +263,7 @@ export const LEGAL = {
     sections: [
       [
         'The short version',
-        'There is no analytics on this site or in the product. No tracking pixels, no third-party scripts watching you, no advertising identifiers. This is not a stance taken for a policy page — the software has never contained any.',
+        'The software contains no analytics. Run Mimir on your own machine and nothing in it measures you — that is not a policy position, it is the code, and you can read it. This hosted service is a separate matter: it is a website, and its traffic is measured like one. That measurement is the operator\u2019s own. It is not sold, not shared, and never used for advertising.',
       ],
       [
         'What is stored',
@@ -279,7 +279,7 @@ export const LEGAL = {
       ],
       [
         'Logs',
-        'The server keeps operational logs of requests for a short period to diagnose faults. They are not used to build a profile of you and are not shared.',
+        'Running this service means recording which pages are asked for, how often, and what failed, along with the technical details every web server is handed — the address a request came from and how the browser describes itself. It is kept for a limited period, used to keep the service working and to understand which parts of it people use, and it is not sold or shared. None of this applies to a Mimir you run yourself; that instance answers to nobody but you.',
       ],
       [
         'Your rights',

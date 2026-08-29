@@ -56,9 +56,10 @@ type Server struct {
 	// Updater checks for releases and, where the deployment allows, installs
 	// one.
 	Updater *selfupdate.Updater
-	// signups meters account creation per address. Built on first use so a
-	// zero Server still works in tests.
-	signups *signupLimiter
+	// signups meters account creation per address, and logins meters failed
+	// sign-ins. Built on first use so a zero Server still works in tests.
+	signups *rateLimiter
+	logins  *rateLimiter
 	// Mine is the game data sync job. One at a time.
 	Mine *MineJob
 	// Kvasir is the AI layer. Nil, or configured with no endpoint, and every
@@ -81,7 +82,10 @@ func (s *Server) Router() http.Handler {
 		s.Mine = &MineJob{}
 	}
 	if s.signups == nil {
-		s.signups = newSignupLimiter()
+		s.signups = newRateLimiter(signupWindow, signupBurst)
+	}
+	if s.logins == nil {
+		s.logins = newRateLimiter(loginWindow, loginBurst)
 	}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)

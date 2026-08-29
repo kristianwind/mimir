@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http/httptest"
 	"os"
@@ -127,7 +128,9 @@ func TestASelfHostedInstanceIsNotAdvertised(t *testing.T) {
 func TestTheApplicationAsksNotToBeIndexed(t *testing.T) {
 	s := seoServer(t, true, "https://mimir.guide")
 
-	for _, path := range []string{"/plan", "/characters", "/settings"} {
+	// Not real routes — the application swaps views without touching the
+	// URL — but they resolve, so they are checked the way any stray path is.
+	for _, path := range []string{"/plan", "/characters", "/whatever"} {
 		w := httptest.NewRecorder()
 		s.Router().ServeHTTP(w, httptest.NewRequest("GET", path, nil))
 		if !strings.Contains(w.Body.String(), `content="noindex, follow"`) {
@@ -138,7 +141,7 @@ func TestTheApplicationAsksNotToBeIndexed(t *testing.T) {
 	robots := httptest.NewRecorder()
 	s.Router().ServeHTTP(robots, httptest.NewRequest("GET", "/robots.txt", nil))
 	got := robots.Body.String()
-	for _, want := range []string{"Disallow: /api/", "Disallow: /plan", "Allow: /pricing",
+	for _, want := range []string{"Disallow: /api/", "Disallow: /signup", "Allow: /pricing",
 		"Sitemap: https://mimir.guide/sitemap.xml"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("robots.txt is missing %q:\n%s", want, got)
@@ -253,5 +256,27 @@ func TestDescriptionsFitInASearchResult(t *testing.T) {
 			!strings.Contains(page.Description, "Genshin Impact") {
 			t.Errorf("%s: the description never names the game", path)
 		}
+	}
+}
+
+// A description is a constant today, but it is interpolated into a <script>
+// block, and the day somebody puts a bracket in one the page should not stop
+// being a page.
+func TestStructuredDataCannotBreakOutOfItsTag(t *testing.T) {
+	got := jsonEscape(`</script><img src=x onerror="alert(1)">`)
+
+	// Nothing that a HTML parser would read as a tag survives.
+	for _, bad := range []string{"</script>", "<img", "<", ">"} {
+		if strings.Contains(got, bad) {
+			t.Errorf("jsonEscape let %q through: %s", bad, got)
+		}
+	}
+	// And what comes out is still the same text to a JSON parser.
+	var back string
+	if err := json.Unmarshal([]byte(`"`+got+`"`), &back); err != nil {
+		t.Fatalf("the escaped form is not valid JSON: %v", err)
+	}
+	if want := `</script><img src=x onerror="alert(1)">`; back != want {
+		t.Errorf("round trip changed the text:\n got %q\nwant %q", back, want)
 	}
 }

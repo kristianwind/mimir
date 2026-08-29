@@ -17,10 +17,8 @@ package api
 
 import (
 	"encoding/json"
-	"net"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/kristianwind/mimir/internal/auth"
@@ -33,54 +31,6 @@ const (
 	signupWindow = time.Hour
 	signupBurst  = 3
 )
-
-// signupLimiter counts recent signups per address.
-//
-// In memory on purpose. It protects against a script hammering one instance,
-// which is a thing that happens within one process's lifetime; persisting it
-// would buy resistance to a restart that nobody is going to time.
-type signupLimiter struct {
-	mu   sync.Mutex
-	seen map[string][]time.Time
-}
-
-func newSignupLimiter() *signupLimiter {
-	return &signupLimiter{seen: map[string][]time.Time{}}
-}
-
-// allow records an attempt and reports whether it is within the limit.
-func (l *signupLimiter) allow(addr string, now time.Time) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	cutoff := now.Add(-signupWindow)
-	kept := l.seen[addr][:0]
-	for _, t := range l.seen[addr] {
-		if t.After(cutoff) {
-			kept = append(kept, t)
-		}
-	}
-	// Addresses that have gone quiet are dropped entirely, so this map does
-	// not grow for the lifetime of the process.
-	if len(kept) == 0 {
-		delete(l.seen, addr)
-	} else {
-		l.seen[addr] = kept
-	}
-	if len(kept) >= signupBurst {
-		return false
-	}
-	l.seen[addr] = append(kept, now)
-	return true
-}
-
-func clientAddr(r *http.Request) string {
-	// RealIP middleware has already resolved the forwarded headers.
-	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		return host
-	}
-	return r.RemoteAddr
-}
 
 // handleSignup creates an account and signs the person in.
 func (s *Server) handleSignup(w http.ResponseWriter, r *http.Request) {

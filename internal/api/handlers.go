@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -26,7 +27,33 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+// loginWindow and loginBurst bound how often one address may guess.
+//
+// Failures only. Signing in correctly ten times in a morning is not an
+// attack, and charging for it would lock a working password out of a shared
+// office.
+//
+// Keyed on the address and not on the username, deliberately. A per-username
+// counter stops a botnet grinding one account, but it also hands anybody a
+// way to lock a named person out by failing on their behalf — the protection
+// and the denial of service are the same mechanism. Ten failures in a quarter
+// of an hour is generous for a household with a typo and useless for a
+// script.
+const (
+	loginWindow = 15 * time.Minute
+	loginBurst  = 10
+)
+
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	addr := clientAddr(r)
+	if s.logins.over(addr, time.Now()) {
+		// Says nothing about whether the account exists, or whether any of
+		// the attempts were close.
+		writeError(w, http.StatusTooManyRequests,
+			"too many sign-in attempts from here — wait a few minutes", "")
+		return
+	}
+
 	var body struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
@@ -45,6 +72,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err == nil:
 	case errors.Is(err, auth.ErrInvalidCredentials):
+		s.failedLogin(r, addr, body.Username, "credentials")
 		writeError(w, http.StatusUnauthorized, "wrong username or password", "")
 		return
 	case errors.Is(err, auth.ErrSecondFactorRequired):
@@ -56,6 +84,10 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	case errors.Is(err, auth.ErrSecondFactorInvalid):
+		// A wrong code is a guess and counts. A code being *required* does
+		// not: the password was right and the form is simply growing a
+		// field, which is the normal path and not an attempt at anything.
+		s.failedLogin(r, addr, body.Username, "second factor")
 		writeJSON(w, http.StatusUnauthorized, map[string]any{
 			"error":        "that code is not right, or has already been used",
 			"secondFactor": true,
@@ -68,7 +100,29 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.Auth.SetCookie(w, token)
+	// Recorded like the passkey path already was. Without this the audit
+	// trail showed passkey sign-ins and nothing else, which reads as though
+	// nobody uses a password.
+	s.audit(r, "user.login", user.Username, nil)
 	writeJSON(w, http.StatusOK, user)
+}
+
+// failedLogin counts the attempt and leaves a trace of it.
+//
+// Both halves matter and neither is enough alone: a limit with no record
+// stops the attack you are having and tells you nothing about it afterwards,
+// and a record with no limit is an audit trail of a door being kicked in.
+//
+// The attempted username is stored because a failure without one is
+// unreadable — "someone failed to sign in" is not an investigation. The known
+// hazard is somebody typing a password into the username field; the audit log
+// is administrator-only, which bounds that rather than solving it.
+func (s *Server) failedLogin(r *http.Request, addr, username, why string) {
+	s.logins.record(addr, time.Now())
+	s.audit(r, "user.login.failed", username, map[string]any{"reason": why})
+	if s.Log != nil {
+		s.Log.Warn("sign-in refused", "username", username, "reason", why, "from", addr)
+	}
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {

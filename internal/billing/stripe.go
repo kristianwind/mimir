@@ -19,14 +19,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
-	"github.com/stripe/stripe-go/v82"
-	billingportal "github.com/stripe/stripe-go/v82/billingportal/session"
-	checkout "github.com/stripe/stripe-go/v82/checkout/session"
-	"github.com/stripe/stripe-go/v82/customer"
-	"github.com/stripe/stripe-go/v82/webhook"
+	"github.com/stripe/stripe-go/v85"
+	billingportal "github.com/stripe/stripe-go/v85/billingportal/session"
+	checkout "github.com/stripe/stripe-go/v85/checkout/session"
+	"github.com/stripe/stripe-go/v85/customer"
+	"github.com/stripe/stripe-go/v85/webhook"
 )
 
 // ErrNotConfigured is returned when this instance sells nothing.
@@ -182,23 +181,27 @@ func APIVersion() string { return stripe.APIVersion }
 // on the internet granting themselves a subscription, so an unverifiable
 // payload is an error and never a best-effort parse.
 //
-// A version mismatch is refused for the same reason rather than being waved
-// through with IgnoreAPIVersionMismatch. Stripe genuinely moves fields
+// The API version is deliberately NOT required to match, which is a reversal.
+// It used to be refused outright, on the reasoning that Stripe moves fields
 // between versions — current_period_end left the subscription for its items
-// in this very one — and a misparsed object does not fail, it quietly reads
-// as "no subscription" and locks a paying customer out. A loud refusal that
-// names the fix is the better failure.
+// in exactly such a move — and a misparsed object does not fail loudly, it
+// reads as "no subscription" and locks out somebody who is paying.
+//
+// That reasoning was right about the danger and wrong about the guard. An
+// account's version is whatever Stripe has moved it to, the dashboard offers
+// only that one and a preview, and no release of this library has ever
+// matched it exactly. A check nobody can satisfy is not strict, it is broken.
+//
+// So the fields this code actually depends on are checked instead, below,
+// where being wrong is detectable rather than merely suspected. That is the
+// real guard; the version string was only ever a proxy for it.
 func (s *Stripe) Verify(payload []byte, signature string) (Event, error) {
 	if s.WebhookSecret == "" {
 		return Event{}, errors.New("billing: no webhook secret; refusing to trust an unverified event")
 	}
-	ev, err := webhook.ConstructEvent(payload, signature, s.WebhookSecret)
+	ev, err := webhook.ConstructEventWithOptions(payload, signature, s.WebhookSecret,
+		webhook.ConstructEventOptions{IgnoreAPIVersionMismatch: true})
 	if err != nil {
-		if strings.Contains(err.Error(), "API version") {
-			return Event{}, fmt.Errorf("billing: this build reads Stripe API version %s, and the "+
-				"webhook endpoint is sending another. Set the endpoint's version to match in the "+
-				"Stripe dashboard: %w", stripe.APIVersion, err)
-		}
 		return Event{}, fmt.Errorf("billing: webhook signature: %w", err)
 	}
 
@@ -225,8 +228,37 @@ func (s *Stripe) Verify(payload []byte, signature string) (Event, error) {
 		if ev.Type == "customer.subscription.deleted" {
 			out.Status = "canceled"
 		}
+		if err := out.usable(); err != nil {
+			return Event{}, err
+		}
 	}
 	return out, nil
+}
+
+// usable rejects a subscription event this code cannot act on correctly.
+//
+// This is the guard the API version check was standing in for. Rather than
+// asking whether Stripe's version string matches a constant, it asks whether
+// the three things entitlement is computed from actually arrived — and says
+// which one did not, so a shape change is a named failure rather than a
+// customer quietly losing access.
+func (e Event) usable() error {
+	if e.CustomerID == "" {
+		return fmt.Errorf("billing: %s carried no customer; the payload shape is not what this "+
+			"build reads. Check the destination is sending a snapshot payload rather than a thin "+
+			"one", e.Type)
+	}
+	if e.Status == "" {
+		return fmt.Errorf("billing: %s carried no status", e.Type)
+	}
+	// A period end is only meaningful while the subscription still runs. A
+	// cancelled one has nothing left to expire, so its absence is expected.
+	if liveStatuses[e.Status] && e.CurrentPeriodEnd.IsZero() {
+		return fmt.Errorf("billing: %s says %q but carried no period end. Acting on it would "+
+			"record an expiry of the zero time and lock out somebody who is paying",
+			e.Type, e.Status)
+	}
+	return nil
 }
 
 // periodEnd reads when the current billing period ends.

@@ -19,6 +19,11 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+  # A pull request runs the tests and nothing else. Without this the suite
+  # first ran *after* the merge, so a red test arrived on main and the PR that
+  # broke it was already closed — and auto-merge, which is supposed to wait
+  # for green, had no check to wait for.
+  pull_request:
   workflow_dispatch:
 
 # Two pushes in quick succession race for the same :edge tag, and whichever
@@ -100,7 +105,10 @@ jobs:
   # auto-merge, and losing that would cost more than it saves.
   image:
     needs: test
-    if: github.server_url == 'https://github.com'
+    # Not on a pull request: a PR is not a thing to publish. Neither tag rule
+    # below matches one (is_default_branch is false, ref_type is not a tag),
+    # so this would build for several minutes and push nothing.
+    if: github.server_url == 'https://github.com' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read

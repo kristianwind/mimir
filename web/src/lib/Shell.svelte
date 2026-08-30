@@ -71,7 +71,13 @@
   // showing, and leaves the page usable underneath.
   let manual = $state(false)
 
-  let view = $state('plan')
+  // Stripe sends people back to /settings?checkout=done. That path means
+  // nothing to this shell — signed in, the app swaps views and never touches
+  // the URL — so the redirect used to land on Plan, the Subscription panel
+  // never mounted, and the polling that waits for the webhook never ran. Read
+  // the marker here instead and open the page it was aimed at.
+  const returnedFromCheckout = new URLSearchParams(window.location.search).get('checkout')
+  let view = $state(returnedFromCheckout ? 'account' : 'plan')
   let accounts = $state([])
   let selected = $state(null)
   let gamedata = $state(null)
@@ -289,7 +295,7 @@
         </div>
       </section>
     {:else if view === 'account'}
-      <Account {me} {theme} {mode} {setTheme} {logout} />
+      <Account {me} {theme} {mode} {setTheme} {logout} onstarted={() => (view = 'plan')} />
     {:else if view === 'system'}
       <System user={me} {hosted} />
     {:else if view === 'users'}

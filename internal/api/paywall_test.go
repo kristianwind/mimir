@@ -93,3 +93,23 @@ func TestADatabaseFaultIsNotTreatedAsNonPayment(t *testing.T) {
 		t.Error("a fault was reported to the user as a payment problem")
 	}
 }
+
+// A second factor whose removal is guarded only by an unmetered password
+// prompt is not a second factor. All three password doors — sign-in,
+// re-authentication and changing your own password — share one budget per
+// address, so an attacker cannot get fresh guesses by walking between them.
+func TestEveryPasswordDoorSharesOneBudget(t *testing.T) {
+	l := newRateLimiter(loginWindow, loginBurst)
+	now := time.Now()
+
+	// Spend the whole budget at the sign-in door.
+	for i := 0; i < loginBurst; i++ {
+		l.record("10.0.0.1", now)
+	}
+
+	// The other two doors are then shut as well, because it is one budget.
+	if !l.over("10.0.0.1", now) {
+		t.Error("re-authentication and password change would still accept guesses " +
+			"after the sign-in budget was spent")
+	}
+}

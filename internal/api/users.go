@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -280,7 +281,17 @@ func (s *Server) handleChangeOwnPassword(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Requiring the current password is what stops a borrowed session from
-	// becoming a permanent one.
+	// becoming a permanent one — but only while guessing it costs something.
+	// Unmetered, this is a password oracle that ends in the attacker choosing
+	// the new password and the owner being locked out, so it shares the
+	// sign-in limiter: one budget per address for guessing, whichever door.
+	addr := clientAddr(r)
+	if s.logins != nil && s.logins.over(addr, time.Now()) {
+		writeError(w, http.StatusTooManyRequests,
+			"too many attempts from here — wait a few minutes", "")
+		return
+	}
+
 	var hash string
 	if err := s.DB.QueryRowContext(r.Context(),
 		`SELECT password_hash FROM users WHERE id = ?`, me.ID).Scan(&hash); err != nil {
@@ -293,6 +304,13 @@ func (s *Server) handleChangeOwnPassword(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if !ok {
+		if s.logins != nil {
+			s.logins.record(addr, time.Now())
+		}
+		s.audit(r, "user.login.failed", me.Username, map[string]any{"reason": "password change"})
+		if s.Log != nil {
+			s.Log.Warn("password change refused", "username", me.Username, "from", addr)
+		}
 		writeError(w, http.StatusForbidden, "the current password is wrong", "")
 		return
 	}

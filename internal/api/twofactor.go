@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/kristianwind/mimir/internal/auth"
 )
@@ -111,8 +112,25 @@ func (s *Server) handleTwoFactorRecovery(w http.ResponseWriter, r *http.Request)
 // A session is evidence that someone signed in once. For turning protection
 // off it is not enough evidence, because surviving a stolen session is
 // precisely what the protection is for.
+// It shares the sign-in limiter rather than keeping its own, on purpose. The
+// two are the same resource — somebody guessing a password from one address —
+// and separate budgets would let an attacker take ten guesses at the login
+// form and then ten more here by walking between doors.
+//
+// It needs a limit at all because of what it guards. Without one the path is:
+// steal a session, grind the password through this oracle as fast as the CPU
+// allows, then use it to turn the second factor off and delete the passkeys.
+// A second factor whose removal is protected only by an unmetered password
+// prompt is not a second factor.
 func (s *Server) reauthenticate(w http.ResponseWriter, r *http.Request) (auth.User, bool) {
 	u, _ := auth.FromContext(r.Context())
+
+	addr := clientAddr(r)
+	if s.logins != nil && s.logins.over(addr, time.Now()) {
+		writeError(w, http.StatusTooManyRequests,
+			"too many attempts from here — wait a few minutes", "")
+		return auth.User{}, false
+	}
 	var body struct {
 		Password string `json:"password"`
 	}
@@ -132,6 +150,16 @@ func (s *Server) reauthenticate(w http.ResponseWriter, r *http.Request) (auth.Us
 		return auth.User{}, false
 	}
 	if !ok {
+		if s.logins != nil {
+			s.logins.record(addr, time.Now())
+		}
+		// Audited like a failed sign-in, because that is what it is: somebody
+		// proving they do not know the password, at the door that guards
+		// turning the second factor off.
+		s.audit(r, "user.login.failed", u.Username, map[string]any{"reason": "reauthentication"})
+		if s.Log != nil {
+			s.Log.Warn("re-authentication refused", "username", u.Username, "from", addr)
+		}
 		writeError(w, http.StatusForbidden, "that password is wrong", "")
 		return auth.User{}, false
 	}

@@ -4,7 +4,7 @@ gameskill:
   category: "Apps"
   description: "Genshin Impact build advisor: Enka and GOOD import, artifact optimizer and a resin plan ranked by damage per resin"
   author: "kristianwind"
-  version: 9
+  version: 10
   icon: "app"
 
   docker:
@@ -123,7 +123,7 @@ gameskill:
       name: "LLM model"
       type: string
       default: ""
-      hint: "Blank serves whatever the endpoint defaults to"
+      hint: "Blank serves whatever the endpoint defaults to. Size matters more than context here: the largest fact sheet Mimir builds is about 4k tokens, so any modern model fits it, but a small one starts answering from what it knows about Genshin instead of from the sheet. Measured on a 96-character roster, a 12B model called a character \"your highest constellation character\" when thirteen were tied at that constellation — it had picked the famous one. A 26B model got the same brief right six times out of six. Mimir deletes any number it cannot find in the fact sheet, but that check cannot see a claim like this, so 20B+ is the sensible floor."
 
     - key: MIMIR_LLM_API_KEY
       name: "LLM API key"

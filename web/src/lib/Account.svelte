@@ -14,7 +14,7 @@
   import Subscription from './Subscription.svelte'
   import Passkeys from './Passkeys.svelte'
 
-  let { me, theme, mode, setTheme, logout } = $props()
+  let { me, theme, mode, setTheme, logout, onstarted } = $props()
 
   let error = $state('')
   let message = $state('')
@@ -107,7 +107,7 @@
     <p class="card p-4 text-sm text-good">{message}</p>
   {/if}
 
-  <Subscription />
+  <Subscription {onstarted} />
 
   <Passkeys />
 

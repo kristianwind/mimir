@@ -12,6 +12,8 @@
    */
   import { api } from './api.js'
 
+  let { onstarted } = $props()
+
   let state = $state(null)
   let error = $state('')
   let busy = $state('')
@@ -29,11 +31,34 @@
   // It is used only to know that waiting for the webhook is worth doing —
   // never to decide that anything was paid.
   const returned = new URLSearchParams(location.search).get('checkout')
+
+  // Cleared once acknowledged, so a refresh does not thank somebody twice for
+  // the same payment, and a bookmarked URL never thanks them at all.
+  function forgetTheMarker() {
+    const url = new URL(location.href)
+    url.searchParams.delete('checkout')
+    history.replaceState({}, '', url)
+  }
+
+  let waiting = $state(returned === 'done')
+  let waitedTooLong = $state(false)
+
   if (returned === 'done') {
     let tries = 0
     const poll = setInterval(async () => {
       await load()
-      if (++tries >= 5 || state?.access?.reason === 'subscribed') clearInterval(poll)
+      if (state?.access?.reason === 'subscribed') {
+        waiting = false
+        clearInterval(poll)
+      } else if (++tries >= 5) {
+        // Said plainly rather than hidden. The payment is Stripe's to
+        // confirm and it usually takes a second or two, but if the webhook
+        // is misconfigured this is the moment somebody finds out — and the
+        // worst thing to do is pretend nothing happened after taking money.
+        waiting = false
+        waitedTooLong = true
+        clearInterval(poll)
+      }
     }, 2000)
   }
 
@@ -54,6 +79,46 @@
       ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
       : ''
 </script>
+
+<!--
+  The moment after somebody hands over money. It used to be silent: Stripe
+  redirected to a path this app does not route, so the reader landed on Plan
+  with no acknowledgement that anything had happened.
+
+  It thanks them for what the server has confirmed, and never for the redirect
+  itself — coming back from Stripe is a URL anybody can be sent, and the only
+  thing that means a payment happened is the webhook having written it down.
+-->
+{#if returned === 'done' && (waiting || waitedTooLong || state?.access?.reason === 'subscribed')}
+  <section class="card mb-6 border-accent p-6">
+    {#if waiting}
+      <h2 class="font-medium">Thank you — confirming with Stripe</h2>
+      <p class="mt-2 max-w-prose text-sm leading-relaxed text-muted">
+        The payment has gone through on their side. Mimir is waiting to hear it from Stripe
+        directly rather than taking the browser's word for it, which usually takes a second or
+        two.
+      </p>
+    {:else if waitedTooLong}
+      <h2 class="font-medium">Thank you — but Stripe has not confirmed it yet</h2>
+      <p class="mt-2 max-w-prose text-sm leading-relaxed text-muted">
+        Your payment is not lost, and you have not been charged twice. Mimir has simply not been
+        told about it yet. Give it a minute and reload; if it still says this, get in touch and it
+        will be sorted out by hand.
+      </p>
+    {:else}
+      <h2 class="font-medium">Thank you. You are subscribed.</h2>
+      <p class="mt-2 max-w-prose text-sm leading-relaxed text-muted">
+        Everything is on. Import your inventory under Accounts if you have not yet, and the plan
+        will rank every upgrade you can make — starting, usually, with the free ones.
+      </p>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <button class="btn-primary" onclick={() => { forgetTheMarker(); onstarted?.() }}>
+          Go to the plan
+        </button>
+      </div>
+    {/if}
+  </section>
+{/if}
 
 {#if state?.sellable}
   <section class="card p-5">

@@ -66,6 +66,17 @@ func (s *Server) handleCompare(w http.ResponseWriter, r *http.Request) {
 	a := accountFrom(r.Context())
 	uid := chi.URLParam(r, "uid")
 
+	// Validated here as well as inside Fetch. Fetch refuses it either way, so
+	// this is not a security fix — it is a status code and a sentence. Left
+	// to Fetch, a mistyped UID comes back as a 500 carrying "enka: uid ...
+	// must be digits only", which reports the reader's typo as a server fault
+	// and shows them a package name.
+	if err := enka.ValidateUID(uid); err != nil {
+		writeError(w, http.StatusBadRequest, "that is not a UID",
+			"A UID is nine digits, at the bottom right in the game.")
+		return
+	}
+
 	if uid == a.UID {
 		writeError(w, http.StatusBadRequest,
 			"that is this account's own UID",

@@ -77,8 +77,25 @@ jobs:
           npm ci --no-audit --no-fund || npm install --no-audit --no-fund
           npm test
 
+  # Published from GitHub only, even though this same file runs on the Gitea
+  # mirror too.
+  #
+  # Both forges used to build every tag and both pushed :latest, so two
+  # content-equivalent images raced and whichever finished last won. That is
+  # not merely untidy: it means nobody can say which build is running. On
+  # 2026-08-29 the image that landed on production was not the digest read
+  # from GHCR minutes earlier — same version, different bytes — and an hour
+  # went into establishing that this was two builders rather than a bug.
+  #
+  # A registry where the digest of a release is decided by a race is one where
+  # "which artefact is deployed" has no answer, and neither does "which
+  # builder produced it" if one of them is ever compromised.
+  #
+  # Tests still run on both, deliberately: Gitea's runner is what gates
+  # auto-merge, and losing that would cost more than it saves.
   image:
     needs: test
+    if: github.server_url == 'https://github.com'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -135,7 +152,11 @@ jobs:
 
   binaries:
     needs: test
-    if: github.ref_type == 'tag'
+    # GitHub only, and here it is not just about racing: action-gh-release
+    # writes to whichever forge it is running on, so the Gitea copy would put
+    # the binaries and checksums.txt on Gitea while the self-updater reads
+    # api.github.com. That is a release that exists and cannot be installed.
+    if: github.ref_type == 'tag' && github.server_url == 'https://github.com'
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -123,3 +123,80 @@ func (r *liveRunner) Run(_ context.Context, name string, args map[string]any) (s
 	fmt.Printf("  [tool] %s %v\n", name, args)
 	return r.brief.Text(), nil
 }
+
+// The biggest brief the product can actually build.
+//
+// realPlanBrief is a small account, and the plan brief is capped anyway
+// (briefActions). The roster brief is not: it writes one line per owned
+// character, so a complete account is roughly ten times the fact sheet every
+// other measurement here was taken on. That is the input a "minimum model"
+// has to survive, and judging one on the small brief measures the wrong thing.
+func bigRosterBrief() *Brief {
+	names := []string{
+		"RaidenShogun", "Xiangling", "Bennett", "Xingqiu", "Kazuha", "Nahida",
+		"Furina", "Neuvillette", "Zhongli", "Ganyu", "HuTao", "Yelan", "Ayaka",
+		"Mona", "Diluc", "Klee", "Venti", "Albedo", "Eula", "Jean", "Qiqi",
+		"Keqing", "Tighnari", "Cyno", "Nilou", "Wanderer", "Alhaitham", "Dehya",
+		"Baizhu", "Kaveh", "Lyney", "Lynette", "Freminet", "Wriothesley",
+		"Charlotte", "Navia", "Chevreuse", "Gaming", "Xianyun", "Chiori",
+		"Arlecchino", "Clorinde", "Sigewinne", "Sethos", "Emilie", "Mualani",
+		"Kinich", "Kachina", "Xilonen", "Chasca", "Ororon", "Mavuika", "Citlali",
+		"Lanyan", "Mizuki", "Iansan", "Varesa", "Escoffier", "Ifa", "Skirk",
+		"Dahlia", "Ineffa", "Flins", "Amber", "Kaeya", "Lisa", "Barbara",
+		"Razor", "Fischl", "Ningguang", "Noelle", "Chongyun", "Sucrose",
+		"Diona", "Beidou", "Xinyan", "Rosaria", "Yanfei", "Sayu", "Yoimiya",
+		"Aloy", "Sara", "Thoma", "Gorou", "Itto", "Yunjin", "Shenhe", "YaeMiko",
+		"Ayato", "Yaoyao", "Layla", "Faruzan", "Candace", "Collei", "Dori",
+	}
+	b := NewBrief("roster", "", "The roster on account 700123456",
+		"Who is worth investing in next, and who is being carried by gear they should not have? Only judge what is listed here.")
+
+	r := b.Add("Every character on the account")
+	for i, n := range names {
+		line := fmt.Sprintf("%s: level %d, C%d, talents %d/%d/%d, %d artifacts equipped",
+			n, 80+(i%2)*10, i%7, 1+i%10, 1+(i*3)%10, 1+(i*5)%10, (i*3)%6)
+		if i%5 == 0 {
+			line += ", no weapon"
+		} else {
+			line += fmt.Sprintf(", holding Weapon%02d R%d", i%18, 1+i%5)
+		}
+		if i%4 == 0 {
+			line += ", has a goal"
+		} else {
+			line += ", no goal set up"
+		}
+		r.Line(line)
+	}
+
+	a := b.Add("The account")
+	a.Linef("%d characters, 88 weapons and 1240 artifacts have been imported.", len(names))
+	a.Line("The inventory came from a .good export, so unequipped pieces are included.")
+
+	m := b.Add("What Mimir can and cannot say here")
+	m.Line("Nothing on this page has been through the damage engine: a character with no goal has no rotation, and without a rotation there is no number. Say what is worth setting up as a goal rather than claiming a gain.")
+	return b
+}
+
+func TestLiveBigRoster(t *testing.T) {
+	a := &Advisor{Client: liveClient(t), MaxTokens: liveBudget()}
+	brief := bigRosterBrief()
+	text := brief.Text()
+
+	start := time.Now()
+	got, err := a.Advise(context.Background(), brief)
+	took := time.Since(start)
+	if err != nil {
+		t.Fatalf("after %s on a %d-byte brief: %v", took.Round(time.Second), len(text), err)
+	}
+
+	out, _ := json.MarshalIndent(got.Opinion, "", "  ")
+	fmt.Printf("\n=== %s in %s on a %d-byte brief (attempts %d, %d tokens: %d in, %d out) ===\n%s\n",
+		got.Model, took.Round(time.Second), len(text), got.Attempts,
+		got.Usage.TotalTokens, got.Usage.PromptTokens, got.Usage.CompletionTokens, out)
+	if len(got.Dropped) > 0 {
+		fmt.Printf("--- dropped ---\n")
+		for _, d := range got.Dropped {
+			fmt.Printf("  %q  numbers: %v\n", d.Text, d.Numbers)
+		}
+	}
+}

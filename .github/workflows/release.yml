@@ -80,16 +80,21 @@ jobs:
   # Published from GitHub only, even though this same file runs on the Gitea
   # mirror too.
   #
-  # Both forges used to build every tag and both pushed :latest, so two
-  # content-equivalent images raced and whichever finished last won. That is
-  # not merely untidy: it means nobody can say which build is running. On
-  # 2026-08-29 the image that landed on production was not the digest read
-  # from GHCR minutes earlier — same version, different bytes — and an hour
-  # went into establishing that this was two builders rather than a bug.
+  # Both forges used to build every tag and both pushed :latest — the run
+  # lists show `image: success` on Gitea and on GitHub for the same tag — so
+  # two builds of one commit raced and whichever finished last won.
   #
-  # A registry where the digest of a release is decided by a race is one where
-  # "which artefact is deployed" has no answer, and neither does "which
-  # builder produced it" if one of them is ever compromised.
+  # Two builds of the same source are not the same bytes, so the digest of a
+  # release was settled by whichever runner was quicker that day. That leaves
+  # "which artefact is deployed" without an answer, and "which builder
+  # produced it" too, if one of them is ever compromised.
+  #
+  # An earlier version of this comment claimed a measured digest mismatch on
+  # production as proof. That was wrong: it compared `docker image inspect
+  # .Id` against the registry's *config* digest, which are different
+  # identifiers and never match. The right comparison is RepoDigests against
+  # the manifest digest, and by that measure production has matched GHCR
+  # exactly every time. The race is real; that evidence for it was not.
   #
   # Tests still run on both, deliberately: Gitea's runner is what gates
   # auto-merge, and losing that would cost more than it saves.
@@ -152,10 +157,12 @@ jobs:
 
   binaries:
     needs: test
-    # GitHub only, and here it is not just about racing: action-gh-release
-    # writes to whichever forge it is running on, so the Gitea copy would put
-    # the binaries and checksums.txt on Gitea while the self-updater reads
-    # api.github.com. That is a release that exists and cannot be installed.
+    # GitHub only, and here it is not about racing at all: action-gh-release
+    # writes to whichever forge it is running on, so the Gitea copy aimed the
+    # release at Gitea while the self-updater reads api.github.com. It had
+    # been failing on every tag — v0.4.3 and v0.4.4 both show
+    # `binaries: failure` on Gitea — which is a broken job nobody was looking
+    # at, on the path that installs updates.
     if: github.ref_type == 'tag' && github.server_url == 'https://github.com'
     runs-on: ubuntu-latest
     permissions:

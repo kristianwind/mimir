@@ -128,6 +128,18 @@ export const api = {
   compare: (id, uid) => request('GET', `/accounts/${id}/compare/${encodeURIComponent(uid)}`),
 
   system: () => request('GET', '/system'),
+
+  // The audit log is administrator-only; a plain user gets a 403 rather than
+  // an empty list, so the caller can tell "nothing happened" from "not yours
+  // to read".
+  audit: ({ action = '', before = 0, limit = 0 } = {}) => {
+    const q = new URLSearchParams()
+    if (action) q.set('action', action)
+    if (before) q.set('before', String(before))
+    if (limit) q.set('limit', String(limit))
+    const s = q.toString()
+    return request('GET', '/system/audit' + (s ? '?' + s : ''))
+  },
   checkUpdate: () => request('POST', '/system/update/check'),
   applyUpdate: () => request('POST', '/system/update'),
   rollback: () => request('POST', '/system/rollback'),

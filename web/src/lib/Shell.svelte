@@ -197,6 +197,17 @@
         <div class="hidden sm:flex">
           <ThemePicker {theme} {mode} {setTheme} />
         </div>
+        <!--
+          Signing out, on a phone only — the sidebar holds it everywhere else.
+          It was once inside the Settings page, which is a reasonable place to
+          put it and a hopeless place to find it: getting off the device meant
+          guessing that "Settings" was the way out and then scrolling to the
+          bottom of it. A way out belongs where you are, not where it is
+          tidiest.
+        -->
+        <button type="button" class="btn-ghost px-3 text-sm md:hidden" onclick={logout}>
+          Sign out
+        </button>
       </div>
     </header>
 
@@ -295,7 +306,7 @@
         </div>
       </section>
     {:else if view === 'account'}
-      <Account {me} {theme} {mode} {setTheme} {logout} onstarted={() => (view = 'plan')} />
+      <Account {me} {theme} {mode} {setTheme} onstarted={() => (view = 'plan')} />
     {:else if view === 'system'}
       <System user={me} {hosted} />
     {:else if view === 'users'}

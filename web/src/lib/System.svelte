@@ -27,6 +27,82 @@
   let gamedata = $state(null)
   let poll = null
 
+  // The audit log. Loaded on demand rather than with the page: it is the one
+  // thing here that is a list rather than a status, it is administrator-only,
+  // and fetching two hundred rows to show nobody is waste on every visit.
+  let audit = $state([])
+  let auditNext = $state(0)
+  let auditFilter = $state('')
+  let auditError = $state('')
+  let auditBusy = $state(false)
+  let auditOpen = $state(false)
+
+  // The prefixes worth a button. Every one of these is a question somebody
+  // actually arrives with — "who has been failing to sign in", "what did an
+  // administrator change" — rather than a tour of the schema.
+  const auditFilters = [
+    ['', 'Everything'],
+    ['user.login', 'Sign-ins'],
+    ['user.login.failed', 'Failed sign-ins'],
+    ['user.2fa', 'Two-factor'],
+    ['user.passkey', 'Passkeys'],
+    ['user.', 'Accounts'],
+    ['billing.', 'Billing'],
+    ['gamedata.', 'Game data'],
+  ]
+
+  async function loadAudit(more = false) {
+    auditBusy = true
+    auditError = ''
+    try {
+      const page = await api.audit({
+        action: auditFilter,
+        before: more ? auditNext : 0,
+      })
+      audit = more ? [...audit, ...page.entries] : page.entries
+      auditNext = page.next
+    } catch (err) {
+      auditError = err.message
+    } finally {
+      auditBusy = false
+    }
+  }
+
+  function pickFilter(value) {
+    auditFilter = value
+    loadAudit(false)
+  }
+
+  function openAudit() {
+    auditOpen = !auditOpen
+    if (auditOpen && audit.length === 0) loadAudit(false)
+  }
+
+  // The stored detail is JSON. Showing it raw puts braces and quotes in front
+  // of a reader who wants "reason: credentials", so it is flattened where it
+  // parses and left alone where it does not — a detail that will not parse is
+  // still evidence and must not be swallowed.
+  function readDetail(raw) {
+    if (!raw) return ''
+    try {
+      const o = JSON.parse(raw)
+      return Object.entries(o)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(', ')
+    } catch {
+      return raw
+    }
+  }
+
+  // SQLite writes datetime('now') as UTC without a marker, so the browser
+  // would read it as local time and quietly show an hour that never happened.
+  function readWhen(ts) {
+    if (!ts) return ''
+    const iso = ts.includes('T') ? ts : ts.replace(' ', 'T')
+    const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z')
+    return isNaN(d) ? ts : d.toLocaleString()
+  }
+
   async function load() {
     error = ''
     try {
@@ -434,6 +510,87 @@
       the same thing — and the sentence below, which says there is no paid
       tier, would be a lie on the one install where there is.
     -->
+    <!--
+      Twenty-odd places in the server write to audit_log — sign-ins, failed
+      sign-ins, two-factor changes, passkeys, accounts, billing, game data.
+      Until this section existed, nothing anywhere read any of it back.
+    -->
+    {#if admin}
+    <section class="card p-5">
+      <div class="flex items-center justify-between gap-4">
+        <h2 class="font-medium">Audit log</h2>
+        <button class="btn-ghost text-sm" onclick={openAudit}>
+          {auditOpen ? 'Hide' : 'Show'}
+        </button>
+      </div>
+      <p class="mt-2 max-w-prose text-sm text-muted">
+        Who did what, and when. Sign-ins and the ones that failed, two-factor and passkey changes,
+        accounts created and deleted, billing, and every game-data sync. Administrators only — a
+        refused sign-in records the username that was tried, and that is worth keeping behind this
+        page.
+      </p>
+
+      {#if auditOpen}
+        <div class="mt-4 flex flex-wrap gap-2">
+          {#each auditFilters as [value, label] (value)}
+            <button
+              class="rounded-full border px-3 py-1 text-xs transition
+                     {auditFilter === value
+                       ? 'border-accent bg-accent/20 font-medium'
+                       : 'border-line text-muted hover:border-accent/40'}"
+              onclick={() => pickFilter(value)}
+            >
+              {label}
+            </button>
+          {/each}
+        </div>
+
+        {#if auditError}
+          <p class="mt-4 text-sm text-warn">{auditError}</p>
+        {/if}
+
+        {#if audit.length === 0 && !auditBusy && !auditError}
+          <p class="mt-4 text-sm text-muted">Nothing recorded under this filter yet.</p>
+        {/if}
+
+        {#if audit.length > 0}
+          <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="text-xs uppercase tracking-wide text-muted">
+                <tr>
+                  <th class="py-2 pr-4 font-medium">When</th>
+                  <th class="py-2 pr-4 font-medium">Who</th>
+                  <th class="py-2 pr-4 font-medium">Action</th>
+                  <th class="py-2 pr-4 font-medium">Subject</th>
+                  <th class="py-2 font-medium">Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each audit as e (e.id)}
+                  <tr class="border-t border-line/60 align-top">
+                    <td class="whitespace-nowrap py-2 pr-4 text-muted">{readWhen(e.when)}</td>
+                    <td class="py-2 pr-4">{e.username || '—'}</td>
+                    <td class="py-2 pr-4 font-mono text-xs">{e.action}</td>
+                    <td class="py-2 pr-4">{e.resource || '—'}</td>
+                    <td class="py-2 text-muted">{readDetail(e.detail)}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+
+        {#if auditNext}
+          <div class="mt-4">
+            <button class="btn-ghost text-sm" disabled={auditBusy} onclick={() => loadAudit(true)}>
+              {auditBusy ? 'Loading…' : 'Load older'}
+            </button>
+          </div>
+        {/if}
+      {/if}
+    </section>
+    {/if}
+
     {#if !hosted}
     <section class="card p-5">
       <h2 class="font-medium">Support Mimir</h2>

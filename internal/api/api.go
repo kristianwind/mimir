@@ -95,6 +95,7 @@ func (s *Server) Router() http.Handler {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
+	r.Use(s.requestLog)
 
 	r.Route("/api", func(r chi.Router) {
 		// Unauthenticated by necessity: nobody can log in before the first
@@ -182,6 +183,7 @@ func (s *Server) Router() http.Handler {
 
 			r.Route("/system", func(r chi.Router) {
 				r.Get("/", s.handleSystemStatus)
+				r.Get("/audit", s.handleAuditLog)
 				r.Post("/update/check", s.handleCheckUpdate)
 				r.Post("/update", s.handleApplyUpdate)
 				r.Post("/rollback", s.handleRollback)

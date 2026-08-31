@@ -106,3 +106,24 @@ func TestRequestLogWithoutALogger(t *testing.T) {
 		t.Fatalf("status = %d", rec.Code)
 	}
 }
+
+// The art routes live under /api, so a prefix of "/art/" never matched them.
+// One roster view pulls dozens, and the key names which characters somebody
+// looks at.
+func TestRequestLogSkipsCharacterArt(t *testing.T) {
+	if out := logged(t, "GET", "/api/art/Furina", ok); out != "" {
+		t.Fatalf("character art was logged:\n%s", out)
+	}
+	if out := logged(t, "GET", "/api/art/set/EmblemOfSeveredFate/flower", ok); out != "" {
+		t.Fatalf("set art was logged:\n%s", out)
+	}
+}
+
+// But the pages that answer "is anything crawling us" must survive the filter.
+func TestRequestLogKeepsRealPages(t *testing.T) {
+	for _, p := range []string{"/", "/pricing", "/sitemap.xml", "/robots.txt", "/api/plan/Raiden"} {
+		if out := logged(t, "GET", p, ok); out == "" {
+			t.Errorf("%s was silently dropped", p)
+		}
+	}
+}

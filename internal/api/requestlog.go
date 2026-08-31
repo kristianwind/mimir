@@ -79,8 +79,13 @@ func quiet(path string, status int) bool {
 		return false
 	}
 	switch {
+	// The SPA's hashed bundles, served from the root.
 	case strings.HasPrefix(path, "/assets/"),
-		strings.HasPrefix(path, "/art/"),
+		// Character and set art, which lives under /api. One roster view
+		// pulls dozens of these, and the key names which characters the
+		// household looks at — a fact the route's own comment already
+		// treats as worth keeping behind the session.
+		strings.HasPrefix(path, "/api/art/"),
 		path == "/favicon.ico":
 		return true
 	}

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -28,6 +29,9 @@ type Source struct {
 	MaxAge time.Duration
 	// Concurrency caps parallel downloads.
 	Concurrency int
+	// RetryWait is the first backoff between attempts; each further attempt
+	// waits three times as long. Zero means the default.
+	RetryWait time.Duration
 	// Log receives one line per network fetch.
 	Log func(format string, args ...any)
 }
@@ -38,20 +42,97 @@ func NewSource(dir string) *Source {
 		CacheDir:    dir,
 		HTTP:        &http.Client{Timeout: 5 * time.Minute},
 		Concurrency: 12,
+		RetryWait:   300 * time.Millisecond,
 		Log:         func(string, ...any) {},
 	}
 }
 
+// fetchAttempts is how many times one file is tried before the sync gives up.
+//
+// A mine pulls a few hundred files and swaps nothing unless every one of them
+// arrives, so the whole run is only as reliable as its unluckiest request.
+// Four attempts turns a one-in-a-few-hundred blip into a one-in-a-few-billion
+// one, at the cost of a few seconds on the rare occasion it is needed.
+const fetchAttempts = 4
+
+// retryable reports whether a status is worth trying again.
+//
+// 404 is not: the URLs are generated from a fixed pattern against a pinned
+// ref, so a missing file means the upstream layout changed, and quietly
+// retrying that would turn a real breakage into a slow one. 401 and 403 are
+// not either — credentials do not improve by asking again.
+//
+// 400 is, which is the unusual entry. It normally means the request was
+// malformed and will never succeed. But raw.githubusercontent.com is fronted
+// by a CDN that intermittently answers a perfectly ordinary GET with a bare
+// "400 Bad Request" body, and that is what was seen in production: a sync
+// died on characters/kaveh.json while the same URL returned 200 from the
+// host, from inside the container, and 366 times in a row from the real
+// client. A URL this code built itself is not malformed; if the far end says
+// it is, the far end is having a moment.
+func retryable(status int) bool {
+	switch status {
+	case http.StatusNotFound, http.StatusUnauthorized, http.StatusForbidden,
+		http.StatusGone:
+		return false
+	}
+	return true
+}
+
 // Get fetches a URL, returning its body.
+//
+// Transient failures are retried, because the alternative is what used to
+// happen: one unlucky request out of several hundred abandoned a thirty-second
+// sync and showed the admin an error naming a URL that works perfectly when
+// they click it.
 func (s *Source) Get(ctx context.Context, url string) ([]byte, error) {
 	path := s.cachePath(url)
 	if raw, ok := s.fromCache(path); ok {
 		return raw, nil
 	}
 
+	wait := s.RetryWait
+	if wait <= 0 {
+		wait = 300 * time.Millisecond
+	}
+
+	var lastErr error
+	for attempt := 1; attempt <= fetchAttempts; attempt++ {
+		if attempt > 1 {
+			// Jittered, because twelve downloads run in parallel and a
+			// failure upstream tends to hit all of them at once. Retrying in
+			// lockstep would rebuild the very burst that was refused.
+			d := wait/2 + time.Duration(rand.Int63n(int64(wait)))
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(d):
+			}
+			wait *= 3
+			s.Log("retry %d/%d %s", attempt, fetchAttempts, url)
+		}
+
+		raw, again, err := s.getOnce(ctx, url)
+		if err == nil {
+			if err := s.store(path, raw); err != nil {
+				return nil, err
+			}
+			return raw, nil
+		}
+		lastErr = err
+		if !again || ctx.Err() != nil {
+			break
+		}
+	}
+	return nil, fmt.Errorf("after %d attempts: %w", fetchAttempts, lastErr)
+}
+
+// getOnce makes one request. It reports whether the failure is worth another
+// attempt, so Get can tell a blip from a breakage.
+func (s *Source) getOnce(ctx context.Context, url string) (raw []byte, again bool, err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	req.Header.Set("User-Agent", "mimir-mine/0.1 (+https://github.com/kristianwind/mimir)")
 	req.Header.Set("Accept", "application/json, */*")
@@ -59,23 +140,22 @@ func (s *Source) Get(ctx context.Context, url string) ([]byte, error) {
 	s.Log("fetch %s", url)
 	resp, err := s.HTTP.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("mine: get %s: %w", url, err)
+		// A refused connection, a reset, a timeout: all worth another go,
+		// unless the caller has given up.
+		return nil, ctx.Err() == nil, fmt.Errorf("mine: get %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 256))
-		return nil, fmt.Errorf("mine: get %s: status %d: %s", url, resp.StatusCode, body)
+		return nil, retryable(resp.StatusCode),
+			fmt.Errorf("mine: get %s: status %d: %s", url, resp.StatusCode, body)
 	}
-	raw, err := io.ReadAll(resp.Body)
+	raw, err = io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("mine: read %s: %w", url, err)
+		return nil, ctx.Err() == nil, fmt.Errorf("mine: read %s: %w", url, err)
 	}
-
-	if err := s.store(path, raw); err != nil {
-		return nil, err
-	}
-	return raw, nil
+	return raw, false, nil
 }
 
 // GetJSON fetches a URL and decodes it into v.

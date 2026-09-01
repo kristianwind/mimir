@@ -56,6 +56,8 @@ func (s *Server) briefFor(ctx context.Context, a model.Account, surface, subject
 		return s.goalsBrief(ctx, a)
 	case "potential":
 		return s.potentialBrief(ctx, a)
+	case "target":
+		return s.targetBrief(ctx, a, subject)
 	default:
 		return nil, fmt.Errorf("%s", "Kvasir has no fact sheet for that page")
 	}
@@ -966,4 +968,142 @@ func trim(s string, n int) string {
 		return s
 	}
 	return s[:n] + "…"
+}
+
+// ------------------------------------------------------------------ target
+
+// targetBrief is what a character should aim for, with no goal involved.
+//
+// This is the fact sheet Kvasir was missing, and its absence was the most
+// damaging thing a tester hit. Asked "which artifact substats should Sandrone
+// have?", Kvasir looked in the roster and the build sheet, found no goal, and
+// answered that it could not run the damage engine — a correct account of the
+// tools it had and a flat refusal of a question Mimir can answer. BuildTarget
+// needs no goal and no rotation: it takes the character, the snapshot and what
+// the account owns, and reports which set, which main stats and which substats
+// the character wants. That is precisely what she was asking for, and what she
+// was reading off a wiki instead.
+func (s *Server) targetBrief(ctx context.Context, a model.Account, key string) (*kvasir.Brief, error) {
+	if key == "" {
+		return nil, fmt.Errorf("%s", "that needs a character")
+	}
+	snap, err := s.GameData.Current()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := snap.Char(key); err != nil {
+		return nil, err
+	}
+
+	characters, err := s.loadCharacters(ctx, a.ID)
+	if err != nil {
+		return nil, err
+	}
+	// Level 90 with talents at 1 stands in for a character the account does
+	// not have, the same substitution the target page makes — and it is said
+	// out loud below rather than quietly changing what the numbers mean.
+	character := model.Character{Key: key, Level: 90, Ascension: 6,
+		TalentAuto: 1, TalentSkill: 1, TalentBurst: 1}
+	owned := false
+	for _, c := range characters {
+		if c.Key == key {
+			character, owned = c, true
+			break
+		}
+	}
+
+	ownedSets, err := s.ownedSets(ctx, a.ID)
+	if err != nil {
+		return nil, err
+	}
+	ownedWeapons, err := s.ownedWeapons(ctx, a.ID)
+	if err != nil {
+		return nil, err
+	}
+	var conditions map[string]float64
+	if goal, _, _, err := s.loadGoal(ctx, a.ID, key); err == nil {
+		conditions = goal.Conditions
+	}
+
+	t, err := advisor.BuildTarget(ctx, advisor.TargetRequest{
+		Snapshot: snap, Character: character,
+		OwnedSets: ownedSets, OwnedWeapons: ownedWeapons, Conditions: conditions,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	b := kvasir.NewBrief("target", key,
+		fmt.Sprintf("What %s should aim for", key),
+		"What should this character farm towards, and how close is this account to it? This is a target, not a measurement of what they wear now.")
+
+	if !owned {
+		note := b.Add("This character is not on the account")
+		note.Line("The numbers below are computed at level 90 with talents at 1 and no constellations, because there is no real character to read them from.")
+	}
+
+	main := b.Add("Main stats worth farming")
+	main.Line("Flower is always flat HP and plume always flat ATK; the game offers no choice there.")
+	for _, slot := range []model.Slot{model.Sands, model.Goblet, model.Circlet} {
+		if st, ok := t.MainStats[slot]; ok {
+			main.Linef("%s: %s", slot, st)
+		}
+	}
+
+	if len(t.Substats) > 0 {
+		subs := b.Add("Substats the ranking assumed")
+		subs.Line("This is the allocation every candidate below was given, so the comparison between them is fair. It is a recommendation of what to look for, not a claim about any piece you will roll.")
+		// Most rolls first: the reader wants the priority order, and a map
+		// iterates differently every time, which would make two runs of the
+		// same question disagree about the ranking for no reason.
+		keys := make([]model.Stat, 0, len(t.Substats))
+		for st := range t.Substats {
+			keys = append(keys, st)
+		}
+		sort.Slice(keys, func(i, j int) bool {
+			if t.Substats[keys[i]] != t.Substats[keys[j]] {
+				return t.Substats[keys[i]] > t.Substats[keys[j]]
+			}
+			return keys[i] < keys[j]
+		})
+		for _, st := range keys {
+			subs.Linef("%s: %d rolls", st, t.Substats[st])
+		}
+	}
+
+	if len(t.Sets) > 0 {
+		sets := b.Add("Sets, best first")
+		for i, st := range t.Sets {
+			if i >= briefActions {
+				break
+			}
+			line := fmt.Sprintf("%s: %s", st.Config, num(st.Score))
+			if st.Behind > 0 {
+				line += fmt.Sprintf(", %s behind the best", pct(st.Behind))
+			}
+			if st.Owned {
+				line += ", you can already assemble this"
+			} else {
+				line += ", not yet ownable"
+			}
+			if !st.Modelled {
+				line += " — WARNING: this set's four-piece bonus does not reach the engine, so its score is stats only and is not comparable to the modelled entries"
+			}
+			sets.Line(line)
+		}
+	}
+
+	if t.Weapon != "" {
+		w := b.Add("Held constant")
+		w.Linef("Every set above was scored with %s. Weapons are not ranked here.", t.Weapon)
+	}
+
+	limits := b.Add("What this does and does not say")
+	for _, c := range t.Caveats {
+		limits.Line(c)
+	}
+	if len(t.MeasuredOn) > 0 {
+		limits.Linef("The scores are the sum of: %s.", strings.Join(t.MeasuredOn, ", "))
+	}
+	return b, nil
 }

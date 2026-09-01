@@ -362,6 +362,8 @@ func (k *kvasirRunner) Run(ctx context.Context, name string, args map[string]any
 		return k.brief(ctx, "roster", "")
 	case "potential":
 		return k.brief(ctx, "potential", "")
+	case "target":
+		return k.brief(ctx, "target", character)
 	case "goals":
 		return k.brief(ctx, "goals", "")
 	case "talents":

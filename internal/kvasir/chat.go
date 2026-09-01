@@ -95,6 +95,7 @@ func Tools() []llm.Tool {
 		tool("talents", "One character's talent table: the real labels and their multipliers at the levels this account has.", character),
 		tool("roster", "Every character on the account with level, constellation and talent levels.", none),
 		tool("potential", "Every character measured with one ruler and no goals: what they score now, what the gear they own would give them, and the biggest single upgrade for each. Covers characters that have no goal and are therefore missing from the plan.", none),
+		tool("target", "What one character should FARM TOWARDS: which artifact set, which main stat in each slot, and which substats to look for. Needs no goal and no rotation, so this is the tool for \"what should X have?\" or \"which substats does X want?\" about a character with nothing set up. Answers what a wiki would, computed against this account's own constellations and talent levels.", character),
 		tool("goals", "The goals set up on this account: rotation, priority, declared conditions.", none),
 		tool("inventory", "A summary of the artifact inventory: how many of each set, by slot, and the best unequipped pieces.", map[string]any{
 			"type": "object",

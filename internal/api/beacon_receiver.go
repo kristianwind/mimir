@@ -123,18 +123,35 @@ func (s *Server) handleReceiverStats(w http.ResponseWriter, r *http.Request) {
 		Endpoint: s.beaconEndpoint(),
 		Versions: []VersionCount{},
 	}
-	s.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM beacon_pings`).Scan(&st.Total)
+	// The collector does not count itself.
+	//
+	// An instance can be both sender and receiver, and mimir.guide is exactly
+	// that. Counting its own ping made "installations: 1" mean "nobody else
+	// has installed this" while reading as "one person out there is running
+	// it" — opposite answers to the only question the beacon exists to ask.
+	// Measured on production: one row, and its instance_id was this
+	// instance's own.
+	//
+	// Excluded rather than subtracted, so a stale row left over from before
+	// the sender was switched off does not linger in the count either.
+	self := db.Setting(ctx, s.DB, "beacon.instance_id")
+
 	s.DB.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM beacon_pings WHERE last_seen >= datetime('now','-7 days')`).
+		`SELECT COUNT(*) FROM beacon_pings WHERE instance_id <> ?`, self).Scan(&st.Total)
+	s.DB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM beacon_pings WHERE instance_id <> ?
+		   AND last_seen >= datetime('now','-7 days')`, self).
 		Scan(&st.Active7d)
 	s.DB.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM beacon_pings WHERE last_seen >= datetime('now','-30 days')`).
+		`SELECT COUNT(*) FROM beacon_pings WHERE instance_id <> ?
+		   AND last_seen >= datetime('now','-30 days')`, self).
 		Scan(&st.Active30d)
 
 	rows, err := s.DB.QueryContext(ctx, `
 		SELECT COALESCE(NULLIF(version, ''), 'ukendt') v, COUNT(*) c
-		FROM beacon_pings WHERE last_seen >= datetime('now','-30 days')
-		GROUP BY v ORDER BY c DESC, v`)
+		FROM beacon_pings WHERE instance_id <> ?
+		  AND last_seen >= datetime('now','-30 days')
+		GROUP BY v ORDER BY c DESC, v`, self)
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {

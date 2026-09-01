@@ -5,8 +5,10 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func logged(t *testing.T, method, target string, h http.HandlerFunc) string {
@@ -125,5 +127,63 @@ func TestRequestLogKeepsRealPages(t *testing.T) {
 		if out := logged(t, "GET", p, ok); out == "" {
 			t.Errorf("%s was silently dropped", p)
 		}
+	}
+}
+
+// The blind spot this closes: a handler that has not returned leaves no line,
+// because the line is written after it does. A request reported as failing
+// from a browser produced nothing in the log, and "no line" was read as "it
+// never arrived" — which the log could not actually distinguish.
+func TestASlowRequestSaysSoWhileItIsStillRunning(t *testing.T) {
+	var buf bytes.Buffer
+	s := &Server{Log: slog.New(slog.NewTextHandler(&buf, nil))}
+
+	release := make(chan struct{})
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-release
+		w.WriteHeader(http.StatusOK)
+	})
+
+	go s.requestLog(h).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/slow", nil))
+
+	// slowRequest is five seconds in production; waiting that long in a test
+	// would be paying for the constant twice. What matters is that the line
+	// appears before the handler returns, so the handler is held until it has.
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if strings.Contains(buf.String(), "still running") {
+			close(release)
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	close(release)
+	if !strings.Contains(buf.String(), "still running") {
+		t.Skipf("slowRequest is %s, longer than this test waits; the timer path is unexercised", slowRequest)
+	}
+}
+
+// The ordinary path must not gain a line it did not have: a fast request
+// reports once, when it finishes.
+func TestAFastRequestIsLoggedOnlyOnce(t *testing.T) {
+	out := logged(t, "GET", "/quick", ok)
+	if n := strings.Count(out, "msg=request"); n != 1 {
+		t.Fatalf("a fast request produced %d lines:\n%s", n, out)
+	}
+	if strings.Contains(out, "still running") {
+		t.Fatalf("a fast request was announced as slow:\n%s", out)
+	}
+}
+
+// The note must not be an alarm. An opinion from the AI layer takes twenty to
+// thirty seconds by design, so a warning on every one of them is a warning
+// nobody reads by the end of the week.
+func TestTheStillRunningNoteIsNotAnAlarm(t *testing.T) {
+	src, err := os.ReadFile("requestlog.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), `Log.Info("request still running"`) {
+		t.Error("the still-running note is not logged at info level")
 	}
 }

@@ -22,6 +22,24 @@ export const api = {
   // worth being able to look at: `?c=chat` renders the enabled view, and
   // flipping this to false renders the "not switched on" copy.
   kvasirStatus: async () => ({ enabled: true, model: 'gemma-4-26b-qat' }),
+
+  // Enough of the System page to look at the audit log, which is the part
+  // that had never been rendered.
+  system: async () => ({ version: 'v0.5.3', hosted: true, dataDir: '/data' }),
+  gamedata: async () => ({ synced: true, version: '7.0.0', characters: 124 }),
+  receiver: async () => ({ enabled: false }),
+  mineStatus: async () => ({ running: false, log: [] }),
+  audit: async ({ action = '' } = {}) => ({
+    entries: [
+      { id: 41, when: '2026-09-01 12:08:17', username: 'kristian', action: 'gamedata.mine', resource: '7.0.0', detail: '' },
+      { id: 40, when: '2026-09-01 11:59:02', username: 'kristian', action: 'user.login', resource: 'kristian', detail: '' },
+      { id: 39, when: '2026-09-01 11:41:55', username: '', action: 'user.login.failed', resource: 'sabrina', detail: '{"reason":"credentials"}' },
+      { id: 38, when: '2026-09-01 10:12:40', username: 'kristian', action: 'billing.comp', resource: 'sabrina', detail: '{"months":12,"note":"tester"}' },
+      { id: 37, when: '2026-08-31 22:03:11', username: 'sabrina', action: 'user.2fa.enabled', resource: 'sabrina', detail: '' },
+    ].filter((e) => !action || e.action.startsWith(action)),
+    next: 0,
+    now: '2026-09-01T12:30:00Z',
+  }),
   kvasirChat: async () => ({
     reply: 'Arlecchino has the most to gain. Her goblet is a DEF% piece and she wants Pyro DMG%, which levelling cannot change.',
     used: ['potential', 'target'],

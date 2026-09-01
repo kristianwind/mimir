@@ -20,7 +20,7 @@
 
   const PAGES = [
     { key: 'plan', label: 'Plan', icon: '◎', hint: 'What should you spend resin on?' },
-    { key: 'kvasir', label: 'Kvasir', icon: '🜛', hint: 'Ask how to get better', ai: true },
+    { key: 'kvasir', label: 'Ask', icon: '◈', hint: 'Ask Mimir about this account', ai: true },
     {
       key: 'potential',
       label: 'Potential',

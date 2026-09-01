@@ -348,7 +348,7 @@
 
     <section class="card p-5">
       <div class="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 class="font-medium">Kvasir</h2>
+        <h2 class="font-medium">The AI layer</h2>
         <span class="chip">{ai?.enabled ? 'on' : 'off'}</span>
       </div>
 

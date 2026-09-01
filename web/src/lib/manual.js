@@ -22,11 +22,11 @@ export const MANUAL = [
         list: [
           'The engine holds formulas, not constants. Every number in the game comes from a synced snapshot, so a patch is a sync rather than a release.',
           'A number Mimir cannot source does not exist. Where something cannot be computed you get a stated gap, never an estimate dressed as a fact.',
-          'The AI layer explains numbers; it never produces them. Kvasir reads what the engine calculated and can only quote it.',
+          'The AI layer explains numbers; it never produces them. It reads what the engine calculated and can only quote it.',
         ],
       },
       {
-        note: 'That third rule is why Kvasir sometimes says it cannot answer. It is not being unhelpful — it has nothing sourced to say, and inventing something would be worse.',
+        note: 'That third rule is why Mimir sometimes says it cannot answer. It is not being unhelpful — it has nothing sourced to say, and inventing something would be worse.',
       },
     ],
   },
@@ -131,10 +131,10 @@ export const MANUAL = [
   },
   {
     id: 'kvasir',
-    title: 'Kvasir',
+    title: 'Ask',
     blocks: [
       'The AI layer, and optional — without a model configured it does not exist: no card, no page, no request.',
-      'It never produces a number. Every figure in an answer is checked against the fact sheet the engine wrote, and anything unsourced is deleted from an opinion or flagged in a conversation. "What was Kvasir told?" shows the whole sheet, verbatim.',
+      'It never produces a number. Every figure in an answer is checked against the fact sheet the engine wrote, and anything unsourced is deleted from an opinion or flagged in a conversation. "What was it told?" shows the whole sheet, verbatim.',
       'In conversation it chooses which calculation to run from a fixed menu of read-only calls. It can decide what to look at and still cannot produce a figure without looking.',
       {
         note: 'An answer that looked nothing up is marked as such. "I do not have that information" from something that never asked is a different claim from the same words after it did.',

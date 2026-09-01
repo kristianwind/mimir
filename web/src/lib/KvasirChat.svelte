@@ -69,10 +69,10 @@
 
 {#if !enabled}
   <div class="card p-8 text-center">
-    <p class="text-muted">Kvasir is not switched on.</p>
+    <p class="text-muted">Asking is not switched on.</p>
     <p class="mx-auto mt-2 max-w-prose text-sm text-muted">
       Point MIMIR_LLM_BASE_URL at an OpenAI-compatible endpoint — LM Studio, Ollama, vLLM — and
-      Kvasir appears on every page. Nothing else in Mimir depends on it: no number here comes from a
+      Mimir will answer questions on every page. Nothing else depends on it: no number here comes from a
       language model.
     </p>
   </div>
@@ -81,7 +81,7 @@
     {#if messages.length === 0}
       <div class="card p-6">
         <p class="text-sm leading-relaxed">
-          Kvasir reads what the engine calculated for this account and answers questions about it.
+          Mimir reads what the engine calculated for this account and answers questions about it.
           It looks things up rather than remembering them, and every figure it uses has to come from
           a calculation — so it will tell you when it cannot answer.
         </p>
@@ -102,7 +102,7 @@
     {#each messages as message, i (i)}
       <div class="card p-4 {message.role === 'user' ? 'border-accent/40' : ''}">
         <p class="mb-1.5 text-[11px] uppercase tracking-wide text-muted">
-          {message.role === 'user' ? 'You' : 'Kvasir'}
+          {message.role === 'user' ? 'You' : 'Mimir'}
         </p>
         <p class="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
 
@@ -135,7 +135,7 @@
     {/each}
 
     {#if pending}
-      <p class="text-sm text-muted">Kvasir is reading the numbers…</p>
+      <p class="text-sm text-muted">Mimir is reading the numbers…</p>
     {/if}
 
     {#if error}

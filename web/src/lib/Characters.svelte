@@ -155,7 +155,7 @@
             class="btn-ghost mt-2 w-full text-xs backdrop-blur-sm"
             onclick={() => (asking = asking === character.key ? null : character.key)}
           >
-            {asking === character.key ? 'Hide Kvasir' : 'What does Kvasir think of this build?'}
+            {asking === character.key ? 'Hide' : 'What does Mimir make of this build?'}
           </button>
           {#if asking === character.key}
             <div class="mt-3">

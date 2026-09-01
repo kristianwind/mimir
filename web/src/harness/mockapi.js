@@ -18,6 +18,15 @@ const row = (character, cells) => ({
   caveats: [],
 })
 export const api = {
+  // The chat asks whether the AI layer is configured at all. Both branches are
+  // worth being able to look at: `?c=chat` renders the enabled view, and
+  // flipping this to false renders the "not switched on" copy.
+  kvasirStatus: async () => ({ enabled: true, model: 'gemma-4-26b-qat' }),
+  kvasirChat: async () => ({
+    reply: 'Arlecchino has the most to gain. Her goblet is a DEF% piece and she wants Pyro DMG%, which levelling cannot change.',
+    used: ['potential', 'target'],
+    unsourced: [],
+  }),
   artifactGrid: async () => ({
     rows: [
       row('Arlecchino', [

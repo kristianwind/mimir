@@ -61,7 +61,7 @@
     <header class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2">
         <span class="grid h-7 w-7 place-items-center rounded-lg bg-accent/15 text-sm" aria-hidden="true">🜛</span>
-        <h2 class="text-sm font-medium">Kvasir’s opinion</h2>
+        <h2 class="text-sm font-medium">What Mimir makes of this</h2>
         {#if data?.cached}
           <span class="chip">unchanged since last time</span>
         {/if}
@@ -69,7 +69,7 @@
       <div class="flex items-center gap-2">
         {#if data}
           <button type="button" class="btn-ghost px-2.5 py-1 text-xs" onclick={() => (showBrief = !showBrief)}>
-            {showBrief ? 'Hide the facts' : 'What was Kvasir told?'}
+            {showBrief ? 'Hide the facts' : 'What was it told?'}
           </button>
         {/if}
         <button type="button" class="btn-ghost px-2.5 py-1 text-xs" disabled={loading} onclick={() => ask(true)}>
@@ -79,7 +79,7 @@
     </header>
 
     {#if loading}
-      <p class="mt-3 text-sm text-muted">Kvasir is reading the numbers…</p>
+      <p class="mt-3 text-sm text-muted">Reading the numbers…</p>
     {:else if error}
       <p class="mt-3 text-sm text-muted">{error.message}</p>
       {#if error.hint}<p class="mt-1 text-xs text-muted">{error.hint}</p>{/if}
@@ -105,7 +105,7 @@
       {#if data.opinion.questions?.length && !compact}
         <div class="mt-4">
           <h3 class="text-xs font-medium uppercase tracking-wide text-muted">
-            What Kvasir would need to know
+            What it would need to know
           </h3>
           <ul class="mt-1.5 space-y-1 text-xs text-muted">
             {#each data.opinion.questions as question}
@@ -116,14 +116,14 @@
       {/if}
 
       <!--
-        A number Kvasir could not source is removed before it reaches the
+        A number it could not source is removed before it reaches the
         page, and what was removed is said out loud. A silently edited
         opinion is not one the reader can weigh.
       -->
       {#if data.dropped?.length}
         <div class="mt-4 rounded-xl border border-warn/40 bg-warn/10 p-3">
           <p class="text-xs text-warn">
-            {data.dropped.length} things Kvasir said were removed: they contained figures that
+            {data.dropped.length} things it said were removed: they contained figures that
             are nowhere in the calculation.
           </p>
           <ul class="mt-1.5 space-y-1 text-xs text-muted">
@@ -137,7 +137,7 @@
       {#if showBrief}
         <div class="mt-4">
           <p class="text-xs text-muted">
-            This is everything Kvasir was given. It is the engine’s own output, and every figure in
+            This is everything it was given. It is the engine’s own output, and every figure in
             the answer had to appear in it.
           </p>
           <pre class="mt-2 max-h-96 overflow-auto rounded-xl bg-raised p-3 text-[11px] leading-relaxed text-muted whitespace-pre-wrap">{data.brief}</pre>

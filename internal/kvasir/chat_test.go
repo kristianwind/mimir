@@ -162,6 +162,10 @@ func TestEveryToolIsReadOnly(t *testing.T) {
 		"account_plan": true, "goal_plan": true, "build_sheet": true,
 		"talents": true, "roster": true, "goals": true,
 		"inventory": true, "drop_model": true, "potential": true,
+		// Reads the snapshot and the account's inventory to say what a
+		// character should farm towards. It computes a target; it changes
+		// nothing.
+		"target": true,
 	}
 	for _, tool := range Tools() {
 		if !want[tool.Function.Name] {

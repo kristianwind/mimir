@@ -198,3 +198,112 @@ func TestRankArtifactsRefusesWithoutASnapshot(t *testing.T) {
 		t.Fatal("want an error with no snapshot")
 	}
 }
+
+// The verdicts are facts, not thresholds on the score, and each one has to
+// carry the fact that produced it — a colour with no reason is an opinion.
+func TestEveryVerdictExplainsItself(t *testing.T) {
+	got, err := RankArtifacts(context.Background(), rankingRequest(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var seen int
+	for _, s := range got.Slots {
+		for _, p := range s.Pieces {
+			seen++
+			switch p.Verdict {
+			case VerdictGood, VerdictOK, VerdictReplace:
+			default:
+				t.Fatalf("%s %d has verdict %q", p.Slot, p.ArtifactID, p.Verdict)
+			}
+			if p.Why == "" {
+				t.Errorf("%s %d is %q with no reason given", p.Slot, p.ArtifactID, p.Verdict)
+			}
+		}
+	}
+	if seen == 0 {
+		t.Fatal("nothing was scored")
+	}
+}
+
+// A wrong main stat is the one thing levelling cannot fix, so it must be red
+// even on a maxed five-star — the order of the checks is the whole point.
+func TestAWrongMainStatIsRedEvenWhenMaxed(t *testing.T) {
+	v, why := verdictFor(
+		model.Artifact{Rarity: 5, Level: 20, MainStat: model.DEFPercent},
+		90, model.CritDMG, true, 20, nil)
+	if v != VerdictReplace {
+		t.Fatalf("verdict = %q, want %q", v, VerdictReplace)
+	}
+	if !strings.Contains(why, "levelling cannot change it") {
+		t.Errorf("the reason does not say why it is hopeless: %q", why)
+	}
+}
+
+// Flower and plume have no main-stat choice, so they must never be condemned
+// for the stat the game forces on them.
+func TestASlotWithNoChoiceIsNeverRedForItsMainStat(t *testing.T) {
+	v, _ := verdictFor(
+		model.Artifact{Rarity: 5, Level: 20, MainStat: model.HP},
+		90, model.HP, false, 20, nil)
+	if v == VerdictReplace {
+		t.Fatal("a flower was marked for replacement over a main stat it cannot have differently")
+	}
+}
+
+func TestAnUnlevelledPieceIsYellowNotRed(t *testing.T) {
+	v, why := verdictFor(
+		model.Artifact{Rarity: 5, Level: 8, MainStat: model.CritDMG},
+		40, model.CritDMG, true, 20, nil)
+	if v != VerdictOK {
+		t.Fatalf("verdict = %q, want %q (%s)", v, VerdictOK, why)
+	}
+	if !strings.Contains(why, "+8") || !strings.Contains(why, "+20") {
+		t.Errorf("the reason does not say how far off it is: %q", why)
+	}
+}
+
+// Below five stars the main stat caps lower, and no amount of levelling
+// closes that.
+func TestALowRarityPieceIsRed(t *testing.T) {
+	v, why := verdictFor(
+		model.Artifact{Rarity: 4, Level: 16, MainStat: model.CritDMG},
+		50, model.CritDMG, true, 16, nil)
+	if v != VerdictReplace {
+		t.Fatalf("verdict = %q, want %q", v, VerdictReplace)
+	}
+	if !strings.Contains(why, "4★") {
+		t.Errorf("the reason does not name the rarity: %q", why)
+	}
+}
+
+// "You own something better" must name who is wearing it. A ranking that
+// omits that is telling you to undress somebody without saying so.
+func TestOwningBetterSaysWhoHasIt(t *testing.T) {
+	better := &PieceScore{Score: 80, WornBy: "Xiangling"}
+	v, why := verdictFor(
+		model.Artifact{Rarity: 5, Level: 20, MainStat: model.CritDMG},
+		60, model.CritDMG, true, 20, better)
+	if v != VerdictOK {
+		t.Fatalf("verdict = %q, want %q", v, VerdictOK)
+	}
+	if !strings.Contains(why, "Xiangling") {
+		t.Errorf("the reason does not say who is wearing the better piece: %q", why)
+	}
+	if !strings.Contains(why, "80") || !strings.Contains(why, "60") {
+		t.Errorf("the reason does not show both scores: %q", why)
+	}
+}
+
+// Nothing to fix is the one state that should be green, and it should say so
+// rather than being green by absence of complaint.
+func TestAFinishedPieceIsGreen(t *testing.T) {
+	v, why := verdictFor(
+		model.Artifact{Rarity: 5, Level: 20, MainStat: model.CritDMG},
+		75, model.CritDMG, true, 20, nil)
+	if v != VerdictGood {
+		t.Fatalf("verdict = %q, want %q (%s)", v, VerdictGood, why)
+	}
+	if why == "" {
+		t.Error("green with no reason")
+	}
+}

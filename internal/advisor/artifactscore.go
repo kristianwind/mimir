@@ -66,7 +66,37 @@ type PieceScore struct {
 	// wearing this instead of what is in the slot now. Negative is a
 	// downgrade. Zero on the piece already worn.
 	Gain float64 `json:"gain"`
+	// Verdict is the traffic light, and Why is the fact behind it.
+	Verdict Verdict `json:"verdict"`
+	Why     string  `json:"why"`
 }
+
+// Verdict is green, yellow, red — the shape a player already reads their own
+// spreadsheet in.
+//
+// It is deliberately NOT a set of thresholds on Score. Cutting a 0-100 at, say,
+// 70 and 45 would be taste presented as advice: nothing in the game says a 68
+// is worse than "fine", and the bands would have to be re-tuned every time the
+// yardstick moved. Each verdict below is instead a fact about the piece that a
+// player can check and act on, which is why each one carries the reason that
+// produced it.
+//
+// Score stays as the sortable number underneath. The colour is the verdict;
+// the number is the evidence.
+type Verdict string
+
+const (
+	// VerdictGood: right main stat, fully levelled, and nothing in the bag
+	// beats it. There is no action here.
+	VerdictGood Verdict = "good"
+	// VerdictOK: it works, and something specific would improve it — it is
+	// not levelled, or a better piece is sitting unused.
+	VerdictOK Verdict = "ok"
+	// VerdictReplace: no amount of levelling fixes it. The main stat is one
+	// the character does not want, or the piece is below five stars and so
+	// caps under what a five-star reaches.
+	VerdictReplace Verdict = "replace"
+)
 
 // SlotRanking is one slot's candidates, best first.
 type SlotRanking struct {
@@ -142,6 +172,30 @@ func withPiece(s State, slot model.Slot, a *model.Artifact, stats model.StatBloc
 		out.ArtifactStats[a.ID] = stats
 	}
 	return out
+}
+
+// verdictFor turns facts about a piece into a colour.
+//
+// Order matters: a wrong main stat is reported even on a maxed piece, because
+// levelling it further is the one thing that definitely will not help.
+func verdictFor(a model.Artifact, score float64, ideal model.Stat, slotHasChoice bool, maxLevel int, better *PieceScore) (Verdict, string) {
+	if a.Rarity < 5 {
+		return VerdictReplace, fmt.Sprintf("%d★, so its main stat caps below what a five-star reaches", a.Rarity)
+	}
+	if slotHasChoice && a.MainStat != ideal {
+		return VerdictReplace, fmt.Sprintf("main stat is %s; this character wants %s here, and levelling cannot change it", a.MainStat, ideal)
+	}
+	if maxLevel > 0 && a.Level < maxLevel {
+		return VerdictOK, fmt.Sprintf("right main stat, but only +%d of +%d", a.Level, maxLevel)
+	}
+	if better != nil {
+		why := fmt.Sprintf("a piece you already own scores %.0f against this one's %.0f", better.Score, score)
+		if better.WornBy != "" {
+			why += fmt.Sprintf(", though %s is wearing it", better.WornBy)
+		}
+		return VerdictOK, why
+	}
+	return VerdictGood, "right main stat, fully levelled, and nothing in the bag beats it"
 }
 
 // RankArtifacts scores the account's artifacts on one character.
@@ -273,6 +327,33 @@ func RankArtifacts(ctx context.Context, req ArtifactRankingRequest) (ArtifactRan
 		sort.SliceStable(rank.Pieces, func(i, j int) bool {
 			return rank.Pieces[i].Score > rank.Pieces[j].Score
 		})
+
+		// Verdicts come after the sort, because "you own something better"
+		// cannot be answered until every candidate in the slot has a number.
+		//
+		// betterMargin is a point of the 0-100 scale: one per cent of what
+		// the slot is worth. Without it the top piece would flag every other
+		// piece as improvable by a rounding error, and a grid where nothing
+		// is ever green tells you nothing.
+		const betterMargin = 1.0
+		byID := map[int64]model.Artifact{}
+		for _, a := range bySlot[slot] {
+			byID[a.ID] = a
+		}
+		_, slotHasChoice := target.MainStats[slot]
+		for i := range rank.Pieces {
+			p := &rank.Pieces[i]
+			a := byID[p.ArtifactID]
+			maxLevel, err := maxArtifactLevel(snap, a)
+			if err != nil {
+				maxLevel = 0 // unknown cap: do not claim it is unlevelled
+			}
+			var better *PieceScore
+			if len(rank.Pieces) > 0 && rank.Pieces[0].Score > p.Score+betterMargin {
+				better = &rank.Pieces[0]
+			}
+			p.Verdict, p.Why = verdictFor(a, p.Score, main, slotHasChoice, maxLevel, better)
+		}
 		out.Slots = append(out.Slots, rank)
 	}
 	return out, nil

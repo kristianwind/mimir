@@ -241,7 +241,7 @@ func RankArtifacts(ctx context.Context, req ArtifactRankingRequest) (ArtifactRan
 	out := ArtifactRanking{
 		Character: req.Loadout.Character.Key,
 		Caveats: []string{
-			"Zero is the slot left empty and a hundred is the idealised piece for this character — correct main stat, every substat roll allocated the way the target view allocates them, at +20. A piece can score above a hundred if its set bonus beats what the target build assumes.",
+			"Zero is a piece in this slot with no stats on it at all, and a hundred is the idealised piece for this character — correct main stat, every substat roll allocated the way the target view allocates them, at +20. Both ends wear the same set, so the score is the stats the piece brings and not the set bonus it happens to complete. A piece can score above a hundred if its own set beats what the target build assumes.",
 			"Measured the same way as Potential: one cast of the elemental skill and one of the burst, at this character's own talent levels, against a level 90 enemy with 10% resistance. No teams, no reactions, no normal attacks — a character who lives on normals is measured on the part of them this ruler can see.",
 			"Every piece is scored in the build this character wears now, so a set bonus that a swap would break or complete is already in the number. Change what is equipped and the scores move.",
 		},
@@ -269,7 +269,22 @@ func RankArtifacts(ctx context.Context, req ArtifactRankingRequest) (ArtifactRan
 			continue
 		}
 
-		empty, err := eval.Score(ctx, Goal{}, withPiece(base, slot, nil, nil))
+		// The floor is a piece with no stats, not an absent piece.
+		//
+		// Removing an artifact takes the set count with it, so on a character
+		// wearing four of a set the floor lost the whole four-piece bonus —
+		// and the span then measured "this piece plus the set it completes"
+		// against nothing. That is not what a cell claims. It made every real
+		// artifact on a well-built account score between five and twenty-five,
+		// which reads as a broken gauge rather than as gear worth keeping.
+		//
+		// A blank piece in the same slot and set keeps every set count
+		// identical at both ends, so the span is the stats alone.
+		floorPiece := model.Artifact{ID: -2, SlotKey: slot, MainStat: main, Level: 0, Rarity: 5}
+		if len(target.Sets) > 0 {
+			floorPiece.SetKey = target.Sets[0].Config
+		}
+		empty, err := eval.Score(ctx, Goal{}, withPiece(base, slot, &floorPiece, model.StatBlock{}))
 		if err != nil {
 			out.Skipped = append(out.Skipped, fmt.Sprintf("%s: %v", slot, err))
 			continue

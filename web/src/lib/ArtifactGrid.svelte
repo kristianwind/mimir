@@ -112,8 +112,9 @@
   <h2 class="font-medium">Which pieces to upgrade</h2>
   <p class="mt-2 max-w-prose text-sm text-muted">
     Every slot on the characters you choose, scored against what that character actually wants.
-    Zero is the slot left empty and a hundred is the ideal piece for them — so sixty means the same
-    thing on everybody. Pick up to {LIMIT}: each one is measured against every artifact in the bag.
+    Zero is a piece with no stats on it and a hundred is the ideal piece for them, both wearing the
+    same set — so the score is what the piece itself brings, and sixty means the same thing on
+    everybody. Pick up to {LIMIT}: each one is measured against every artifact in the bag.
   </p>
 
   <div class="mt-4 flex flex-wrap gap-1.5">
@@ -153,7 +154,26 @@
       scroll; the page is not.
     -->
     <div class="mt-5 max-w-full overflow-x-auto">
-      <table class="w-full min-w-[38rem] border-separate border-spacing-1 text-left text-sm">
+      <!--
+        table-fixed, so the five slots are the same width. Left to size
+        themselves the columns follow their content: "Energy Recharge" made
+        Sands nearly twice Plume's width, and a grid whose columns move about
+        is harder to read down than across — which is the direction the
+        question runs.
+
+        The min-width stays. Fixed layout without it squeezes six columns into
+        a phone until the labels are unreadable; together they give equal
+        columns that scroll rather than shrink.
+      -->
+      <table class="w-full min-w-[38rem] table-fixed border-separate border-spacing-1 text-left text-sm">
+        <colgroup>
+          <col style="width:22%" />
+          <col style="width:15.6%" />
+          <col style="width:15.6%" />
+          <col style="width:15.6%" />
+          <col style="width:15.6%" />
+          <col style="width:15.6%" />
+        </colgroup>
         <thead class="text-xs uppercase tracking-wide text-muted">
           <tr>
             <th class="px-2 py-1 font-medium">Character</th>

@@ -95,7 +95,20 @@
   it is also what makes the view possible. Scoring one piece is a damage
   calculation and a full account is thousands of them.
 -->
-<section class="card p-5">
+<!--
+  overflow-x-clip is the fix for a real measurement, not a precaution.
+  On a 390px viewport the whole page scrolled 174px sideways: the table
+  carries a min-width so its five slot columns stay readable, and although
+  the scroll container clipped it visually, the width still reached the
+  document. Isolated by hiding the table (page scroll 0) and by removing its
+  min-width (89, so the content alone still overflowed).
+
+  Clip rather than hidden, because hidden on one axis turns the other into a
+  scroll container. Clip rather than table-layout:fixed, which stopped the
+  page scrolling by squeezing six columns into 316px — trading a wobble for
+  an unreadable grid.
+-->
+<section class="card overflow-x-clip p-5">
   <h2 class="font-medium">Which pieces to upgrade</h2>
   <p class="mt-2 max-w-prose text-sm text-muted">
     Every slot on the characters you choose, scored against what that character actually wants.
@@ -131,7 +144,15 @@
   {/if}
 
   {#if ran && rows.length > 0}
-    <div class="mt-5 overflow-x-auto">
+    <!--
+      max-w-full is load-bearing, not decoration. The table carries a
+      min-width so its five slot columns stay readable, and without an
+      explicit cap the scroll container inherits that minimum and pushes the
+      whole page sideways: measured on a 390px viewport, the page scrolled
+      174px even though every visible element fitted. The table is meant to
+      scroll; the page is not.
+    -->
+    <div class="mt-5 max-w-full overflow-x-auto">
       <table class="w-full min-w-[38rem] border-separate border-spacing-1 text-left text-sm">
         <thead class="text-xs uppercase tracking-wide text-muted">
           <tr>

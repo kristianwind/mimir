@@ -14,3 +14,7 @@ secret.key
 # Binaries
 /mimir
 /dist/
+
+# The render harness build. A throwaway page for looking at one component;
+# never embedded, never served.
+/web/dist-harness/

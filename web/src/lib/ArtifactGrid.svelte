@@ -1,5 +1,6 @@
 <script>
   import { api } from './api.js'
+  import { statLabel } from './stats.js'
 
   let { account, characters = [] } = $props()
 
@@ -61,10 +62,17 @@
   }
 
   const TONE = {
-    good: 'border-good/40 bg-good/15 text-good',
-    ok: 'border-warn/40 bg-warn/15 text-warn',
-    replace: 'border-bad/40 bg-bad/15 text-bad',
+    good: 'border-good/50 bg-good/20 text-good',
+    ok: 'border-warn/50 bg-warn/20 text-warn',
+    replace: 'border-bad/50 bg-bad/20 text-bad',
   }
+
+  // Colour alone cannot carry the verdict. Around one man in twelve cannot
+  // separate the red cell from the green one, and in the light theme the
+  // yellow and the green sit close together even for those who can. So every
+  // verdict that asks for something also carries a mark; "nothing to do" is
+  // the common case and stays unmarked, which keeps a finished row quiet.
+  const MARK = { ok: '\u2022', replace: '\u25B2' }
 </script>
 
 <!--
@@ -134,12 +142,24 @@
                       class="rounded-lg border px-2 py-1.5 {TONE[p.verdict] ?? 'border-line text-muted'}"
                       title={p.why}
                     >
-                      <div class="text-sm font-semibold tabular-nums">{Math.round(p.score)}</div>
-                      <div class="truncate text-[0.65rem] opacity-80">{p.mainStat}</div>
+                      <div class="flex items-baseline gap-1">
+                        <span class="text-sm font-semibold tabular-nums">{Math.round(p.score)}</span>
+                        {#if MARK[p.verdict]}
+                          <span class="text-[0.7rem] leading-none" aria-hidden="true">{MARK[p.verdict]}</span>
+                        {/if}
+                        <span class="sr-only">{p.verdict}</span>
+                      </div>
+                      <div class="truncate text-[0.65rem] opacity-80">{statLabel(p.mainStat)}</div>
                     </div>
                   {:else}
-                    <div class="rounded-lg border border-line px-2 py-1.5 text-[0.65rem] text-muted">
-                      empty — wants {idealFor(row, slot) || '—'}
+                    <div
+                      class="rounded-lg border border-dashed border-line px-2 py-1.5 text-muted"
+                      title={`Nothing equipped here. Wants ${statLabel(idealFor(row, slot)) || 'an unknown main stat'}.`}
+                    >
+                      <div class="text-sm font-semibold">—</div>
+                      <div class="truncate text-[0.65rem] opacity-80">
+                        {statLabel(idealFor(row, slot)) || 'empty'}
+                      </div>
                     </div>
                   {/if}
                 </td>
@@ -151,9 +171,10 @@
     </div>
 
     <p class="mt-3 text-xs text-muted">
-      Hover a cell for why it has that colour. Green is right main stat, fully levelled and
-      nothing owned beats it; yellow is fixable; red is a main stat this character does not want,
-      or a piece below five stars — neither of which levelling changes.
+      Hover any cell for why. Plain green is done — right main stat, fully levelled, nothing you
+      own beats it. A dot (•) is fixable: not at its cap, or something better is sitting in the
+      bag. A triangle (▲) means levelling will not help — a main stat this character does not
+      want, or a piece below five stars.
     </p>
   {/if}
 

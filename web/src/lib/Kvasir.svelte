@@ -59,11 +59,19 @@
 {#if enabled}
   <section class="card p-4 sm:p-5 {compact ? '' : 'mb-6'}">
     <header class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
-        <span class="grid h-7 w-7 place-items-center rounded-lg bg-accent/15 text-sm" aria-hidden="true">🜛</span>
+      <!--
+        flex-wrap, because without it the heading and the badge share one line
+        and both break inside themselves: on a 390px screen that produced two
+        ragged two-line blocks side by side. Wrapping puts the badge on its own
+        line instead, and whitespace-nowrap keeps it one line when it gets
+        there. The heading got longer when the card stopped being "Kvasir's
+        opinion", which is what exposed this.
+      -->
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="grid h-7 w-7 place-items-center rounded-lg bg-accent/15 text-sm" aria-hidden="true">◈</span>
         <h2 class="text-sm font-medium">What Mimir makes of this</h2>
         {#if data?.cached}
-          <span class="chip">unchanged since last time</span>
+          <span class="chip whitespace-nowrap">unchanged since last time</span>
         {/if}
       </div>
       <div class="flex items-center gap-2">

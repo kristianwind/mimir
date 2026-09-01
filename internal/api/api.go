@@ -230,6 +230,7 @@ func (s *Server) Router() http.Handler {
 						// The ranking that needs no goal, and the one
 						// endpoint that writes goals from it.
 						r.Get("/potential", s.handlePotential)
+						r.Get("/artifact-grid", s.handleArtifactGrid)
 						r.Post("/goals/derive", s.handleDeriveGoals)
 
 						// Somebody else's published showcase, measured on the

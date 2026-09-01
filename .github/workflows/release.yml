@@ -164,7 +164,17 @@ jobs:
           cache-to: type=gha,mode=max
 
   binaries:
-    needs: test
+    # The image too, not just the tests, and this is not tidiness.
+    #
+    # v0.5.1 published every binary and checksums.txt while its image job was
+    # still grinding — 56 minutes against a normal 7 to 11 — so the release
+    # existed, the self-updater would offer it, and the panel pulling :latest
+    # got the previous version. Hosted and self-hosted diverge exactly there,
+    # which is the divergence this file was rewritten to end.
+    #
+    # Making the release wait on the image means a half-published version is
+    # not reachable: either both artefacts exist or neither does.
+    needs: [test, image]
     # GitHub only, and here it is not about racing at all: action-gh-release
     # writes to whichever forge it is running on, so the Gitea copy aimed the
     # release at Gitea while the self-updater reads api.github.com. It had

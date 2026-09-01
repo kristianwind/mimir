@@ -307,3 +307,41 @@ func TestAFinishedPieceIsGreen(t *testing.T) {
 		t.Error("green with no reason")
 	}
 }
+
+// Sabrina, looking at the grid: "er det kun main stats den rangerer af fra?"
+//
+// The score never was — ArtifactStats resolves substats into the block the
+// damage engine reads. But nothing on the page said so, and a piece carries
+// its rolls now so the question can be answered by looking.
+func TestAPieceCarriesItsSubstats(t *testing.T) {
+	got, err := RankArtifacts(context.Background(), rankingRequest(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var withRolls int
+	for _, s := range got.Slots {
+		for _, p := range s.Pieces {
+			if len(p.Substats) > 0 {
+				withRolls++
+			}
+		}
+	}
+	if withRolls == 0 {
+		t.Fatal("no piece reported the rolls its score is partly made of")
+	}
+}
+
+// Green means "there is nothing you can do about this piece", not "this piece
+// is good". Where the two differ the verdict has to say so, or a 40 wearing
+// the same colour as a 95 reads as a recommendation.
+func TestGreenDoesNotClaimAPieceIsGood(t *testing.T) {
+	_, why := verdictFor(
+		model.Artifact{Rarity: 5, Level: 20, MainStat: model.CritDMG},
+		41, model.CritDMG, true, 20, nil)
+	if !strings.Contains(why, "substats") {
+		t.Errorf("a green piece scoring 41 does not say what is holding it back: %q", why)
+	}
+	if !strings.Contains(why, "41") {
+		t.Errorf("the reason does not quote the score it is explaining: %q", why)
+	}
+}

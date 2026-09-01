@@ -66,6 +66,12 @@ type PieceScore struct {
 	// wearing this instead of what is in the slot now. Negative is a
 	// downgrade. Zero on the piece already worn.
 	Gain float64 `json:"gain"`
+	// Substats are the piece's own rolls, carried so a reader can see what
+	// the score is made of. They are already IN the score — ArtifactStats
+	// resolves them into the stat block the damage engine reads — but a
+	// number with its inputs hidden invites the question this field answers:
+	// "is it only ranking main stats?" It never was.
+	Substats []model.Substat `json:"substats,omitempty"`
 	// Verdict is the traffic light, and Why is the fact behind it.
 	Verdict Verdict `json:"verdict"`
 	Why     string  `json:"why"`
@@ -195,7 +201,18 @@ func verdictFor(a model.Artifact, score float64, ideal model.Stat, slotHasChoice
 		}
 		return VerdictOK, why
 	}
-	return VerdictGood, "right main stat, fully levelled, and nothing in the bag beats it"
+	// Everything that can be acted on has been ruled out above: the rarity is
+	// five, the main stat is the one wanted, it is at its cap, and nothing
+	// owned beats it. Whatever separates the score from a hundred is
+	// therefore the substats and the set — which is worth saying, because
+	// green otherwise reads as "this piece is good" when it means "there is
+	// nothing you can do about this piece".
+	if score < 99 {
+		return VerdictGood, fmt.Sprintf(
+			"nothing to do here: right main stat, at its cap, and nothing in the bag beats it. It scores %.0f of 100 — the rest is substats and the set, which no amount of levelling chooses for you",
+			score)
+	}
+	return VerdictGood, "right main stat, at its cap, and nothing in the bag beats it"
 }
 
 // RankArtifacts scores the account's artifacts on one character.
@@ -312,9 +329,9 @@ func RankArtifacts(ctx context.Context, req ArtifactRankingRequest) (ArtifactRan
 			}
 			p := PieceScore{
 				ArtifactID: a.ID, Slot: slot, Set: a.SetKey, Level: a.Level,
-				MainStat: a.MainStat,
-				Score:    100 * (score - empty) / span,
-				Worn:     a.ID == wornID,
+				MainStat: a.MainStat, Substats: a.Substats,
+				Score: 100 * (score - empty) / span,
+				Worn:  a.ID == wornID,
 			}
 			if !p.Worn {
 				p.WornBy = a.Location

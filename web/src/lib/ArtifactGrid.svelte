@@ -73,6 +73,17 @@
   // verdict that asks for something also carries a mark; "nothing to do" is
   // the common case and stays unmarked, which keeps a finished row quiet.
   const MARK = { ok: '\u2022', replace: '\u25B2' }
+
+  // The substats a piece actually rolled. They are already in the score — the
+  // damage engine reads the whole stat block — but nothing on the page said
+  // so, and the first question a reader asked was whether only main stats
+  // were being ranked.
+  function rolls(p) {
+    if (!p.substats?.length) return 'none'
+    return p.substats
+      .map((s) => `${statLabel(s.key)} ${s.value < 1 ? (s.value * 100).toFixed(1) + '%' : Math.round(s.value)}`)
+      .join(', ')
+  }
 </script>
 
 <!--
@@ -140,7 +151,7 @@
                   {#if p}
                     <div
                       class="rounded-lg border px-2 py-1.5 {TONE[p.verdict] ?? 'border-line text-muted'}"
-                      title={p.why}
+                      title={`${p.why}.\n\nMain stat: ${statLabel(p.mainStat)}\nSubstats: ${rolls(p)}\n\nThe score counts all of them — main stat, substats and the set bonus — not the main stat alone.`}
                     >
                       <div class="flex items-baseline gap-1">
                         <span class="text-sm font-semibold tabular-nums">{Math.round(p.score)}</span>
@@ -171,10 +182,11 @@
     </div>
 
     <p class="mt-3 text-xs text-muted">
-      Hover any cell for why. Plain green is done — right main stat, fully levelled, nothing you
-      own beats it. A dot (•) is fixable: not at its cap, or something better is sitting in the
-      bag. A triangle (▲) means levelling will not help — a main stat this character does not
-      want, or a piece below five stars.
+      The score counts the main stat, the substats and the set bonus together. The colour is
+      narrower: it says what you can <em>do</em>. Plain green is nothing to do — right main stat,
+      at its cap, nothing you own beats it — which is not the same as a high score, and the number
+      is there to tell you which. A dot (•) is fixable: not at its cap, or something better is in
+      the bag. A triangle (▲) means levelling will not help. Hover any cell for its rolls.
     </p>
   {/if}
 

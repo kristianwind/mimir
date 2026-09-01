@@ -8,6 +8,10 @@ const row = (character, cells) => ({
     pieces: cells[i].worn
       ? [{ artifactId: i + 1, slot, set: cells[i].set, level: cells[i].level,
            mainStat: cells[i].main, score: cells[i].score, worn: true,
+           substats: cells[i].subs ?? [
+             { key: 'critRate_', value: 0.066 }, { key: 'critDMG_', value: 0.148 },
+             { key: 'atk_', value: 0.099 }, { key: 'eleMas', value: 40 },
+           ],
            verdict: cells[i].verdict, why: cells[i].why, gain: 0 }]
       : [],
   })),

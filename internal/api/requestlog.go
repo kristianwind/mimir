@@ -28,6 +28,15 @@ import (
 // are absurd; the useful part — the crawler's name — is at the front.
 const maxAgentLen = 120
 
+// slowRequest is how long a request may run before it is worth saying so
+// while it is still running.
+//
+// Five seconds is well past anything this server does on purpose — the
+// slowest ordinary request measured in production is a couple of hundred
+// milliseconds — and well short of the proxy in front of it giving up, so a
+// request that is about to be cut off announces itself first.
+const slowRequest = 5 * time.Second
+
 // requestLog records one line per request.
 func (s *Server) requestLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +46,37 @@ func (s *Server) requestLog(next http.Handler) http.Handler {
 		}
 		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 		start := time.Now()
+
+		// A request that never finishes leaves no line, because the line is
+		// written after the handler returns. That blind spot cost half an
+		// hour: a request was reported as failing from a browser, nothing
+		// appeared in the log, and "no line" was read as "it never arrived"
+		// when the log could not have told the difference.
+		//
+		// So a request still running after slowRequest says so, once, from a
+		// timer. If it finishes afterwards it logs again in the normal way,
+		// and the two lines together say how long it really took.
+		done := make(chan struct{})
+		go func() {
+			select {
+			case <-done:
+			case <-time.After(slowRequest):
+				// Info, not a warning. An opinion from the AI layer takes
+				// twenty to thirty seconds by design, and a line that fires
+				// on every one of them is an alarm nobody will read by the
+				// end of the week. This is a progress note: paired with the
+				// completion line it says how long something took, and
+				// standing alone it says the request never finished — which
+				// is the case that was invisible before.
+				s.Log.Info("request still running",
+					"method", r.Method, "path", r.URL.Path,
+					"after", slowRequest.String(),
+					"agent", clip(r.UserAgent(), maxAgentLen))
+			}
+		}()
+
 		next.ServeHTTP(ww, r)
+		close(done)
 
 		status := ww.Status()
 		if status == 0 {

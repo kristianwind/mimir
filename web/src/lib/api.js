@@ -127,6 +127,12 @@ export const api = {
   // Somebody else's published showcase, measured the same way as yours.
   compare: (id, uid) => request('GET', `/accounts/${id}/compare/${encodeURIComponent(uid)}`),
 
+  // The grid names who it covers. Scoring one piece is a damage calculation,
+  // so a whole roster is thousands of them — the server refuses a request that
+  // does not choose rather than measuring everybody and timing out.
+  artifactGrid: (id, keys) =>
+    request('GET', `/accounts/${id}/artifact-grid?characters=${encodeURIComponent(keys.join(','))}`),
+
   system: () => request('GET', '/system'),
 
   // The audit log is administrator-only; a plain user gets a 403 rather than

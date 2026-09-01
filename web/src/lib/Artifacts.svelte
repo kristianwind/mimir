@@ -1,8 +1,14 @@
 <script>
   import { api } from './api.js'
   import Kvasir from './Kvasir.svelte'
+  import ArtifactGrid from './ArtifactGrid.svelte'
 
   let { account } = $props()
+
+  // The grid needs the roster to offer a choice from. Loaded here rather than
+  // inside it, so the component stays about scoring and this page stays the
+  // one that knows which account is open.
+  let roster = $state([])
 
   const SLOTS = ['flower', 'plume', 'sands', 'goblet', 'circlet']
   const SLOT_LABELS = {
@@ -26,6 +32,10 @@
       .then((data) => (artifacts = data ?? []))
       .catch((err) => (error = err.message))
       .finally(() => (loading = false))
+    api
+      .characters(id)
+      .then((data) => (roster = data ?? []))
+      .catch(() => (roster = []))
   })
 
   const shown = $derived(slot ? artifacts.filter((a) => a.slotKey === slot) : artifacts)
@@ -58,6 +68,17 @@
 
 {#if artifacts.length}
   <Kvasir {account} surface="artifacts" />
+{/if}
+
+<!--
+  Above the inventory rather than below it. "Which of these should I upgrade"
+  is the question people arrive at this page with; the list of every piece you
+  own is what they scroll to afterwards.
+-->
+{#if artifacts.length && roster.length}
+  <div class="mb-6">
+    <ArtifactGrid {account} characters={roster} />
+  </div>
 {/if}
 
 <div class="mb-4 flex flex-wrap items-center gap-2">

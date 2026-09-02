@@ -78,8 +78,12 @@ type Config struct {
 	// vLLM). Empty disables the AI layer entirely; the rest of Mimir works
 	// unchanged, because no number depends on the model.
 	LLMBaseURL string
-	LLMModel   string
-	LLMAPIKey  string
+	// HeadHTML is markup the operator wants in every page's <head> — an
+	// analytics tag, most likely. Environment only: it is script on every
+	// page, so it must not be writable over HTTP.
+	HeadHTML  string
+	LLMModel  string
+	LLMAPIKey string
 	// LLMThinking lets a reasoning model reason before answering. Off by
 	// default: Kvasir wants a JSON object built from a fact sheet, and the
 	// chain of thought costs the whole token budget and most of the wait for
@@ -114,12 +118,14 @@ func Load() (*Config, error) {
 		Repo:                 env("MIMIR_REPO", "kristianwind/mimir"),
 		SupplementsPath:      env("MIMIR_SUPPLEMENTS", "/etc/mimir/supplements.json"),
 		EffectsPath:          env("MIMIR_EFFECTS", "/etc/mimir/effects.json"),
-		LLMBaseURL:           env("MIMIR_LLM_BASE_URL", ""),
-		LLMModel:             env("MIMIR_LLM_MODEL", ""),
-		LLMAPIKey:            env("MIMIR_LLM_API_KEY", ""),
-		LLMThinking:          envBool("MIMIR_LLM_THINKING", false),
-		LLMMaxTokens:         envInt("MIMIR_LLM_MAX_TOKENS", 4000),
-		LLMTimeout:           time.Duration(envInt("MIMIR_LLM_TIMEOUT", 90)) * time.Second,
+		// Empty by default on every instance. See internal/api/headhtml.go.
+		HeadHTML:     env("MIMIR_HEAD_HTML", ""),
+		LLMBaseURL:   env("MIMIR_LLM_BASE_URL", ""),
+		LLMModel:     env("MIMIR_LLM_MODEL", ""),
+		LLMAPIKey:    env("MIMIR_LLM_API_KEY", ""),
+		LLMThinking:  envBool("MIMIR_LLM_THINKING", false),
+		LLMMaxTokens: envInt("MIMIR_LLM_MAX_TOKENS", 4000),
+		LLMTimeout:   time.Duration(envInt("MIMIR_LLM_TIMEOUT", 90)) * time.Second,
 	}
 
 	if err := os.MkdirAll(c.DataDir, 0o750); err != nil {

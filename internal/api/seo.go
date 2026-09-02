@@ -148,13 +148,19 @@ func (s *Server) seoBuild() {
 	// document untouched apart from a refusal to be indexed: those pages are
 	// a login screen to anybody who is not signed in, and a search result
 	// leading to one helps nobody.
-	s.seoCache.other = inject(doc, `<meta name="robots" content="noindex, follow" />`, "")
+	// The operator's own <head> block, on every page of the site — it is the
+	// site's own traffic being measured, not the marketing pages' alone.
+	// Empty unless somebody set it; see internal/api/headhtml.go.
+	head := s.headHTML()
+
+	s.seoCache.other = inject(doc,
+		joinHead(`<meta name="robots" content="noindex, follow" />`, head), "")
 
 	if !s.Config.Hosted {
 		return
 	}
 	for path, page := range seoPages {
-		s.seoCache.pages[path] = inject(doc, s.seoHead(path, page), page.Title)
+		s.seoCache.pages[path] = inject(doc, joinHead(s.seoHead(path, page), head), page.Title)
 	}
 }
 
@@ -255,6 +261,18 @@ func jsonEscape(v string) string {
 
 // titleTag matches the one already in the document.
 var titleTag = regexp.MustCompile(`(?s)<title>.*?</title>`)
+
+// joinHead puts two head blocks together, dropping either if it is empty so
+// no stray indentation is left where a block was not added.
+func joinHead(a, b string) string {
+	switch {
+	case a == "":
+		return b
+	case b == "":
+		return a
+	}
+	return a + "\n    " + b
+}
 
 // inject puts a block just before </head> and, where a title is given,
 // replaces the existing one rather than adding a second. Two titles means the

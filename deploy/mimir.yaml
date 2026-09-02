@@ -4,7 +4,7 @@ gameskill:
   category: "Apps"
   description: "Genshin Impact build advisor: Enka and GOOD import, artifact optimizer and a resin plan ranked by damage per resin"
   author: "kristianwind"
-  version: 10
+  version: 11
   icon: "app"
 
   docker:
@@ -113,6 +113,21 @@ gameskill:
     # checked back against the numbers it was given. It never computes one, so
     # leaving these blank removes the advice and nothing else — no card, no
     # page, no request.
+    # Mimir ships no analytics and does not choose one for you. This is the
+    # seam: whatever you put here is written into every page's <head>, exactly
+    # as typed. Empty on a fresh install, and it stays empty until you decide
+    # otherwise.
+    #
+    # It is a rune field rather than a page in the app on purpose. This becomes
+    # a script element on every page, so anyone who could write it could run
+    # code in every visitor's browser — including yours. Here it can only be
+    # changed by somebody who can already restart the server.
+    - key: MIMIR_HEAD_HTML
+      name: "Extra markup for <head>"
+      type: string
+      default: ""
+      hint: "For an analytics tag, or anything else that belongs in the head. Inserted verbatim, so paste the whole element — e.g. <script defer data-domain=\"example.com\" src=\"https://plausible.example.com/js/script.js\"></script>. A cookieless analytics service needs no consent banner; one that sets cookies does, and that is yours to arrange. Leave blank for none."
+
     - key: MIMIR_LLM_BASE_URL
       name: "LLM endpoint (OpenAI-compatible)"
       type: string

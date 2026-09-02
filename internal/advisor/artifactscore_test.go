@@ -172,7 +172,8 @@ func TestTheRankingStatesItsAnchors(t *testing.T) {
 		t.Fatal(err)
 	}
 	joined := strings.ToLower(strings.Join(got.Caveats, " "))
-	for _, want := range []string{"empty", "hundred", "normal attacks"} {
+	// The anchors, and the two exclusions a tidy 0-100 would otherwise hide.
+	for _, want := range []string{"no stats on it", "hundred", "same set", "normal attacks"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("the caveats never mention %q: %v", want, got.Caveats)
 		}

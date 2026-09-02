@@ -62,6 +62,30 @@ Entirely optional. With no endpoint configured Kvasir does not exist — no
 card, no page, no request — and every number in the product is unchanged,
 because no number comes from a model.
 
+## Your own markup in `<head>`
+
+Mimir ships no analytics and does not choose one for you. This is where you put
+your own tag if you want one.
+
+It is inserted into every page exactly as typed, so paste the whole element.
+There is no escaping — an escaped tag is text, not a tag — which is also why
+this is an environment variable and not a field in the app: whatever goes here
+runs in every visitor's browser, an administrator's session included, so it is
+deliberately something only whoever can restart the server can change.
+
+A cookieless service (Plausible, Fathom, GoatCounter) needs no consent banner.
+One that sets cookies does, and arranging that is yours.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `MIMIR_HEAD_HTML` | *(empty)* | Markup for every page's `<head>`, inserted verbatim. Refused and logged if it contains `</head>` or exceeds 8 KB. Empty means nothing is added, which is every install until you change it. |
+
+Example:
+
+```
+MIMIR_HEAD_HTML=<script defer data-domain="example.com" src="https://plausible.example.com/js/script.js"></script>
+```
+
 | Variable | Default | What it does |
 |---|---|---|
 | `MIMIR_LLM_BASE_URL` | *(empty)* | An OpenAI-compatible endpoint: LM Studio, Ollama, vLLM. Empty disables the whole layer. |

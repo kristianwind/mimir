@@ -40,6 +40,20 @@ export const api = {
     next: 0,
     now: '2026-09-01T12:30:00Z',
   }),
+  kvasirOpinion: async () => ({
+    cached: true,
+    opinion: {
+      verdict: 'Prioritize setting goals for Arlecchino and Columbina to move them beyond baseline equipment.',
+      points: [
+        { headline: 'Establish goals for Arlecchino and Columbina',
+          why: 'They are level 90 with 9/9/9 talents but have no goals set up.',
+          do: 'Define specific combat rotations and damage targets for these two.' },
+      ],
+      questions: [],
+    },
+    dropped: [],
+    brief: '# The roster on account 700123456',
+  }),
   kvasirChat: async () => ({
     reply: 'Arlecchino has the most to gain. Her goblet is a DEF% piece and she wants Pyro DMG%, which levelling cannot change.',
     used: ['potential', 'target'],

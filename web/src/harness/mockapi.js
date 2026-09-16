@@ -59,6 +59,17 @@ export const api = {
     used: ['potential', 'target'],
     unsourced: [],
   }),
+  // The Users page with exactly one administrator, which is the shape the
+  // hosted instance actually has. kristian is that administrator and is not
+  // comped; sabrina is a comped tester, so both states of the button render.
+  users: async () => [
+    { id: 1, username: 'kristian', role: 'admin', disabled: false, accounts: 2, sessions: 1, comped: false, compedNote: '' },
+    { id: 2, username: 'sabrina', role: 'user', disabled: false, accounts: 1, sessions: 0, comped: true, compedNote: 'tester' },
+  ],
+  comp: async () => ({ status: 'ok' }),
+  updateUser: async () => ({ status: 'ok' }),
+  deleteUser: async () => ({ status: 'ok' }),
+  createUser: async () => ({ status: 'ok' }),
   artifactGrid: async () => ({
     rows: [
       row('Arlecchino', [

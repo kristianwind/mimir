@@ -57,6 +57,10 @@
 
   // The server refuses to strip the last administrator, but a button that
   // looks live and then fails is worse than one that explains itself.
+  //
+  // This governs the three controls that take something away, and nothing
+  // else. Free access is not one of them: the server grants it to anybody,
+  // including this user.
   function lastAdmin(user) {
     return user.role === 'admin' && !user.disabled && admins <= 1
   }
@@ -85,7 +89,8 @@
             <p class="text-xs text-muted">
               {user.role === 'admin' ? 'administrator' : 'user'}
               {#if user.disabled}· <span class="text-warn">disabled</span>{/if}
-              · {user.accounts} accounts · {user.sessions} active logins
+              · {user.accounts} {user.accounts === 1 ? 'account' : 'accounts'}
+              · {user.sessions} active {user.sessions === 1 ? 'login' : 'logins'}
             </p>
           </div>
 
@@ -111,27 +116,41 @@
               >
                 {user.disabled ? 'Enable' : 'Disable'}
               </button>
-              <!--
-                Free access, and deliberately its own button rather than a
-                role. Somebody given the product for nothing is still a user
-                of it — making them an administrator to do it would hand them
-                the controls for the machine as well.
-              -->
-              <button
-                class="btn-ghost text-xs {user.comped ? 'text-good' : ''}"
-                disabled={busy === `comp-${user.id}`}
-                title={user.compedNote}
-                onclick={() => {
-                  if (user.comped) {
-                    run(`comp-${user.id}`, () => api.comp(user.id, false, ''))
-                    return
-                  }
-                  const note = prompt(`Why is ${user.username} getting free access?`, 'tester')
-                  if (note !== null) run(`comp-${user.id}`, () => api.comp(user.id, true, note))
-                }}
-              >
-                {user.comped ? 'Free access ✓' : 'Give free access'}
-              </button>
+            {/if}
+            <!--
+              Free access, and deliberately its own button rather than a role.
+              Somebody given the product for nothing is still a user of it —
+              making them an administrator to do it would hand them the
+              controls for the machine as well.
+
+              Outside the last-administrator branch, and that placement is the
+              whole point. The three controls above take something away — the
+              role, the login, the account — and the server refuses all three
+              for the last administrator, so hiding them is honest. Comping
+              takes nothing away and the server has never refused it. When it
+              sat inside that branch the sole operator of a hosted instance
+              was the one person who could not be given free access, so when
+              his trial ran out the product half of his own service switched
+              off with no way back from inside it. Administration is exempt
+              from the paywall precisely so that billing state stays fixable;
+              this button is what there was to fix it with.
+            -->
+            <button
+              class="btn-ghost text-xs {user.comped ? 'text-good' : ''}"
+              disabled={busy === `comp-${user.id}`}
+              title={user.compedNote}
+              onclick={() => {
+                if (user.comped) {
+                  run(`comp-${user.id}`, () => api.comp(user.id, false, ''))
+                  return
+                }
+                const note = prompt(`Why is ${user.username} getting free access?`, 'tester')
+                if (note !== null) run(`comp-${user.id}`, () => api.comp(user.id, true, note))
+              }}
+            >
+              {user.comped ? 'Free access ✓' : 'Give free access'}
+            </button>
+            {#if !lastAdmin(user)}
               <button
                 class="btn-ghost text-xs text-bad"
                 disabled={busy === `del-${user.id}`}

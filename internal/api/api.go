@@ -244,6 +244,13 @@ func (s *Server) Router() http.Handler {
 						// weapon — none of it filtered by what is in the bag.
 						r.Get("/target/{characterKey}", s.handleTarget)
 
+						// One character's own page: how far along the build
+						// is, and which slot has the most left in it. The
+						// target above says what to aim for; this says where
+						// you are, which is the question you have once you
+						// have picked somebody.
+						r.Get("/character/{characterKey}", s.handleCharacterPage)
+
 						r.Get("/dropmodel", s.handleDropModel)
 						r.Get("/plan", s.handleAccountPlan)
 						r.Get("/plan/{characterKey}", s.handlePlanForGoal)

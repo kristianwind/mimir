@@ -285,7 +285,7 @@
         <a
           href={page.path}
           onclick={(e) => go(page.path, e)}
-          class={path === page.path ? 'text-accent' : 'hover:text-fg'}
+          class={path === page.path ? 'text-accent' : 'hover:text-ink'}
         >
           {page.label}
         </a>
@@ -295,7 +295,7 @@
         go and look, so the link is on every page rather than in a sentence
         somebody has to find.
       -->
-      <a href={REPO_URL} rel="noopener" target="_blank" class="hover:text-fg">Source</a>
+      <a href={REPO_URL} rel="noopener" target="_blank" class="hover:text-ink">Source</a>
     </nav>
     <p class="mt-3 text-xs text-muted">
       Not affiliated with HoYoverse. Game data and imagery belong to their owners.

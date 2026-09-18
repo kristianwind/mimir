@@ -65,6 +65,16 @@ type SubstatValue struct {
 	// looks like a bug to somebody who has read a guide recommending it, and
 	// the reason is usually interesting.
 	Note string `json:"note,omitempty"`
+	// Unmeasured separates "this stat does nothing" from "Mimir does not
+	// model what this stat does". Both come back as a zero and they are not
+	// the same claim: DEF% on a character who does not scale on DEF really is
+	// worth nothing, while energy recharge is worth a great deal and simply
+	// has nothing to change in a rotation that never waits for energy.
+	//
+	// It exists as a field rather than being left to whoever reads Note
+	// because the interface has to colour the two differently and matching on
+	// the wording would break the first time the wording improved.
+	Unmeasured bool `json:"unmeasured,omitempty"`
 }
 
 // SubstatValues ranks every rollable substat by what one roll of it would add
@@ -135,6 +145,8 @@ func SubstatValues(
 			out[i].Relative = out[i].PerRoll / best
 		}
 		out[i].Note = substatNote(out[i], best)
+		out[i].Unmeasured = out[i].PerRoll <= 0 &&
+			(out[i].Stat == model.EnergyRecharge || out[i].Stat == model.ElementalMastery)
 	}
 	return out, nil
 }

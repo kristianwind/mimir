@@ -196,6 +196,7 @@ export const api = {
   weapons: (id) => request('GET', `/accounts/${id}/weapons`),
   talents: (id, key) => request('GET', `/accounts/${id}/talents/${key}`),
   build: (id, key) => request('GET', `/accounts/${id}/build/${key}`),
+  character: (id, key) => request('GET', `/accounts/${id}/character/${key}`),
 
   goals: (id) => request('GET', `/accounts/${id}/goals`),
   saveGoal: (id, goal) => request('PUT', `/accounts/${id}/goals`, goal),

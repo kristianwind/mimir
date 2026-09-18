@@ -439,6 +439,574 @@
           "maxStacks": 1
         }
       ]
+    },
+
+    {
+      "key": "GoldenTroupe",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "skill_dmg_",
+          "phase": "pre",
+          "rate": 0.25,
+          "note": "Gælder altid."
+        },
+        {
+          "grants": "skill_dmg_",
+          "phase": "pre",
+          "rate": 0.25,
+          "stacksFrom": "GoldenTroupe.offField",
+          "maxStacks": 1,
+          "note": "Yderligere 25 %, når karakteren er off-field. Sæt 1, hvis hun er det i din rotation."
+        }
+      ]
+    },
+
+    {
+      "key": "VourukashasGlow",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "skill_dmg_",
+          "phase": "pre",
+          "rate": 0.1,
+          "note": "Gælder altid."
+        },
+        {
+          "grants": "burst_dmg_",
+          "phase": "pre",
+          "rate": 0.1,
+          "note": "Gælder altid."
+        }
+      ]
+    },
+
+    {
+      "key": "Thundersoother",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "dmg_",
+          "phase": "pre",
+          "rate": 0.35,
+          "stacksFrom": "Thundersoother.electroAffected",
+          "maxStacks": 1,
+          "note": "Modstanderen er ramt af Electro."
+        }
+      ]
+    },
+
+    {
+      "key": "Lavawalker",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "dmg_",
+          "phase": "pre",
+          "rate": 0.35,
+          "stacksFrom": "Lavawalker.pyroAffected",
+          "maxStacks": 1,
+          "note": "Modstanderen er ramt af Pyro."
+        }
+      ]
+    },
+
+    {
+      "key": "BraveHeart",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "dmg_",
+          "phase": "pre",
+          "rate": 0.3,
+          "stacksFrom": "BraveHeart.aboveHalfHP",
+          "maxStacks": 1,
+          "note": "Modstanderen er over 50 % HP."
+        }
+      ]
+    },
+
+    {
+      "key": "DeepwoodMemories",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "target_res_dendro",
+          "phase": "pre",
+          "rate": 0.3,
+          "stacksFrom": "DeepwoodMemories.applied",
+          "maxStacks": 1,
+          "note": "Skill eller burst har ramt. Sæt 1, hvis den er oppe i din rotation."
+        }
+      ]
+    },
+
+    {
+      "key": "Berserker",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "critRate_",
+          "phase": "pre",
+          "rate": 0.24,
+          "stacksFrom": "Berserker.belowSeventy",
+          "maxStacks": 1,
+          "note": "Under 70 % HP."
+        }
+      ]
+    },
+
+    {
+      "key": "RetracingBolide",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "normal_dmg_",
+          "phase": "pre",
+          "rate": 0.4,
+          "stacksFrom": "RetracingBolide.shielded",
+          "maxStacks": 1,
+          "note": "Under et skjold."
+        },
+        {
+          "grants": "charged_dmg_",
+          "phase": "pre",
+          "rate": 0.4,
+          "stacksFrom": "RetracingBolide.shielded",
+          "maxStacks": 1,
+          "note": "Under et skjold."
+        }
+      ]
+    },
+
+    {
+      "key": "ObsidianCodex",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "critRate_",
+          "phase": "pre",
+          "rate": 0.4,
+          "stacksFrom": "ObsidianCodex.nightsoul",
+          "maxStacks": 1,
+          "note": "Efter forbrug af et Nightsoul-point på feltet."
+        }
+      ]
+    },
+
+    {
+      "key": "UnfinishedReverie",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "dmg_",
+          "phase": "pre",
+          "rate": 0.5,
+          "stacksFrom": "UnfinishedReverie.burning",
+          "maxStacks": 1,
+          "note": "Fuldt optrappet mod brændende modstandere."
+        }
+      ]
+    },
+
+    {
+      "key": "NighttimeWhispersInTheEchoingWoods",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "geo_dmg_",
+          "phase": "pre",
+          "rate": 0.2,
+          "stacksFrom": "NighttimeWhispersInTheEchoingWoods.afterSkill",
+          "maxStacks": 1,
+          "note": "Efter elemental skill. Forstærkningen på 150 % under et Crystallize-skjold er ikke modelleret."
+        }
+      ]
+    },
+
+    {
+      "key": "FinaleOfTheDeepGalleries",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "normal_dmg_",
+          "phase": "pre",
+          "rate": 0.6,
+          "stacksFrom": "FinaleOfTheDeepGalleries.normal",
+          "maxStacks": 1,
+          "note": "Ved 0 energi, og først efter et burst er faldet. Udelukker burst-bonussen."
+        },
+        {
+          "grants": "burst_dmg_",
+          "phase": "pre",
+          "rate": 0.6,
+          "stacksFrom": "FinaleOfTheDeepGalleries.burst",
+          "maxStacks": 1,
+          "note": "Ved 0 energi. Udelukker normal-bonussen — sæt kun én af de to."
+        }
+      ]
+    },
+
+    {
+      "key": "HeartOfDepth",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "normal_dmg_",
+          "phase": "pre",
+          "rate": 0.3,
+          "stacksFrom": "HeartOfDepth.afterSkill",
+          "maxStacks": 1,
+          "note": "I 15 s efter elemental skill."
+        },
+        {
+          "grants": "charged_dmg_",
+          "phase": "pre",
+          "rate": 0.3,
+          "stacksFrom": "HeartOfDepth.afterSkill",
+          "maxStacks": 1,
+          "note": "I 15 s efter elemental skill."
+        }
+      ]
+    },
+
+    {
+      "key": "MartialArtist",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "normal_dmg_",
+          "phase": "pre",
+          "rate": 0.25,
+          "stacksFrom": "MartialArtist.afterSkill",
+          "maxStacks": 1,
+          "note": "I 8 s efter elemental skill."
+        },
+        {
+          "grants": "charged_dmg_",
+          "phase": "pre",
+          "rate": 0.25,
+          "stacksFrom": "MartialArtist.afterSkill",
+          "maxStacks": 1,
+          "note": "I 8 s efter elemental skill."
+        }
+      ]
+    },
+
+    {
+      "key": "BloodstainedChivalry",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "charged_dmg_",
+          "phase": "pre",
+          "rate": 0.5,
+          "stacksFrom": "BloodstainedChivalry.afterKill",
+          "maxStacks": 1,
+          "note": "I 10 s efter et drab. Sjældent oppe i en boss-rotation."
+        }
+      ]
+    },
+
+    {
+      "key": "DesertPavilionChronicle",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "normal_dmg_",
+          "phase": "pre",
+          "rate": 0.4,
+          "stacksFrom": "DesertPavilionChronicle.afterCharged",
+          "maxStacks": 1,
+          "note": "I 15 s efter et charged attack rammer."
+        },
+        {
+          "grants": "charged_dmg_",
+          "phase": "pre",
+          "rate": 0.4,
+          "stacksFrom": "DesertPavilionChronicle.afterCharged",
+          "maxStacks": 1,
+          "note": "I 15 s efter et charged attack rammer."
+        },
+        {
+          "grants": "plunging_dmg_",
+          "phase": "pre",
+          "rate": 0.4,
+          "stacksFrom": "DesertPavilionChronicle.afterCharged",
+          "maxStacks": 1,
+          "note": "I 15 s efter et charged attack rammer."
+        }
+      ]
+    },
+
+    {
+      "key": "TenacityOfTheMillelith",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "rate": 0.2,
+          "stacksFrom": "TenacityOfTheMillelith.uptime",
+          "maxStacks": 1,
+          "note": "Når skill rammer. Sæt 1, hvis den holdes oppe."
+        }
+      ]
+    },
+
+    {
+      "key": "Instructor",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "eleMas",
+          "phase": "pre",
+          "flat": 120,
+          "stacksFrom": "Instructor.afterReaction",
+          "maxStacks": 1,
+          "note": "120 EM til hele holdet efter en reaktion."
+        }
+      ]
+    },
+
+    {
+      "key": "GladiatorsFinale",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "normal_dmg_",
+          "phase": "pre",
+          "rate": 0.35,
+          "stacksFrom": "GladiatorsFinale.meleeWeapon",
+          "maxStacks": 1,
+          "note": "Kun med sword, claymore eller polearm. Sæt 1, hvis karakteren bruger en af dem."
+        }
+      ]
+    },
+
+    {
+      "key": "WanderersTroupe",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "charged_dmg_",
+          "phase": "pre",
+          "rate": 0.35,
+          "stacksFrom": "WanderersTroupe.catalystOrBow",
+          "maxStacks": 1,
+          "note": "Kun med catalyst eller bow. Sæt 1, hvis karakteren bruger en af dem."
+        }
+      ]
+    },
+
+    {
+      "key": "FragmentOfHarmonicWhimsy",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "dmg_",
+          "phase": "pre",
+          "rate": 0.18,
+          "stacksFrom": "FragmentOfHarmonicWhimsy.stacks",
+          "maxStacks": 3,
+          "note": "Pr. ændring i Bond of Life, op til tre stacks."
+        }
+      ]
+    },
+
+    {
+      "key": "LongNightsOath",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "plunging_dmg_",
+          "phase": "pre",
+          "rate": 0.15,
+          "stacksFrom": "LongNightsOath.stacks",
+          "maxStacks": 5,
+          "note": "Pr. stack Radiance Everlasting, op til fem."
+        }
+      ]
+    },
+
+    {
+      "key": "PaleFlame",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "rate": 0.09,
+          "stacksFrom": "PaleFlame.stacks",
+          "maxStacks": 2,
+          "note": "Pr. stack, op til to. Fordoblingen af to-sæt-bonussen ved to stacks er ikke modelleret."
+        }
+      ]
+    },
+
+    {
+      "key": "HuskOfOpulentDreams",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "def_",
+          "phase": "pre",
+          "rate": 0.06,
+          "stacksFrom": "HuskOfOpulentDreams.stacks",
+          "maxStacks": 4,
+          "note": "Pr. Curiosity-stack, op til fire."
+        },
+        {
+          "grants": "geo_dmg_",
+          "phase": "pre",
+          "rate": 0.06,
+          "stacksFrom": "HuskOfOpulentDreams.stacks",
+          "maxStacks": 4,
+          "note": "Pr. Curiosity-stack, op til fire."
+        }
+      ]
+    },
+
+    {
+      "key": "VermillionHereafter",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "rate": 0.08,
+          "stacksFrom": "VermillionHereafter.active",
+          "maxStacks": 1,
+          "note": "Nascent Light efter burst."
+        },
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "rate": 0.1,
+          "stacksFrom": "VermillionHereafter.hpLossStacks",
+          "maxStacks": 4,
+          "note": "Pr. gang HP falder mens Nascent Light er oppe, op til fire."
+        }
+      ]
+    },
+
+    {
+      "key": "GildedDreams",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "rate": 0.14,
+          "stacksFrom": "GildedDreams.sameElement",
+          "maxStacks": 3,
+          "note": "Pr. holdkammerat med samme element, op til tre."
+        },
+        {
+          "grants": "eleMas",
+          "phase": "pre",
+          "flat": 50,
+          "stacksFrom": "GildedDreams.otherElement",
+          "maxStacks": 3,
+          "note": "50 EM pr. holdkammerat med et andet element, op til tre."
+        }
+      ]
+    },
+
+    {
+      "key": "NymphsDream",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "rate": 0.25,
+          "stacksFrom": "NymphsDream.threeStacks",
+          "maxStacks": 1,
+          "note": "Ved tre eller flere Mirrored Nymph-stacks."
+        },
+        {
+          "grants": "hydro_dmg_",
+          "phase": "pre",
+          "rate": 0.15,
+          "stacksFrom": "NymphsDream.threeStacks",
+          "maxStacks": 1,
+          "note": "Ved tre eller flere Mirrored Nymph-stacks."
+        }
+      ]
+    },
+
+    {
+      "key": "ADayCarvedFromRisingWinds",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "rate": 0.25,
+          "stacksFrom": "ADayCarvedFromRisingWinds.blessing",
+          "maxStacks": 1,
+          "note": "Blessing of Pastoral Winds, efter et hit."
+        },
+        {
+          "grants": "critRate_",
+          "phase": "pre",
+          "rate": 0.2,
+          "stacksFrom": "ADayCarvedFromRisingWinds.resolve",
+          "maxStacks": 1,
+          "note": "Kun med Resolve of Pastoral Winds — kræver Witch's Homework."
+        }
+      ]
+    },
+
+    {
+      "key": "DisenchantmentInDeepShadow",
+      "kind": "artifactSet",
+      "trigger": "4pc",
+      "effects": [
+        {
+          "grants": "critRate_",
+          "phase": "pre",
+          "rate": 0.16,
+          "stacksFrom": "DisenchantmentInDeepShadow.affected",
+          "maxStacks": 1,
+          "note": "Mod modstandere ramt af Superconduct eller Stellar-Conduct."
+        },
+        {
+          "grants": "react_superconduct_",
+          "phase": "post",
+          "rate": 0.8,
+          "note": "Superconduct. Motoren prissætter endnu ikke transformative reaktioner."
+        }
+      ]
     }
   ]
 }

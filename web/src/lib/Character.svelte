@@ -180,6 +180,19 @@
                   title="This set's four-piece bonus is conditional wording rather than numbers, so
                          it is not in the score. The entry was ranked on its stats alone."
                 >· stats only</span>
+              {:else if set.undeclared?.length}
+                <!--
+                  Modelled, but scored with the bonus switched off, because
+                  nobody has said whether the condition holds. Without this
+                  the entry ranks low for an invisible reason and the
+                  "modelled" flag reads as "priced".
+                -->
+                <span
+                  class="text-warn"
+                  title="Mimir has numbers for this set's four-piece, but it waits on a condition
+                         you have not answered — {set.undeclared.join(', ')} — so it was scored
+                         with that bonus off. Answer it on the goal and this entry moves."
+                >· needs an answer</span>
               {/if}
             </span>
             <span class="shrink-0 text-muted">

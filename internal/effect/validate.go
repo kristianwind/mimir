@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/kristianwind/mimir/internal/gamedata"
+	"github.com/kristianwind/mimir/internal/model"
 )
 
 // numberPattern finds the figures quoted in an in-game description.
@@ -36,6 +37,20 @@ func Validate(rules []gamedata.EffectRule) error {
 				"%s/%s cites no description, so its numbers cannot be checked",
 				rule.Key, rule.Trigger))
 			continue
+		}
+
+		// A rule that grants nothing the engine reads is not a smaller
+		// truth, it is a claim with no consequence: it makes a set count as
+		// modelled, silences the "ranked on stats alone" warning, and moves
+		// no number. Individual inert grants are fine and expected —
+		// Crimson Witch names three reactions nothing prices yet, and that
+		// wording is correct game data waiting for the engine to catch up —
+		// but a rule where every grant is like that can only mislead.
+		if !reachesAnything(rule) {
+			problems = append(problems, fmt.Sprintf(
+				"%s/%s grants nothing the damage engine reads, so it would mark the set "+
+					"modelled without changing any number",
+				rule.Key, rule.Trigger))
 		}
 
 		quoted := numbersIn(rule.Description)
@@ -80,6 +95,18 @@ func Validate(rules []gamedata.EffectRule) error {
 			len(problems), strings.Join(problems, "\n  "))
 	}
 	return nil
+}
+
+// reachesAnything reports whether at least one of a rule's grants can change
+// a damage number. See model.ReachesDamage, whose answer is measured against
+// the engine in internal/calc.
+func reachesAnything(rule gamedata.EffectRule) bool {
+	for _, e := range rule.Effects {
+		if e.Instance != nil || model.ReachesDamage(e.Grants) {
+			return true
+		}
+	}
+	return false
 }
 
 type literal struct {

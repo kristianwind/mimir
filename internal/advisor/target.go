@@ -65,6 +65,18 @@ type TargetSet struct {
 	// and the entry is ranked on a strictly smaller part of the truth than
 	// the entries above and below it.
 	Modelled bool `json:"modelled"`
+	// Undeclared names the conditions this set's bonus waits on that nobody
+	// has answered, so its four-piece contributed nothing to Score.
+	//
+	// Modelled and scored are not the same thing, and the gap between them
+	// grew teeth when the effect file did. Most four-pieces are conditional
+	// — "after using an Elemental Burst", "while shielded", "max 3 stacks" —
+	// and Mimir asks rather than assuming, so an unanswered condition is
+	// worth zero. Before, that affected a handful of sets and "modelled" was
+	// a fair shorthand for "priced". Now it is most of them, and an entry
+	// marked modelled while silently scoring its bonus at nothing is the
+	// sort of half-truth this view exists to avoid.
+	Undeclared []string `json:"undeclared,omitempty"`
 }
 
 // TargetRequest is one character to describe a target for.
@@ -123,6 +135,11 @@ func BuildTarget(ctx context.Context, req TargetRequest) (Target, error) {
 				"The rest are scored on their stats alone, so they are ranked on less than the "+
 				"whole truth — each entry says which it is.", modelled, total))
 	}
+	out.Caveats = append(out.Caveats,
+		"Most four-piece bonuses are conditional — after a burst, while shielded, at three "+
+			"stacks — and Mimir does not assume a condition holds. An entry marked as waiting "+
+			"on one was scored with that bonus switched off, so it is ranked below where it "+
+			"would sit once you say whether it is up in your rotation.")
 
 	// The order matters and it is not arbitrary. Main stats are chosen
 	// first, on a neutral set, because a goblet's element bonus is worth
@@ -434,7 +451,8 @@ func rankSets(
 		}
 		out = append(out, TargetSet{
 			Config: key, Score: score, Owned: req.OwnedSets[key],
-			Modelled: req.Snapshot.FourPieceModelled(key),
+			Modelled:   req.Snapshot.FourPieceModelled(key),
+			Undeclared: undeclaredFor(req.Snapshot, key, req.Conditions),
 		})
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Score > out[j].Score })
@@ -508,6 +526,35 @@ func fillBehind(n int, score func(int) float64, set func(int, float64)) {
 	for i := 0; i < n; i++ {
 		set(i, 1-score(i)/best)
 	}
+}
+
+// undeclaredFor lists the conditions a set's four-piece waits on that this
+// goal has not answered.
+//
+// Only conditions with no value at all count as unanswered. A condition
+// deliberately set to zero — "no, that buff is not up in my rotation" — is an
+// answer, and reporting it as a gap would nag somebody for having told the
+// truth.
+func undeclaredFor(snap *gamedata.Snapshot, key string, conditions map[string]float64) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, r := range snap.Effects {
+		if r.Kind != gamedata.EffectKindArtifactSet || r.Key != key || r.Trigger != "4pc" {
+			continue
+		}
+		for _, e := range r.Effects {
+			if e.StacksFrom == "" || seen[e.StacksFrom] {
+				continue
+			}
+			if _, answered := conditions[e.StacksFrom]; answered {
+				continue
+			}
+			seen[e.StacksFrom] = true
+			out = append(out, e.StacksFrom)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // fourPieceCoverage counts how many artifact sets have a four-piece bonus the

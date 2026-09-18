@@ -559,13 +559,31 @@ func (s *Snapshot) Set(key string) (ArtifactSet, error) {
 // kind it is. "Switch to 4pc GoldenTroupe" scored on substats alone is not
 // advice about GoldenTroupe, and presenting it as though it were is the one
 // thing this codebase is not allowed to do.
+// A rule is not enough on its own: what it grants has to be something the
+// engine can use. Crimson Witch's four-piece names five reactions, and only
+// vaporize and melt are priced — calc.Transformative, which would score an
+// overload, is called from nowhere. A rule made entirely of grants like those
+// would flip this to true, the interface would stop warning that the set is
+// ranked on its stats alone, and not one number would have changed. So the
+// question asked here is the useful one: can any of this reach the damage?
 func (s *Snapshot) FourPieceModelled(key string) bool {
-	if set, ok := s.ArtifactSets[key]; ok && len(set.FourPiece) > 0 {
-		return true
+	if set, ok := s.ArtifactSets[key]; ok {
+		for stat, v := range set.FourPiece {
+			if v != 0 && model.ReachesDamage(stat) {
+				return true
+			}
+		}
 	}
 	for _, r := range s.Effects {
-		if r.Kind == EffectKindArtifactSet && r.Key == key && r.Trigger == "4pc" {
-			return true
+		if r.Kind != EffectKindArtifactSet || r.Key != key || r.Trigger != "4pc" {
+			continue
+		}
+		for _, e := range r.Effects {
+			// An instance is its own damage hit rather than a bonus to one,
+			// so it reaches the engine whatever stat it scales off.
+			if e.Instance != nil || model.ReachesDamage(e.Grants) {
+				return true
+			}
 		}
 	}
 	return false

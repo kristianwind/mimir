@@ -51,8 +51,9 @@ func TestEffectFileAgainstARealSnapshot(t *testing.T) {
 			modelled++
 		}
 	}
-	t.Logf("%d rules load against game data %s; four-piece coverage %d of %d sets",
-		len(rules), snap.Version, modelled, total)
+	wm, wt := snap.WeaponPassiveCoverage()
+	t.Logf("%d rules load against game data %s; four-piece coverage %d of %d sets, "+
+		"weapon passives %d of %d", len(rules), snap.Version, modelled, total, wm, wt)
 
 	if modelled == 0 {
 		t.Error("no artifact set has a four-piece the engine can score; the file is not reaching the snapshot")

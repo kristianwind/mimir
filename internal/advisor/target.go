@@ -119,8 +119,21 @@ func BuildTarget(ctx context.Context, req TargetRequest) (Target, error) {
 			"This is what the character wants, not what your bag holds. Nothing here is filtered by what you own; the entries you can already assemble are marked.",
 			"Measured the same way as everything else in Mimir: one cast of the elemental skill and one of the burst, at this character's own talent levels, against a level 90 enemy with 10% resistance. No teams, no rotations, no reactions.",
 			"The substats are the same invented allocation on every candidate, so the ranking is fair between them. They are not a claim about any artifact you will actually roll.",
-			"Weapons are not ranked. Most of what makes a weapon good is its passive, and the passives are mined as wording rather than as numbers — four of the two hundred and forty-seven are modelled. A ranking on base attack and substat alone would put a four-star above a five-star and look like advice.",
 		},
+	}
+
+	// Said with the real count rather than a number typed into the sentence.
+	// The prose here used to read "four of the two hundred and forty-seven",
+	// which was true when it was written and silently stopped being true the
+	// moment anybody added a rule — the exact failure the four-piece caveat
+	// avoids by counting.
+	if modelled, total := snap.WeaponPassiveCoverage(); total > 0 {
+		out.Caveats = append(out.Caveats, fmt.Sprintf(
+			"Weapons are not ranked. Most of what makes a weapon good is its passive, and "+
+				"passives are mined as wording rather than as numbers — %d of the %d are "+
+				"modelled. A ranking on base attack and substat alone would put a four-star "+
+				"above a five-star and look like advice. The weapon held while the sets were "+
+				"ranked does carry its passive where one is modelled.", modelled, total))
 	}
 
 	// The same admission the weapons get, for the same reason. A four-piece

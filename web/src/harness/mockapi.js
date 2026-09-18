@@ -134,14 +134,14 @@ export const api = {
       mainStats: { sands: 'enerRech_', goblet: 'electro_dmg_', circlet: 'critDMG_' },
       sets: [
         { config: 'EmblemOfSeveredFate', score: 41822, behind: 0, owned: true, modelled: true },
-        { config: 'GildedDreams', score: 39901, behind: 0.046, owned: true, modelled: false },
+        { config: 'GildedDreams', score: 39901, behind: 0.046, owned: true, modelled: true, undeclared: ['GildedDreams.sameElement', 'GildedDreams.otherElement'] },
         { config: 'ThunderingFury', score: 39104, behind: 0.065, owned: false, modelled: false },
         { config: 'NoblesseOblige', score: 38755, behind: 0.073, owned: true, modelled: true },
-        { config: 'GladiatorsFinale', score: 38111, behind: 0.089, owned: true, modelled: false },
+        { config: 'GladiatorsFinale', score: 38111, behind: 0.089, owned: true, modelled: true, undeclared: ['GladiatorsFinale.meleeWeapon'] },
       ],
       substats: { critDMG_: 6, critRate_: 3 },
       caveats: [
-        'Only 7 of the 61 artifact sets have a four-piece bonus with numbers behind it. The rest are scored on their stats alone, so they are ranked on less than the whole truth \u2014 each entry says which it is.',
+        'Only 36 of the 61 artifact sets have a four-piece bonus with numbers behind it. The rest are scored on their stats alone, so they are ranked on less than the whole truth \u2014 each entry says which it is.',
         'The weapon is held constant across every candidate, so the ranking is between sets and not between builds.',
       ],
     },

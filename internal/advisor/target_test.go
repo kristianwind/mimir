@@ -151,3 +151,61 @@ func TestSetsAreOrderedByScore(t *testing.T) {
 		t.Errorf("the winner is %v behind itself", got.Sets[0].Behind)
 	}
 }
+
+// Modelled and scored are not the same thing, and the effect file's growth
+// made the gap matter. A conditional four-piece nobody has declared is worth
+// zero, so an entry marked modelled while its bonus sat switched off has to
+// say so — otherwise the flag reads as "priced" and the ranking looks wrong
+// for a reason nobody can see.
+func TestASetWaitingOnAnUndeclaredConditionSaysSo(t *testing.T) {
+	snap := planSnapshot()
+	snap.ArtifactRolls = map[int]int{5: 9}
+	snap.Effects = append(snap.Effects, gamedata.EffectRule{
+		Key: "B", Kind: gamedata.EffectKindArtifactSet, Trigger: "4pc",
+		Effects: []gamedata.Effect{{
+			Grants: model.ATKPercent, Phase: gamedata.EffectPhasePre,
+			Rate: 0.2, StacksFrom: "B.active", MaxStacks: 1,
+		}},
+	})
+
+	got, err := BuildTarget(context.Background(), TargetRequest{
+		Snapshot:  snap,
+		Character: model.Character{Key: "Tester", Level: 90, Ascension: 6, TalentAuto: 9, TalentSkill: 9, TalentBurst: 9},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var found bool
+	for _, s := range got.Sets {
+		if s.Config != "B" {
+			continue
+		}
+		found = true
+		if !s.Modelled {
+			t.Error("set B has a rule the engine reads, so it is modelled")
+		}
+		if len(s.Undeclared) != 1 || s.Undeclared[0] != "B.active" {
+			t.Errorf("undeclared = %v, want [B.active]", s.Undeclared)
+		}
+	}
+	if !found {
+		t.Fatalf("set B is missing from the ranking: %+v", got.Sets)
+	}
+
+	// Answering it — even with a zero, which is a real answer — stops it
+	// being reported as a gap.
+	answered, err := BuildTarget(context.Background(), TargetRequest{
+		Snapshot:   snap,
+		Character:  model.Character{Key: "Tester", Level: 90, Ascension: 6, TalentAuto: 9, TalentSkill: 9, TalentBurst: 9},
+		Conditions: map[string]float64{"B.active": 0},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range answered.Sets {
+		if s.Config == "B" && len(s.Undeclared) != 0 {
+			t.Errorf("a condition answered with zero is still reported as unanswered: %v", s.Undeclared)
+		}
+	}
+}

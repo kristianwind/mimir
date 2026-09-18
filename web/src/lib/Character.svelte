@@ -144,6 +144,68 @@
     </ul>
   </section>
 
+  <!--
+    The bag-independent half, and it is labelled as such in the heading.
+    Everything above this point is about the account — level this, swap that —
+    and a tester reading those rows reasonably asked whether Mimir only ever
+    considers what she already owns. It does not, but the answer lived on a
+    different screen, which is the same as not having it.
+  -->
+  {#if page.aim}
+    <section class="card mb-4 p-5">
+      <h2 class="font-medium">What to farm towards, whether or not you own it</h2>
+      <p class="mt-1 text-xs text-muted">
+        This half ignores your bag completely. It is what the character wants, computed against
+        this constellation and these talent levels — so it can tell you to chase a set you have
+        never seen a piece of.
+      </p>
+
+      {#if page.aim.mainStats}
+        <p class="mt-4 text-sm">
+          {['sands', 'goblet', 'circlet']
+            .map((slot) => `${slot[0].toUpperCase()}${slot.slice(1)} ${statLabel(page.aim.mainStats[slot]) || '—'}`)
+            .join(' · ')}
+        </p>
+      {/if}
+
+      <ul class="mt-3 space-y-1.5">
+        {#each (page.aim.sets ?? []).slice(0, 5) as set (set.config)}
+          <li class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-sm">
+            <span>
+              4pc {set.config}
+              {#if set.owned}<span class="text-good">· you have it</span>{/if}
+              {#if !set.modelled}
+                <span
+                  class="text-warn"
+                  title="This set's four-piece bonus is conditional wording rather than numbers, so
+                         it is not in the score. The entry was ranked on its stats alone."
+                >· stats only</span>
+              {/if}
+            </span>
+            <span class="shrink-0 text-muted">
+              {set.behind ? `−${(set.behind * 100).toFixed(0)} %` : 'best'}
+            </span>
+          </li>
+        {/each}
+      </ul>
+
+      <!--
+        Not a footnote. Seven of sixty-one sets have a four-piece the engine
+        can score, so for most of this list "best" means "best on its stats",
+        which is a different claim from the one a reader will take away. It
+        goes under the list at full weight rather than inside a details
+        element somebody has to open.
+      -->
+      {#each page.aim.caveats ?? [] as caveat}
+        {#if caveat.includes('four-piece')}
+          <p class="mt-3 rounded-xl bg-raised px-3 py-2.5 text-xs leading-relaxed text-warn">
+            {caveat}
+          </p>
+        {/if}
+      {/each}
+    </section>
+  {/if}
+
   {#if page.substats?.length}
     <section class="card mb-4 p-5">
       <h2 class="font-medium">What the next substat roll should go to</h2>
@@ -191,6 +253,9 @@
       <summary class="cursor-pointer text-sm font-medium">What this does not measure</summary>
       <ul class="mt-3 space-y-2 text-xs leading-relaxed text-muted">
         {#each page.caveats ?? [] as caveat}<li>· {caveat}</li>{/each}
+        {#each (page.aim?.caveats ?? []).filter((c) => !c.includes('four-piece')) as caveat}
+          <li>· {caveat}</li>
+        {/each}
         {#each page.skipped ?? [] as skip}<li class="text-warn">· {skip}</li>{/each}
       </ul>
     </details>

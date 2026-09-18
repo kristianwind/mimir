@@ -226,3 +226,87 @@ func TestAnUnlevelledPieceIsPricedAndNamedAsALevelUp(t *testing.T) {
 	}
 	t.Fatalf("the lowered slot %s is missing from the page", lowered)
 }
+
+// Sabrina, after being given the page: "Tager den nye model kun udgangspunkt i
+// ting/stykker jeg har — fordi jeg vil gerne have at den anbefaler det bedste
+// artifact sæt til mine karaktere i stedet for kun at kigge på artifacts jeg
+// ejer?"
+//
+// Most of the page is about the bag, deliberately. This is the half that is
+// not, and it has to be on the page rather than on another screen — an answer
+// somewhere else is the same as no answer.
+func TestThePageCarriesWhatToFarmTowardsIndependentOfTheBag(t *testing.T) {
+	got, err := CharacterStatus(context.Background(), statusRequest(t))
+	if err != nil {
+		t.Fatalf("%v (skipped: %v)", err, got.Skipped)
+	}
+	if got.Aim == nil {
+		t.Fatalf("the page has no aim on it; skipped: %v", got.Skipped)
+	}
+	if len(got.Aim.Sets) == 0 {
+		t.Fatal("the aim recommends no sets at all")
+	}
+	if len(got.Aim.MainStats) == 0 {
+		t.Error("the aim names no main stats to farm for")
+	}
+}
+
+// And it must not quietly prefer what the account already has. Owned is a
+// label on the answer, never a thumb on the scale — otherwise "what should I
+// farm towards" collapses back into "what have you got", which is the
+// question the rest of the page already answers.
+func TestTheAimDoesNotPreferSetsTheAccountOwns(t *testing.T) {
+	ctx := context.Background()
+
+	req := statusRequest(t)
+	owned, err := CharacterStatus(ctx, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Same request, but claiming the account owns nothing at all. The
+	// ranking and the scores must be identical; only the labels may move.
+	bare := statusRequest(t)
+	bare.OwnedSets = map[string]bool{}
+	none, err := CharacterStatus(ctx, bare)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(owned.Aim.Sets) != len(none.Aim.Sets) {
+		t.Fatalf("ownership changed how many sets were recommended: %d vs %d",
+			len(owned.Aim.Sets), len(none.Aim.Sets))
+	}
+	for i := range owned.Aim.Sets {
+		a, b := owned.Aim.Sets[i], none.Aim.Sets[i]
+		if a.Config != b.Config {
+			t.Errorf("position %d is %s when the sets are owned and %s when they are not",
+				i, a.Config, b.Config)
+		}
+		if a.Score != b.Score {
+			t.Errorf("%s scored %v owned and %v unowned; ownership must not touch the score",
+				a.Config, a.Score, b.Score)
+		}
+	}
+}
+
+// The limit that matters more than the ranking. Most four-piece bonuses are
+// conditional prose rather than numbers, so most entries are ranked on their
+// stats alone — and a reader who takes "best" at face value has been misled
+// by omission. Both the per-entry flag and the count have to survive onto
+// the page.
+func TestTheAimSaysHowMuchOfItIsActuallyModelled(t *testing.T) {
+	got, err := CharacterStatus(context.Background(), statusRequest(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var counted bool
+	for _, c := range got.Aim.Caveats {
+		if strings.Contains(c, "four-piece bonus with numbers behind it") {
+			counted = true
+		}
+	}
+	if !counted {
+		t.Errorf("the aim never says how many sets it can actually score: %v", got.Aim.Caveats)
+	}
+}

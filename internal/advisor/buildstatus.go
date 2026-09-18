@@ -73,16 +73,36 @@ type BuildStatus struct {
 	Slots []SlotStatus `json:"slots"`
 	// Substats is what one more roll would buy, best first.
 	Substats []SubstatValue `json:"substats,omitempty"`
-	Caveats  []string       `json:"caveats"`
-	Skipped  []string       `json:"skipped,omitempty"`
+	// Aim is what this character wants, with the bag ignored entirely.
+	//
+	// The rest of the page is about the account: which of your pieces to
+	// level, which to swap, what your rolls are worth. That is the right
+	// shape for "what do I do next" and the wrong one for "what am I farming
+	// towards", and a tester asked the second question after being given the
+	// first — "jeg vil gerne have at den anbefaler det bedste artifact sæt
+	// til mine karaktere i stedet for kun at kigge på artifacts jeg ejer".
+	//
+	// BuildTarget already answered it and already ignores ownership: Owned
+	// on each set is a label, never a thumb on the scale. It was computed
+	// here anyway, to give Built its denominator, and then thrown away. Now
+	// it is carried, because the page somebody opens about a character is
+	// where the question gets asked.
+	Aim     *Target  `json:"aim,omitempty"`
+	Caveats []string `json:"caveats"`
+	Skipped []string `json:"skipped,omitempty"`
 }
 
 // BuildStatusRequest is one character, measured against the whole bag.
 type BuildStatusRequest struct {
-	Snapshot   *gamedata.Snapshot
-	Loadout    Loadout
-	Inventory  []model.Artifact
-	Conditions map[string]float64
+	Snapshot  *gamedata.Snapshot
+	Loadout   Loadout
+	Inventory []model.Artifact
+	// OwnedSets and OwnedWeapons let the aim mark what the account can
+	// already assemble. Labelling only — the search does not prefer what is
+	// owned, because the whole question it answers is what to farm towards.
+	OwnedSets    map[string]bool
+	OwnedWeapons map[string]int
+	Conditions   map[string]float64
 }
 
 // CharacterStatus answers both halves of the character page.
@@ -143,9 +163,22 @@ func CharacterStatus(ctx context.Context, req BuildStatusRequest) (BuildStatus, 
 	// changed a piece. Resolved once, on the caller's context.
 	var idealSet string
 	if target, err := BuildTarget(ctx, TargetRequest{
-		Snapshot: snap, Character: req.Loadout.Character, Conditions: req.Conditions,
-	}); err == nil && len(target.Sets) > 0 {
-		idealSet = target.Sets[0].Config
+		Snapshot:     snap,
+		Character:    req.Loadout.Character,
+		OwnedSets:    req.OwnedSets,
+		OwnedWeapons: req.OwnedWeapons,
+		Conditions:   req.Conditions,
+	}); err != nil {
+		// The page is still worth having without it. What it loses is the
+		// "farm towards this" half and an exact denominator for Built, and
+		// saying so is better than a page that quietly measures against
+		// something else.
+		out.Skipped = append(out.Skipped, fmt.Sprintf("what to aim for: %v", err))
+	} else {
+		out.Aim = &target
+		if len(target.Sets) > 0 {
+			idealSet = target.Sets[0].Config
+		}
 	}
 
 	// Built. One extra evaluation: the same build with every slot replaced by

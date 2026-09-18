@@ -128,6 +128,23 @@ export const api = {
       { stat: 'def', perRoll: 0, relative: 0, note: 'the rotation being measured does not scale on this stat, so a roll buys nothing' },
       { stat: 'def_', perRoll: 0, relative: 0, note: 'the rotation being measured does not scale on this stat, so a roll buys nothing' },
     ],
+    aim: {
+      character: 'RaidenShogun',
+      element: 'electro',
+      mainStats: { sands: 'enerRech_', goblet: 'electro_dmg_', circlet: 'critDMG_' },
+      sets: [
+        { config: 'EmblemOfSeveredFate', score: 41822, behind: 0, owned: true, modelled: true },
+        { config: 'GildedDreams', score: 39901, behind: 0.046, owned: true, modelled: false },
+        { config: 'ThunderingFury', score: 39104, behind: 0.065, owned: false, modelled: false },
+        { config: 'NoblesseOblige', score: 38755, behind: 0.073, owned: true, modelled: true },
+        { config: 'GladiatorsFinale', score: 38111, behind: 0.089, owned: true, modelled: false },
+      ],
+      substats: { critDMG_: 6, critRate_: 3 },
+      caveats: [
+        'Only 7 of the 61 artifact sets have a four-piece bonus with numbers behind it. The rest are scored on their stats alone, so they are ranked on less than the whole truth \u2014 each entry says which it is.',
+        'The weapon is held constant across every candidate, so the ranking is between sets and not between builds.',
+      ],
+    },
     caveats: [
       'Built is this build\u2019s damage against an idealised one \u2014 five pieces with the right main stat, the target view\u2019s substat allocation, at +20. Nothing reaches a hundred, because that build has perfect substats on all five pieces and no real account does. It is a ruler, not a grade.',
       'What levelling buys is the main stat\u2019s growth alone. A piece gains a substat roll every four levels and which stat it lands on is unknown, so that part is left out rather than guessed \u2014 the real gain is this number or better, never worse.',

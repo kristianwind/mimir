@@ -70,6 +70,69 @@ export const api = {
   updateUser: async () => ({ status: 'ok' }),
   deleteUser: async () => ({ status: 'ok' }),
   createUser: async () => ({ status: 'ok' }),
+  // The character page. Shape copied from advisor.BuildStatus's JSON tags —
+  // a mock that has drifted from the endpoint proves nothing about the page.
+  character: async () => ({
+    character: 'RaidenShogun',
+    element: 'electro',
+    level: 90,
+    constellation: 2,
+    weapon: 'TheCatch',
+    built: 0.384,
+    slots: [
+      {
+        slot: 'goblet', ideal: 'electro_dmg_',
+        worn: { artifactId: 41, slot: 'goblet', set: 'GladiatorsFinale', level: 20,
+                mainStat: 'def_', score: 21, worn: true, gain: 0, verdict: 'replace',
+                why: 'main stat is defPercent; this character wants electroDamageBonus here, and levelling cannot change it' },
+        levelGain: 0, swapGain: 0.1842, swapTo: 77, best: 0.1842, action: 'swap',
+      },
+      {
+        slot: 'circlet', ideal: 'critDMG_',
+        worn: { artifactId: 52, slot: 'circlet', set: 'EmblemOfSeveredFate', level: 8,
+                mainStat: 'critDMG_', score: 44, worn: true, gain: 0, verdict: 'ok',
+                why: 'right main stat, but only +8 of +20' },
+        levelGain: 0.0913, levelTo: 20, swapGain: 0.0410, swapTo: 91, swapWornBy: 'Xiangling',
+        best: 0.0913, action: 'level',
+      },
+      {
+        slot: 'sands', ideal: 'atk_',
+        levelGain: 0, swapGain: 0.0617, swapTo: 63, best: 0.0617, action: 'equip',
+      },
+      {
+        slot: 'plume', ideal: 'atk',
+        worn: { artifactId: 22, slot: 'plume', set: 'EmblemOfSeveredFate', level: 20,
+                mainStat: 'atk', score: 71, worn: true, gain: 0, verdict: 'good',
+                why: 'nothing to do here: right main stat, at its cap, and nothing in the bag beats it. It scores 71 of 100 — the rest is substats and the set, which no amount of levelling chooses for you' },
+        levelGain: 0, swapGain: 0, best: 0, action: '',
+      },
+      {
+        slot: 'flower', ideal: 'hp',
+        worn: { artifactId: 11, slot: 'flower', set: 'EmblemOfSeveredFate', level: 20,
+                mainStat: 'hp', score: 74, worn: true, gain: 0, verdict: 'good',
+                why: 'right main stat, at its cap, and nothing in the bag beats it' },
+        levelGain: 0, swapGain: 0, best: 0, action: '',
+      },
+    ],
+    substats: [
+      { stat: 'critDMG_', perRoll: 0.0351, relative: 1 },
+      { stat: 'atk_', perRoll: 0.0204, relative: 0.581 },
+      { stat: 'eleMas', perRoll: 0.0041, relative: 0.117 },
+      { stat: 'atk', perRoll: 0.0038, relative: 0.108 },
+      { stat: 'critRate_', perRoll: 0, relative: 0,
+        note: 'crit rate is already at the ceiling for this rotation, so a further roll buys nothing' },
+      { stat: 'enerRech_', perRoll: 0, relative: 0, unmeasured: true,
+        note: 'not measured rather than worthless: the yardstick is one skill and one burst, a rotation that never waits for energy, so recharge has nothing to change here. What it actually buys is how often you get the burst off at all, which this does not model' },
+      { stat: 'hp', perRoll: 0, relative: 0, note: 'the rotation being measured does not scale on this stat, so a roll buys nothing' },
+      { stat: 'hp_', perRoll: 0, relative: 0, note: 'the rotation being measured does not scale on this stat, so a roll buys nothing' },
+      { stat: 'def', perRoll: 0, relative: 0, note: 'the rotation being measured does not scale on this stat, so a roll buys nothing' },
+      { stat: 'def_', perRoll: 0, relative: 0, note: 'the rotation being measured does not scale on this stat, so a roll buys nothing' },
+    ],
+    caveats: [
+      'Built is this build\u2019s damage against an idealised one \u2014 five pieces with the right main stat, the target view\u2019s substat allocation, at +20. Nothing reaches a hundred, because that build has perfect substats on all five pieces and no real account does. It is a ruler, not a grade.',
+      'What levelling buys is the main stat\u2019s growth alone. A piece gains a substat roll every four levels and which stat it lands on is unknown, so that part is left out rather than guessed \u2014 the real gain is this number or better, never worse.',
+    ],
+  }),
   artifactGrid: async () => ({
     rows: [
       row('Arlecchino', [

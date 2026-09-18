@@ -2,8 +2,17 @@
   import { api } from './api.js'
   import Kvasir from './Kvasir.svelte'
   import CharacterArt from './CharacterArt.svelte'
+  import Character from './Character.svelte'
 
   let { account } = $props()
+
+  // The character whose own page is open, or null for the roster.
+  //
+  // State rather than a route: the shell picks views the same way, and one
+  // character page is not worth teaching the app about URLs for. The cost is
+  // that the back button leaves the roster rather than returning to it, which
+  // is why the page carries its own way back.
+  let opened = $state(null)
 
   let characters = $state([])
   let error = $state('')
@@ -53,7 +62,9 @@
   })
 </script>
 
-{#if loading}
+{#if opened}
+  <Character {account} characterKey={opened} onback={() => (opened = null)} />
+{:else if loading}
   <p class="text-sm text-muted">Fetching characters…</p>
 {:else if error}
   <p class="rounded-xl border border-bad/40 bg-bad/10 px-4 py-3 text-sm text-bad">{error}</p>
@@ -71,7 +82,15 @@
 
         <div class="relative">
           <div class="flex items-baseline justify-between gap-2">
-            <h2 class="font-medium">{character.key}</h2>
+            <h2 class="font-medium">
+              <button
+                type="button"
+                class="text-left hover:text-accent"
+                onclick={() => (opened = character.key)}
+              >
+                {character.key}
+              </button>
+            </h2>
             <span class="chip backdrop-blur-sm">C{character.constellation}</span>
           </div>
           <p class="mt-1 text-sm text-muted">Level {character.level}</p>
@@ -93,6 +112,14 @@
           <button
             type="button"
             class="btn-ghost mt-3 w-full text-xs backdrop-blur-sm"
+            onclick={() => (opened = character.key)}
+          >
+            How far along is this build?
+          </button>
+
+          <button
+            type="button"
+            class="btn-ghost mt-2 w-full text-xs backdrop-blur-sm"
             onclick={() => showTarget(character.key)}
           >
             {aiming === character.key ? 'Hide the target' : 'What should this character aim for?'}

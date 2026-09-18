@@ -5,6 +5,7 @@ import KvasirChat from '../lib/KvasirChat.svelte'
 import System from '../lib/System.svelte'
 import Kvasir from '../lib/Kvasir.svelte'
 import Users from '../lib/Users.svelte'
+import Character from '../lib/Character.svelte'
 
 const what = new URLSearchParams(location.search).get('c') ?? 'grid'
 const target = document.getElementById('app')
@@ -13,6 +14,14 @@ if (what === 'opinion') {
   mount(Kvasir, { target, props: { account: { id: 1 }, surface: 'roster' } })
 } else if (what === 'system') {
   mount(System, { target, props: { user: { role: 'admin' }, hosted: true } })
+} else if (what === 'character') {
+  // The character page, on a half-built account: one empty slot, one piece
+  // that is not levelled, one slot with nothing left in it, and a build that
+  // is past its crit ceiling so the substat table has a zero to explain.
+  mount(Character, {
+    target,
+    props: { account: { id: 1 }, characterKey: 'RaidenShogun', onback: () => {} },
+  })
 } else if (what === 'users') {
   // The sole administrator. This is the case that mattered: every control
   // that takes something away is correctly hidden for him, and "Give free

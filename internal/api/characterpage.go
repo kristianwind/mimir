@@ -78,6 +78,21 @@ func (s *Server) handleCharacterPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// What the account can already field four of, and which weapons it has.
+	// Used to label the "aim" half, never to bias it: the recommendation is
+	// what to farm towards, so preferring what is already owned would answer
+	// a different question.
+	ownedSets, err := s.ownedSets(r.Context(), a.ID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	ownedWeapons, err := s.ownedWeapons(r.Context(), a.ID)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+
 	// A goal's declared conditions are reused where there is one, so this
 	// page and the plan do not disagree about the same character.
 	var conditions map[string]float64
@@ -92,8 +107,10 @@ func (s *Server) handleCharacterPage(w http.ResponseWriter, r *http.Request) {
 			Weapon:    weapon,
 			Artifacts: equipped,
 		},
-		Inventory:  inventory,
-		Conditions: conditions,
+		Inventory:    inventory,
+		OwnedSets:    ownedSets,
+		OwnedWeapons: ownedWeapons,
+		Conditions:   conditions,
 	})
 	if err != nil {
 		writeDomainError(w, err)

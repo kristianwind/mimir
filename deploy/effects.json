@@ -1007,6 +1007,680 @@
           "note": "Superconduct. Motoren prissætter endnu ikke transformative reaktioner."
         }
       ]
+    },
+
+    {
+      "key": "WolfsGravestone",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "byRefinement": [0.2, 0.25, 0.3, 0.35, 0.4],
+          "note": "Gælder altid."
+        }
+      ]
+    },
+
+    {
+      "key": "AquilaFavonia",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "byRefinement": [0.2, 0.25, 0.3, 0.35, 0.4],
+          "note": "Gælder altid."
+        }
+      ]
+    },
+
+    {
+      "key": "ATeaspoonOfTranscendence",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "byRefinement": [0.28, 0.35, 0.42, 0.49, 0.56],
+          "note": "Gælder altid."
+        }
+      ]
+    },
+
+    {
+      "key": "CashflowSupervision",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "byRefinement": [0.16, 0.2, 0.24, 0.28, 0.32],
+          "note": "Gælder altid."
+        }
+      ]
+    },
+
+    {
+      "key": "SkywardHarp",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "critDMG_",
+          "phase": "pre",
+          "byRefinement": [0.2, 0.25, 0.3, 0.35, 0.4],
+          "note": "Gælder altid. Proc-skaden er ikke modelleret."
+        }
+      ]
+    },
+
+    {
+      "key": "SkywardBlade",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "critRate_",
+          "phase": "pre",
+          "byRefinement": [0.04, 0.05, 0.06, 0.07, 0.08],
+          "note": "Gælder altid."
+        }
+      ]
+    },
+
+    {
+      "key": "SkywardSpine",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "critRate_",
+          "phase": "pre",
+          "byRefinement": [0.08, 0.1, 0.12, 0.14, 0.16],
+          "note": "Gælder altid."
+        }
+      ]
+    },
+
+    {
+      "key": "LightOfFoliarIncision",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "critRate_",
+          "phase": "pre",
+          "byRefinement": [0.04, 0.05, 0.06, 0.07, 0.08],
+          "note": "Gælder altid."
+        }
+      ]
+    },
+
+    {
+      "key": "SkywardPride",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "dmg_",
+          "phase": "pre",
+          "byRefinement": [0.08, 0.1, 0.12, 0.14, 0.16],
+          "note": "Gælder altid. Vacuum blade-skaden er ikke modelleret."
+        }
+      ]
+    },
+
+    {
+      "key": "LightbearingMoonshard",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "def_",
+          "phase": "pre",
+          "byRefinement": [0.2, 0.25, 0.3, 0.35, 0.4],
+          "note": "Gælder altid."
+        }
+      ]
+    },
+
+    {
+      "key": "RedhornStonethresher",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "def_",
+          "phase": "pre",
+          "byRefinement": [0.28, 0.35, 0.42, 0.49, 0.56],
+          "note": "Gælder altid. Skadebonussen ud af DEF er ikke modelleret."
+        }
+      ]
+    },
+
+    {
+      "key": "AmosBow",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "normal_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Gælder altid."
+        },
+        {
+          "grants": "charged_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Gælder altid."
+        }
+      ]
+    },
+
+    {
+      "key": "StarcallersWatch",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "eleMas",
+          "phase": "pre",
+          "byRefinement": [100.0, 125.0, 150.0, 175.0, 200.0],
+          "note": "Gælder altid."
+        }
+      ]
+    },
+
+    {
+      "key": "CalamityQueller",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "pyro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "hydro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "anemo_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "electro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "dendro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "cryo_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "geo_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        }
+      ]
+    },
+
+    {
+      "key": "HuntersPath",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "pyro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "hydro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "anemo_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "electro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "dendro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "cryo_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "geo_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        }
+      ]
+    },
+
+    {
+      "key": "SkywardAtlas",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "pyro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "hydro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "anemo_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "electro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "dendro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "cryo_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        },
+        {
+          "grants": "geo_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "note": "Alle elementer. Gælder altid."
+        }
+      ]
+    },
+
+    {
+      "key": "PrimordialJadeCutter",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "hp_",
+          "phase": "pre",
+          "byRefinement": [0.2, 0.25, 0.3, 0.35, 0.4],
+          "note": "Gælder altid."
+        },
+        {
+          "grants": "atk",
+          "phase": "pre",
+          "byRefinement": [0.012, 0.015, 0.018000000000000002, 0.021, 0.024],
+          "from": "hp",
+          "note": "ATK ud af Max HP."
+        }
+      ]
+    },
+
+    {
+      "key": "StaffOfHoma",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "hp_",
+          "phase": "pre",
+          "byRefinement": [0.2, 0.25, 0.3, 0.35, 0.4],
+          "note": "Gælder altid."
+        },
+        {
+          "grants": "atk",
+          "phase": "pre",
+          "byRefinement": [0.008, 0.01, 0.012, 0.013999999999999999, 0.016],
+          "from": "hp",
+          "note": "ATK ud af Max HP."
+        }
+      ]
+    },
+
+    {
+      "key": "StaffOfTheScarletSands",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "atk",
+          "phase": "pre",
+          "byRefinement": [0.52, 0.65, 0.78, 0.91, 1.04],
+          "from": "eleMas",
+          "note": "ATK ud af Elemental Mastery."
+        }
+      ]
+    },
+
+    {
+      "key": "EngulfingLightning",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "byRefinement": [0.28, 0.35, 0.42, 0.49, 0.56],
+          "from": "enerRech_",
+          "offset": 1.0,
+          "min": 0,
+          "note": "ATK pr. Energy Recharge over 100 %. Loftet på 80 % er ikke modelleret: det ændrer sig pr. refinement, og et loft kan kun bære én værdi her — i praksis nås det ikke."
+        }
+      ]
+    },
+
+    {
+      "key": "AquaSimulacra",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "hp_",
+          "phase": "pre",
+          "byRefinement": [0.16, 0.2, 0.24, 0.28, 0.32],
+          "note": "Gælder altid."
+        },
+        {
+          "grants": "dmg_",
+          "phase": "pre",
+          "byRefinement": [0.2, 0.25, 0.3, 0.35, 0.4],
+          "stacksFrom": "AquaSimulacra.opponentsNearby",
+          "maxStacks": 1,
+          "note": "Når der er modstandere i nærheden."
+        }
+      ]
+    },
+
+    {
+      "key": "UrakuMisugiri",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "normal_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.16, 0.2, 0.24, 0.28, 0.32],
+          "note": "Gælder altid."
+        },
+        {
+          "grants": "skill_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.24, 0.3, 0.36, 0.42, 0.48],
+          "note": "Gælder altid."
+        },
+        {
+          "grants": "def_",
+          "phase": "pre",
+          "byRefinement": [0.15, 0.15, 0.15, 0.15, 0.15],
+          "note": "Gælder altid."
+        }
+      ]
+    },
+
+    {
+      "key": "Absolution",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "critDMG_",
+          "phase": "pre",
+          "byRefinement": [0.2, 0.25, 0.3, 0.35, 0.4],
+          "note": "Gælder altid."
+        },
+        {
+          "grants": "dmg_",
+          "phase": "pre",
+          "byRefinement": [0.16, 0.2, 0.24, 0.28, 0.32],
+          "stacksFrom": "Absolution.stacks",
+          "maxStacks": 3,
+          "note": "Pr. stigning i Bond of Life, op til tre stacks."
+        }
+      ]
+    },
+
+    {
+      "key": "Azurelight",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "byRefinement": [0.24, 0.3, 0.36, 0.42, 0.48],
+          "stacksFrom": "Azurelight.afterSkill",
+          "maxStacks": 1,
+          "note": "I 12 s efter elemental skill."
+        },
+        {
+          "grants": "critDMG_",
+          "phase": "pre",
+          "byRefinement": [0.24, 0.3, 0.36, 0.42, 0.48],
+          "stacksFrom": "Azurelight.zeroEnergy",
+          "maxStacks": 1,
+          "note": "Kræver desuden 0 energi."
+        }
+      ]
+    },
+
+    {
+      "key": "PrimordialJadeWingedSpear",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "byRefinement": [0.032, 0.039, 0.046, 0.053, 0.06],
+          "stacksFrom": "PrimordialJadeWingedSpear.stacks",
+          "maxStacks": 7,
+          "note": "Pr. stack, op til syv."
+        },
+        {
+          "grants": "dmg_",
+          "phase": "pre",
+          "byRefinement": [0.07, 0.07, 0.07, 0.07, 0.07],
+          "stacksFrom": "PrimordialJadeWingedSpear.maxStacks",
+          "maxStacks": 1,
+          "note": "Kun ved fulde syv stacks."
+        }
+      ]
+    },
+
+    {
+      "key": "KagurasVerity",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "skill_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.12, 0.15, 0.18, 0.21, 0.24],
+          "stacksFrom": "KagurasVerity.stacks",
+          "maxStacks": 3,
+          "note": "Pr. Kagura Dance-stack, op til tre."
+        }
+      ]
+    },
+
+    {
+      "key": "LostPrayerToTheSacredWinds",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "pyro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.08, 0.1, 0.12, 0.14, 0.16],
+          "stacksFrom": "LostPrayerToTheSacredWinds.stacks",
+          "maxStacks": 4,
+          "note": "Pr. stack, op til fire. Alle elementer."
+        },
+        {
+          "grants": "hydro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.08, 0.1, 0.12, 0.14, 0.16],
+          "stacksFrom": "LostPrayerToTheSacredWinds.stacks",
+          "maxStacks": 4,
+          "note": "Pr. stack, op til fire. Alle elementer."
+        },
+        {
+          "grants": "anemo_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.08, 0.1, 0.12, 0.14, 0.16],
+          "stacksFrom": "LostPrayerToTheSacredWinds.stacks",
+          "maxStacks": 4,
+          "note": "Pr. stack, op til fire. Alle elementer."
+        },
+        {
+          "grants": "electro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.08, 0.1, 0.12, 0.14, 0.16],
+          "stacksFrom": "LostPrayerToTheSacredWinds.stacks",
+          "maxStacks": 4,
+          "note": "Pr. stack, op til fire. Alle elementer."
+        },
+        {
+          "grants": "dendro_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.08, 0.1, 0.12, 0.14, 0.16],
+          "stacksFrom": "LostPrayerToTheSacredWinds.stacks",
+          "maxStacks": 4,
+          "note": "Pr. stack, op til fire. Alle elementer."
+        },
+        {
+          "grants": "cryo_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.08, 0.1, 0.12, 0.14, 0.16],
+          "stacksFrom": "LostPrayerToTheSacredWinds.stacks",
+          "maxStacks": 4,
+          "note": "Pr. stack, op til fire. Alle elementer."
+        },
+        {
+          "grants": "geo_dmg_",
+          "phase": "pre",
+          "byRefinement": [0.08, 0.1, 0.12, 0.14, 0.16],
+          "stacksFrom": "LostPrayerToTheSacredWinds.stacks",
+          "maxStacks": 4,
+          "note": "Pr. stack, op til fire. Alle elementer."
+        }
+      ]
+    },
+
+    {
+      "key": "MemoryOfDust",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "byRefinement": [0.04, 0.05, 0.06, 0.07, 0.08],
+          "stacksFrom": "MemoryOfDust.stacks",
+          "maxStacks": 5,
+          "note": "Pr. stack, op til fem. Fordoblingen under skjold er ikke modelleret."
+        }
+      ]
+    },
+
+    {
+      "key": "SummitShaper",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "byRefinement": [0.04, 0.05, 0.06, 0.07, 0.08],
+          "stacksFrom": "SummitShaper.stacks",
+          "maxStacks": 5,
+          "note": "Pr. stack, op til fem. Fordoblingen under skjold er ikke modelleret."
+        }
+      ]
+    },
+
+    {
+      "key": "TheUnforged",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "byRefinement": [0.04, 0.05, 0.06, 0.07, 0.08],
+          "stacksFrom": "TheUnforged.stacks",
+          "maxStacks": 5,
+          "note": "Pr. stack, op til fem. Fordoblingen under skjold er ikke modelleret."
+        }
+      ]
+    },
+
+    {
+      "key": "VortexVanquisher",
+      "kind": "weapon",
+      "trigger": "always",
+      "effects": [
+        {
+          "grants": "atk_",
+          "phase": "pre",
+          "byRefinement": [0.04, 0.05, 0.06, 0.07, 0.08],
+          "stacksFrom": "VortexVanquisher.stacks",
+          "maxStacks": 5,
+          "note": "Pr. stack, op til fem. Fordoblingen under skjold er ikke modelleret."
+        }
+      ]
     }
   ]
 }

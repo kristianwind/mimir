@@ -589,6 +589,42 @@ func (s *Snapshot) FourPieceModelled(key string) bool {
 	return false
 }
 
+// WeaponPassiveModelled reports whether a weapon's passive reaches the damage
+// engine, on the same terms as FourPieceModelled.
+//
+// Most do not, and for the same reason: a passive is prose in an ability
+// config, not a row in a table. The ones that are modelled are hand-written
+// rules whose numbers the loader checks against the weapon's own wording at
+// each refinement — a stricter check than the sets get, because R1 and R5 are
+// checked separately and an R1 figure cannot pass on an R5 sentence.
+func (s *Snapshot) WeaponPassiveModelled(key string) bool {
+	for _, r := range s.Effects {
+		if r.Kind != EffectKindWeapon || r.Key != key {
+			continue
+		}
+		for _, e := range r.Effects {
+			if e.Instance != nil || model.ReachesDamage(e.Grants) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// WeaponPassiveCoverage counts the weapons whose passive the engine can score,
+// against how many there are. Said out loud wherever a weapon is held
+// constant, because "most weapons are not modelled" is a different admission
+// at four than it is at thirty-five.
+func (s *Snapshot) WeaponPassiveCoverage() (modelled, total int) {
+	for key := range s.Weapons {
+		total++
+		if s.WeaponPassiveModelled(key) {
+			modelled++
+		}
+	}
+	return modelled, total
+}
+
 // CurveValue returns a growth curve's multiplier at a 1-based level.
 func (s *Snapshot) CurveValue(name string, level int) (float64, error) {
 	curve, ok := s.Curves[name]

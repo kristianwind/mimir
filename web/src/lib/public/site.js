@@ -109,7 +109,7 @@ export const LANDING = {
   // the other half.
   honest: {
     title: 'It tells you what it does not know',
-    body: 'Look closely at the screenshots and you will see the qualifications, because Mimir puts them where the number is. Weapons are not ranked, because their passives are not modelled. Most artifact set bonuses are conditional wording rather than numbers, and every recommendation that leans on one says so. Where something cannot be computed you get a stated gap, never an estimate dressed as a fact.',
+    body: 'Look closely at the screenshots and you will see the qualifications, because Mimir puts them where the number is. Weapons are still not ranked \u2014 most of what makes one good is a passive written as prose, and only a minority of them have been turned into numbers so far. Most artifact set bonuses are conditional wording rather than numbers too, and every recommendation that leans on one says which it is, and whether it was scored with the condition on or off. Where something cannot be computed you get a stated gap, never an estimate dressed as a fact.',
   },
 
   points: [

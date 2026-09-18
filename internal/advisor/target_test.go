@@ -2,6 +2,7 @@ package advisor
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -207,5 +208,48 @@ func TestASetWaitingOnAnUndeclaredConditionSaysSo(t *testing.T) {
 		if s.Config == "B" && len(s.Undeclared) != 0 {
 			t.Errorf("a condition answered with zero is still reported as unanswered: %v", s.Undeclared)
 		}
+	}
+}
+
+// A caveat with a number typed into its prose is a caveat with an expiry date.
+// This one read "four of the two hundred and forty-seven" until a batch of
+// weapon rules made it false, which nothing would have noticed.
+func TestTheWeaponCaveatCountsRatherThanClaims(t *testing.T) {
+	snap := planSnapshot()
+	snap.ArtifactRolls = map[int]int{5: 9}
+	// planSnapshot carries three weapons; give exactly one of them a passive
+	// the engine can read.
+	snap.Effects = append(snap.Effects, gamedata.EffectRule{
+		Key: "Upgraded", Kind: gamedata.EffectKindWeapon, Trigger: "always",
+		Effects: []gamedata.Effect{{
+			Grants: model.ATKPercent, Phase: gamedata.EffectPhasePre, Rate: 0.2,
+		}},
+	})
+
+	modelled, total := snap.WeaponPassiveCoverage()
+	if modelled != 1 || total != len(snap.Weapons) {
+		t.Fatalf("coverage = %d of %d, want 1 of %d", modelled, total, len(snap.Weapons))
+	}
+
+	got, err := BuildTarget(context.Background(), TargetRequest{
+		Snapshot:  snap,
+		Character: model.Character{Key: "Tester", Level: 90, Ascension: 6, TalentAuto: 9, TalentSkill: 9, TalentBurst: 9},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := fmt.Sprintf("%d of the %d are", modelled, total)
+	var found bool
+	for _, c := range got.Caveats {
+		if strings.Contains(c, want) {
+			found = true
+		}
+		if strings.Contains(c, "forty-seven") {
+			t.Error("the weapon caveat still has a number spelled into its prose")
+		}
+	}
+	if !found {
+		t.Errorf("no caveat states the real weapon coverage %q: %v", want, got.Caveats)
 	}
 }
